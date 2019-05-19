@@ -424,13 +424,15 @@ std::vector<bin_rect> bin_rect::disjoint_subset(bin_rect o)
  * bin_packer
  */
 
-bin_packer::bin_packer(bin_point sz) : total(bin_rect(bin_point(),sz))
+bin_packer::bin_packer(bin_point sz) :
+    total(bin_rect(bin_point(),sz))
 {
     reset();
 }
 
 void bin_packer::reset()
 {
+    contained_min = 0;
     alloc_map.clear();
     free_list.clear();
     free_list.push_back(total);
@@ -444,13 +446,20 @@ void bin_packer::set_bin_size(bin_point sz)
 
 void bin_packer::split_intersecting_nodes(bin_rect b)
 {
-    /*  split nodes that overlap found rectangle */
+    /*
+     * split nodes that overlap found rectangle
+     *
+     * checks every free rectangle against the chosen rectangle and
+     * split it up if it intersects. this pass has O(n) complexity
+     */
     for (size_t i = 0; i < free_list.size();) {
         bin_rect c = free_list[i];
         if (c.intersects(b)) {
             std::vector<bin_rect> l = c.disjoint_subset(b);
             free_list.erase(free_list.begin() + i);
             std::copy(l.begin(), l.end(), std::back_inserter(free_list));
+            /* invalidate learned lower bound on contained tests */
+            contained_min = std::min(contained_min,i);
         } else {
             i++;
         }
@@ -460,21 +469,27 @@ void bin_packer::split_intersecting_nodes(bin_rect b)
 void bin_packer::remove_containing_nodes()
 {
     /* remove nodes contained by other nodes */
-    size_t i = 0;
+    size_t i = contained_min;
+    size_t first_hit = free_list.size()-1;
     while(i < free_list.size()) {
-        size_t j = 0;
+        /* we skip contained comparison below the learned lower bound */
+        size_t j = contained_min;
         while(j < free_list.size()) {
             if (i != j && free_list[i].contains(free_list[j])) {
                 free_list.erase(free_list.begin() + j);
                 if (i > j) {
                     i--; /* adjust outer loop iterator */
                 }
+                /* save lower bound where we will start on next pass */
+                first_hit = std::min(first_hit,std::min(j,i));
             } else {
                 j++;
             }
         }
         i++;
     }
+    /* set lower bound to skip past on the next pass  */
+    contained_min = first_hit;
 }
 
 std::pair<size_t,bin_rect> bin_packer::scan_bins(bin_point sz)
@@ -502,6 +517,19 @@ std::pair<size_t,bin_rect> bin_packer::scan_bins(bin_point sz)
 
 std::pair<bool,bin_rect> bin_packer::find_region(int idx, bin_point sz)
 {
+    /*
+     * The MAXRECTS-BSSF algorithm has three major steps:
+     *
+     * - 'scan_bins' looks at all free rectangles to find the best
+     *   short side fit.
+     * - 'split_intersecting_nodes' performs intersection tests
+     *   between  all free rectangles and the chosen rectangle,
+     *   spliting any that intersect. This has O(n) complexity.
+     * - 'remove_containing_nodes' performs contains tests on all
+     *   ordered pairs of rectangles, removing any contained
+     *   rectangles. This pass has O(n^2) complexity.
+      */
+
     /* find best fit from free list */
     auto r = scan_bins(sz);
     if (r.first == size_t(-1)) return std::pair<bool,bin_rect>(false,bin_rect());

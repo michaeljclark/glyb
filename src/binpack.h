@@ -70,6 +70,7 @@ struct bin_packer
     bin_rect total;
     std::vector<bin_rect> free_list;
     std::map<size_t,bin_rect> alloc_map;
+    size_t contained_min;
 
     bin_packer() = delete;
     bin_packer(bin_point sz);
