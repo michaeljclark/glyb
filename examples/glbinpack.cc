@@ -23,7 +23,7 @@
 #define CTX_OPENGL_MINOR 2
 
 #include "linmath.h"
-#include "glbinpack.h"
+#include "glcommon.h"
 #include "binpack.h"
 
 
@@ -392,6 +392,35 @@ static void fbo_initialize()
         "happy" : "sad");
 
     glBindFramebuffer(GL_FRAMEBUFFER, render_fbo);
+}
+
+/* write image to file */
+
+static void write_ppm(const char *filename, const uint8_t *buffer, int width, int height)
+{
+   FILE *f = fopen(filename, "wb");
+   if (!f) {
+      fprintf(stderr, "error: fopen failed: %s\n", strerror(errno));
+      exit(1);
+   }
+   fprintf(f,"P6\n");
+   fprintf(f,"# ppm-file\n");
+   fprintf(f,"%i %i\n", width, height);
+   fprintf(f,"255\n");
+   uint8_t *line = (uint8_t*)malloc(width * 3);
+   for (int y = height - 1; y >= 0; y--) {
+      const uint8_t *in = &buffer[y * width * 4];
+      uint8_t *out = line;
+      for (int x = 0; x < width; x++) {
+         *out++ = *in++; /* red */
+         *out++ = *in++; /* green */
+         *out++ = *in++; /* blue */
+         in++;           /* skip alpha */
+      }
+      fwrite(line, width, 3, f);
+   }
+   fclose(f);
+   free(line);
 }
 
 /* batch mode entry point */

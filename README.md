@@ -4,6 +4,9 @@ binpack is 2D bin packer implementing the MAXRECTS-BSSF algorithm
 as outline in "A Thousand Ways to Pack the Bin - A Practical
 Approach to Two-Dimensional Rectangle Bin Packing, Jukka Jylänki.
 
+binpack includes a font-atlas based text renderer using HarfBuzz
+and FreeType. Render time is less than 1 microsecond per glyph.
+
 ## rectangle-rectangle intersection
 
 The `bin_rect` class implements boolean `contains` and `intersects`
