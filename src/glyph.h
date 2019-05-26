@@ -64,6 +64,8 @@ struct atlas_key
 struct atlas_entry
 {
     int bin_id;
+    short x;
+    short y;
     short offset_x;
     short offset_y;
     short width;
@@ -71,8 +73,9 @@ struct atlas_entry
     float uv[4];
 
     atlas_entry() = default;
-    inline atlas_entry(int bin_id, short offset_x, short offset_y,
-        short width, short height, float uv[4]) : bin_id(bin_id),
+    inline atlas_entry(int bin_id, short x, short y,
+        short offset_x, short offset_y,
+        short width, short height, float uv[4]) : bin_id(bin_id), x(x), y(y),
         offset_x(offset_x), offset_y(offset_y), width(width), height(height),
         uv{uv[0], uv[1], uv[2], uv[3]} {}
 };
@@ -85,6 +88,7 @@ struct font_atlas
     bin_packer bp;
     float uv1x1;
 
+    static const int PADDING = 1;
     static const int DEFAULT_WIDTH = 2048;
     static const int DEFAULT_HEIGHT = 2048;
 
@@ -93,12 +97,7 @@ struct font_atlas
 
     atlas_entry* lookup(int font_id, int point_size, int glyph_index);
     atlas_entry* create(int font_id, int point_size, int glyph_index,
-        span_vector *span);
-};
-
-struct glyph_rect
-{
-    int x1,y1,x2,y2;
+        int ox, int oy, int w, int h);
 };
 
 struct text_segment
@@ -115,6 +114,19 @@ struct text_segment
         point_size(point_size), x(x), y(y), color(color) {}
 };
 
+struct glyph_shape
+{
+    unsigned glyph_index;     /* glyph index for the chosen font */
+    unsigned cluster;         /* offset within original string */
+    int x_offset, y_offset;   /* integer with 6 fraction bits */
+    int x_advance, y_advance; /* integer with 6 fraction bits */
+};
+
+struct text_shaper
+{
+    void shape(std::vector<glyph_shape> &shapes, text_segment *segment);
+};
+
 struct text_vertex
 {
     float pos[3];
@@ -126,15 +138,18 @@ struct text_renderer
 {
     font_manager* manager;
     font_atlas* atlas;
+    span_vector span;
 
     text_renderer(font_manager* manager, font_atlas* atlas) :
         manager(manager), atlas(atlas) {}
 
-    void render_one_glyph(FT_Library ftlib, FT_Face ftface,
-        span_vector *span, int glyph_index);
     void render(std::vector<text_vertex> &vertices,
-        std::vector<uint32_t> &indices, text_segment *segment,
-        std::vector<glyph_rect> *rects = nullptr);
+        std::vector<uint32_t> &indices,
+        std::vector<glyph_shape> &shapes,
+        text_segment *segment);
+
+private:
+    atlas_entry* render_glyph(font_face *face, int point_size, int glyph_index);
 };
 
 void span_measure_fn(int y, int count, const FT_Span* spans, void *user);

@@ -176,35 +176,12 @@ atlas_entry* font_atlas::lookup(int font_id, int point_size, int glyph_index)
 }
 
 atlas_entry* font_atlas::create(int font_id, int point_size, int glyph_index,
-    span_vector *span)
+    int ox, int oy, int w, int h)
 {
-    short ox, oy, w, h;
-    std::pair<bool,bin_rect> r;
     int bin_id = glyph_map.size();
-
-    if (span->min_x == INT_MAX && span->min_y == INT_MAX) {
-        /* white space */
-        w = 0;
-        h = 0;
-        ox = 0;
-        oy = 0;
-        r = bp.find_region(bin_id, bin_point(1 , 1));
-    } else {
-        /* use dimensions from measurement */
-        w = span->width;
-        h = span->height;
-        ox = span->min_x;
-        oy = span->min_y;
-        r = bp.find_region(bin_id, bin_point(w + 1 , h + 1));
-        if (!r.first) {
-            return nullptr; /* bin has overflown */
-        }
-
-        /* copy pixels from span to atlas */
-        for (int i = 0; i < h-1; i++) {
-            size_t dest = (r.second.a.y + i) * width + r.second.a.x;
-            memcpy(&pixels[dest], &span->pixels[i * span->width], w-1);
-        }
+    auto r = bp.find_region(bin_id, bin_point(w + PADDING , h + PADDING));
+    if (!r.first) {
+        return nullptr; /* atlas full */
     }
 
     /* create uv coordinates */
@@ -216,78 +193,22 @@ atlas_entry* font_atlas::create(int font_id, int point_size, int glyph_index,
     auto gi = glyph_map.insert(glyph_map.end(),
         std::pair<atlas_key,atlas_entry>(
             atlas_key(font_id, point_size, glyph_index),
-            atlas_entry(bin_id, ox, oy, w, h, uv)));
+            atlas_entry(bin_id, r.second.a.x, r.second.a.y, ox, oy, w, h, uv)));
 
     return &gi->second;
 }
 
 
 /*
- * text renderer
+ * text shaper
  */
 
-void text_renderer::render_one_glyph(FT_Library ftlib, FT_Face ftface,
-    span_vector *span, int glyph_index)
+void text_shaper::shape(std::vector<glyph_shape> &shapes, text_segment *segment)
 {
-    FT_Error fterr;
-    FT_GlyphSlot ftglyph;
-    FT_Raster_Params rp;
-    int offset_x, offset_y;
-    int width, height;
-
-    /* load glyph */
-    if ((fterr = FT_Load_Glyph(ftface, glyph_index, 0))) {
-        fprintf(stderr, "error: FT_Load_Glyph failed: glyph=%d fterr=%d\n",
-            glyph_index, fterr);
-        exit(1);
-    }
-    if (ftface->glyph->format != FT_GLYPH_FORMAT_OUTLINE) {
-        fprintf(stderr, "error: FT_Load_Glyph format is not outline\n");
-        exit(1);
-    }
-
-    /* set up render parameters */
-    rp.target = 0;
-    rp.flags = FT_RASTER_FLAG_DIRECT | FT_RASTER_FLAG_AA;
-    rp.user = span;
-    rp.black_spans = 0;
-    rp.bit_set = 0;
-    rp.bit_test = 0;
-    rp.gray_spans = span_vector_fn;
-
-    /* font dimensions */
-    ftglyph = ftface->glyph;
-    offset_x = (int)floorf((float)ftglyph->metrics.horiBearingX / 64.0f) - 1;
-    offset_y = (int)floorf((float)(ftglyph->metrics.horiBearingY -
-        ftglyph->metrics.height) / 64.0f) - 1;
-    width = (int)ceilf(ftglyph->metrics.width / 64.0f) + 2;
-    height = (int)ceilf(ftglyph->metrics.height / 64.0f) + 2;
-
-    /* set up span vector dimensions */
-    span->global_x = 0;
-    span->global_y = 0;
-    span->offset_x = -offset_x;
-    span->offset_y = -offset_y;
-    span->min_x = INT_MAX;
-    span->min_y = INT_MAX;
-    span->max_x = INT_MIN;
-    span->max_y = INT_MIN;
-    span->reset(width, height);
-
-    /* rasterize glyph */
-    if ((fterr = FT_Outline_Render(ftlib, &ftface->glyph->outline, &rp))) {
-        printf("error: FT_Outline_Render failed: fterr=%d\n", fterr);
-        exit(1);
-    }
-}
-
-void text_renderer::render(std::vector<text_vertex> &vertices,
-    std::vector<uint32_t> &indices, text_segment *segment,
-    std::vector<glyph_rect> *rects)
-{
-    FT_Library ftlib;
-    FT_Face ftface;
-    FT_Size_Metrics *metrics;
+    font_face *face = segment->face;
+    int point_size = segment->point_size;;
+    FT_Face ftface = face->ftface;
+    FT_Size_Metrics *metrics = &face->ftface->size->metrics;
 
     hb_font_t *hbfont;
     hb_language_t hblang;
@@ -295,20 +216,10 @@ void text_renderer::render(std::vector<text_vertex> &vertices,
     hb_glyph_position_t *glyph_pos;
     unsigned glyph_count;
 
-    font_face *face;
-    span_vector span;
-
-    /* get font  */
-    face = segment->face;
-    metrics = &face->ftface->size->metrics;
-    ftlib = manager->ftlib;
-    ftface = face->ftface;
-
     /* get metrics for our point size */
-    int points = (int)(segment->point_size * metrics->x_scale) /
-        ftface->units_per_EM;
-    if (metrics->x_scale != metrics->y_scale || segment->point_size != points) {
-        FT_Set_Char_Size(ftface, 0, segment->point_size, font_dpi, font_dpi);
+    int points = (int)(point_size * metrics->x_scale) / ftface->units_per_EM;
+    if (metrics->x_scale != metrics->y_scale || point_size != points) {
+        FT_Set_Char_Size(ftface, 0, point_size, font_dpi, font_dpi);
     }
 
     /* get text to render */
@@ -329,30 +240,138 @@ void text_renderer::render(std::vector<text_vertex> &vertices,
     glyph_info = hb_buffer_get_glyph_infos(buf, &glyph_count);
     glyph_pos = hb_buffer_get_glyph_positions(buf, &glyph_count);
 
-    /* lookup glyphs in font atlas, create if they don't exist */
-    int dx = 0;
     for (size_t i = 0; i < glyph_count; i++) {
-        atlas_entry *entry = atlas->lookup(face->font_id, segment->point_size,
-            glyph_info[i].codepoint);
+        shapes.push_back({
+            glyph_info[i].codepoint, glyph_info[i].cluster,
+            glyph_pos[i].x_offset, glyph_pos[i].y_offset,
+            glyph_pos[i].x_advance, glyph_pos[i].y_advance
+        });
+    }
+
+    hb_buffer_destroy(buf);
+}
+
+/*
+ * text renderer
+ */
+
+atlas_entry* text_renderer::render_glyph(font_face *face, int point_size,
+    int glyph_index)
+{
+    FT_Library ftlib;
+    FT_Face ftface;
+    FT_Error fterr;
+    FT_GlyphSlot ftglyph;
+    FT_Raster_Params rp;
+    int offset_x, offset_y;
+    int width, height;
+    atlas_entry *entry;
+
+    /* get freetype handles */
+    ftlib = manager->ftlib;
+    ftface = face->ftface;
+    ftglyph = ftface->glyph;
+
+    /* load glyph */
+    if ((fterr = FT_Load_Glyph(ftface, glyph_index, 0))) {
+        fprintf(stderr, "error: FT_Load_Glyph failed: glyph=%d fterr=%d\n",
+            glyph_index, fterr);
+        exit(1);
+    }
+    if (ftface->glyph->format != FT_GLYPH_FORMAT_OUTLINE) {
+        fprintf(stderr, "error: FT_Load_Glyph format is not outline\n");
+        exit(1);
+    }
+
+    /* set up render parameters */
+    rp.target = 0;
+    rp.flags = FT_RASTER_FLAG_DIRECT | FT_RASTER_FLAG_AA;
+    rp.user = &span;
+    rp.black_spans = 0;
+    rp.bit_set = 0;
+    rp.bit_test = 0;
+    rp.gray_spans = span_vector_fn;
+
+    /* font dimensions */
+    offset_x = (int)floorf((float)ftglyph->metrics.horiBearingX / 64.0f) - 1;
+    offset_y = (int)floorf((float)(ftglyph->metrics.horiBearingY -
+        ftglyph->metrics.height) / 64.0f) - 1;
+    width = (int)ceilf(ftglyph->metrics.width / 64.0f) + 2;
+    height = (int)ceilf(ftglyph->metrics.height / 64.0f) + 2;
+
+    /* set up span vector dimensions */
+    span.global_x = 0;
+    span.global_y = 0;
+    span.offset_x = -offset_x;
+    span.offset_y = -offset_y;
+    span.min_x = INT_MAX;
+    span.min_y = INT_MAX;
+    span.max_x = INT_MIN;
+    span.max_y = INT_MIN;
+    span.reset(width, height);
+
+    /* rasterize glyph */
+    if ((fterr = FT_Outline_Render(ftlib, &ftface->glyph->outline, &rp))) {
+        printf("error: FT_Outline_Render failed: fterr=%d\n", fterr);
+        return nullptr;
+    }
+
+    if (span.min_x == INT_MAX && span.min_y == INT_MAX) {
+        /* create atlas entry for white space glyph with zero dimensions */
+        entry = atlas->create(face->font_id, point_size, glyph_index,
+            0, 0, 0, 0);
+    } else {
+        /* create atlas entry for glyph using dimensions from span */
+        entry = atlas->create(face->font_id, point_size, glyph_index,
+            offset_x, offset_y, width, height);
+        /* copy pixels from span to atlas */
+        if(entry) {
+            for (int i = 0; i < span.height; i++) {
+                size_t src = i * span.width;
+                size_t dst = (entry->y + i) * atlas->width + entry->x;
+                memcpy(&atlas->pixels[dst], &span.pixels[src], span.width);
+            }
+        }
+    }
+
+    return entry;
+}
+
+void text_renderer::render(std::vector<text_vertex> &vertices,
+    std::vector<uint32_t> &indices,
+    std::vector<glyph_shape> &shapes,
+    text_segment *segment)
+{
+    font_face *face = segment->face;
+    int point_size = segment->point_size;;
+    FT_Face ftface = face->ftface;
+    FT_Size_Metrics *metrics = &face->ftface->size->metrics;
+
+    /* get metrics for our point size */
+    int points = (int)(point_size * metrics->x_scale) / ftface->units_per_EM;
+    if (metrics->x_scale != metrics->y_scale || point_size != points) {
+        FT_Set_Char_Size(ftface, 0, point_size, font_dpi, font_dpi);
+    }
+
+    /* lookup glyphs in font atlas, creating them if they don't exist */
+    int dx = 0, dy = 0;
+    for (auto shape : shapes) {
+        atlas_entry *entry = atlas->lookup
+            (face->font_id, point_size, shape.glyph_index);
         if (!entry) {
-            /* glyph is not in the atlas, so create it */
-            render_one_glyph(ftlib, ftface, &span, glyph_info[i].codepoint);
-            entry = atlas->create(face->font_id, segment->point_size,
-                glyph_info[i].codepoint, &span);
-            /* if the atlas is full, simply skip this glyph */
-            if (!entry) continue;
+            /* render glyph and create entry in atlas */
+            if (!(entry = render_glyph(face, point_size, shape.glyph_index))) {
+                continue;
+            }
             /* apply harfbuzz offsets */
-            entry->offset_x += glyph_pos[i].x_offset/64;
-            entry->offset_y += glyph_pos[i].y_offset/64;
+            entry->offset_x += shape.x_offset/64;
+            entry->offset_y += shape.y_offset/64;
         }
         /* create polygons in vertex array */
         int x1 = segment->x + entry->offset_x + dx;
         int x2 = x1 + entry->width;
-        int y1 = segment->y - entry->offset_y - entry->height;
+        int y1 = segment->y - entry->offset_y + dy - entry->height;
         int y2 = y1 + entry->height;
-        if (rects) {
-            rects->push_back({x1,y2,x2,y2});
-        }
         if (entry->width > 0 && entry->height > 0) {
             float x1p = 0.5f + x1, x2p = 0.5f + x2;
             float y1p = 0.5f + y1, y2p = 0.5f + y2;
@@ -366,7 +385,8 @@ void text_renderer::render(std::vector<text_vertex> &vertices,
             indices.insert(indices.end(), {o+0, o+3, o+1, o+1, o+3, o+2});
         }
         /* advance */
-        dx += glyph_pos[i].x_advance/64;
+        dx += shape.x_advance/64;
+        dy += shape.y_advance/64;
     }
 }
 

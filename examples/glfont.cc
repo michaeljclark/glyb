@@ -104,28 +104,30 @@ static void update_geometry()
     int x = 100, y = 100 + font_size;
     uint32_t black = 0xff000000, light_gray = 0xffcccccc;
 
-    std::vector<glyph_rect> rects;
+    text_shaper shaper;
     text_renderer renderer(&manager, &atlas);
     text_segment segment(render_text, face, font_size * 64, x, y, black);
+    std::vector<glyph_shape> shapes;
 
     vertices.clear();
     indices.clear();
-    renderer.render(vertices, indices, &segment, &rects);
+    shaper.shape(shapes, &segment);
 
     if (show_lines) {
-        int min_x = INT_MAX, max_x = INT_MIN;
+        int width = 0;
         int height = face->ftface->size->metrics.height >> 6;
-        for (auto &r : rects) {
-            min_x = (std::min)(min_x,r.x1);
-            max_x = (std::max)(max_x,r.x2);
+        for (auto &s : shapes) {
+            width += s.x_advance/64;
         }
         rect(vertices, indices,
-            min_x, y, max_x, y+1, 0, light_gray);
+            x, y-1, x + width, y+1, 0, light_gray);
         rect(vertices, indices,
-            min_x, y-height/2-1, max_x, y-height/2+1, 0, light_gray);
+            x, y-height/2-1, x + width, y-height/2+1, 0, light_gray);
         rect(vertices, indices,
-            min_x, y-height-1, max_x, y-height+1, 0, light_gray);
+            x, y-height-1, x + width, y-height+1, 0, light_gray);
     }
+
+    renderer.render(vertices, indices, shapes, &segment);
 
     if (show_atlas) {
         vertices.clear();
