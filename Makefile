@@ -21,7 +21,7 @@ COMMON_OBJS = build/obj/binpack.o \
 
 all: programs tests
 
-programs: build/bin/glbinpack build/bin/glfont
+programs: build/bin/glbinpack build/bin/glfont build/bin/glsimple
 
 tests: $(test_progs)
 
@@ -44,6 +44,7 @@ clean:
 	rm -fr build gmon.out
 
 build/bin/glfont: LIBS += -lGL -lglfw
+build/bin/glsimple: LIBS += -lGL -lglfw
 build/bin/glbinpack: LIBS += -lGL -lglfw
 build/obj/glfont.o: examples/glfont.cc examples/glcommon.h src/binpack.h
 build/obj/glbinpack.o: examples/glbinpack.cc examples/glcommon.h src/binpack.h
