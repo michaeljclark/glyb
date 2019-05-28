@@ -354,7 +354,7 @@ void text_renderer::render(std::vector<text_vertex> &vertices,
     }
 
     /* lookup glyphs in font atlas, creating them if they don't exist */
-    int dx = 0, dy = 0;
+    float dx = 0, dy = 0;
     for (auto shape : shapes) {
         atlas_entry *entry = atlas->lookup
             (face->font_id, point_size, shape.glyph_index);
@@ -368,9 +368,9 @@ void text_renderer::render(std::vector<text_vertex> &vertices,
             entry->offset_y += shape.y_offset/64;
         }
         /* create polygons in vertex array */
-        int x1 = segment->x + entry->offset_x + dx;
+        int x1 = segment->x + entry->offset_x + roundf(dx);
         int x2 = x1 + entry->width;
-        int y1 = segment->y - entry->offset_y + dy - entry->height;
+        int y1 = segment->y - entry->offset_y + roundf(dy) - entry->height;
         int y2 = y1 + entry->height;
         if (entry->width > 0 && entry->height > 0) {
             float x1p = 0.5f + x1, x2p = 0.5f + x2;
@@ -385,7 +385,7 @@ void text_renderer::render(std::vector<text_vertex> &vertices,
             indices.insert(indices.end(), {o+0, o+3, o+1, o+1, o+3, o+2});
         }
         /* advance */
-        dx += shape.x_advance/64;
-        dy += shape.y_advance/64;
+        dx += shape.x_advance/64.0f;
+        dy += shape.y_advance/64.0f;
     }
 }
