@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <climits>
+#include <cmath>
 
 #include <memory>
 #include <vector>
@@ -76,6 +77,83 @@ void render_ascii(span_vector *d)
         }
         printf("%s\n", s.c_str());
     }
+}
+
+void print_face(FT_Face ftface)
+{
+    FT_Size_Metrics*  metrics = &ftface->size->metrics;
+
+    printf("family_name         = \"%s\"\n", ftface->family_name);
+    printf("style_name          = \"%s\"\n", ftface->style_name);
+    printf("psname              = \"%s\"\n", FT_Get_Postscript_Name(ftface));
+    printf("face_index          = % 9d\n", (int)ftface->face_index);
+    printf("num_glyphs          = % 9d\n", (int)ftface->num_glyphs);
+
+    printf("height              = %9.3f   units_per_EM        = % 9d\n",
+        (float)ftface->height/64.0f,
+        (int)ftface->units_per_EM);
+    printf("metrics.x_ppem      = % 9d   metrics.y_ppem      = % 9d\n",
+        (int)metrics->x_ppem,
+        (int)metrics->y_ppem);
+    printf("metrics.x_scale     = %9.3f   metrics.y_scale     = %9.3f\n",
+        (float)metrics->x_scale/65536.0f,
+        (float)metrics->y_scale/65536.0f);
+    printf("metrics.ascender    = %9.3f   metrics.descender   = %9.3f\n",
+        (float)metrics->ascender/64.0f,
+        (float)metrics->descender/64.0f);
+    printf("metrics.height      = %9.3f   metrics.max_advance = %9.3f\n",
+        (float)metrics->height/64.0f,
+        (float)metrics->max_advance/64.0f);
+    printf("bbox.xMin           = %9.3f   bbox.xMax           = %9.3f\n",
+        (float)ftface->bbox.xMin/64.0f,
+        (float)ftface->bbox.xMax/64.0f);
+    printf("bbox.yMin           = %9.3f   bbox.yMax           = %9.3f\n",
+        (float)ftface->bbox.yMin/64.0f,
+        (float)ftface->bbox.yMax/64.0f);
+    printf("ascender            = %9.3f   descender           = %9.3f\n",
+        (float)ftface->ascender/64.0f,
+        (float)ftface->descender/64.0f);
+    printf("max_advance_width   = %9.3f   max_advance_height  = %9.3f\n",
+        (float)ftface->max_advance_width/64.0f,
+        (float)ftface->max_advance_height/64.0f);
+    printf("\n");
+}
+
+void print_glyph(FT_GlyphSlot ftglyph, int codepoint, span_measure *span)
+{
+    printf("glyph               = % 9d\n", codepoint);
+
+    printf("linearHoriAdvance   = %9.3f   linearVertAdvance   = %9.3f\n",
+        (float)ftglyph->linearHoriAdvance/65536.0f,
+        (float)ftglyph->linearVertAdvance/65536.0f);
+    printf("metrics.width       = %9.3f   metrics.height      = %9.3f\n",
+        (float)ftglyph->metrics.width/64.0f,
+        (float)ftglyph->metrics.height/64.0f);
+    printf("metrics.hBearingX   = %9.3f   metrics.hBearingY   = %9.3f\n",
+        (float)ftglyph->metrics.horiBearingX/64.0f,
+        (float)ftglyph->metrics.horiBearingY/64.0f);
+    printf("metrics.hAdvance    = %9.3f   metrics.vAdvance    = %9.3f\n",
+        (float)ftglyph->metrics.horiAdvance/64.0f,
+        (float)ftglyph->metrics.vertAdvance/64.0f);
+    printf("metrics.vBearingX   = %9.3f   metrics.vBearingY   = %9.3f\n",
+        (float)ftglyph->metrics.vertBearingX/64.0f,
+        (float)ftglyph->metrics.vertBearingY/64.0f);
+
+    printf("span.min_x          = % 9d   span.min_y          = % 9d\n",
+        span->min_x, span->min_y);
+    printf("span.max_x          = % 9d   span.max_y          = % 9d\n",
+        span->max_x, span->max_y);
+    printf("span.(width)        = % 9d   span.(height)       = % 9d\n",
+        span->max_x - span->min_x, span->max_y - span->min_y);
+    printf("comp.(min_x)        = % 9d   comp.(min_y)        = % 9d\n",
+        (int)floorf((float)ftglyph->metrics.horiBearingX/64.0f),
+        (int)floorf((float)(ftglyph->metrics.horiBearingY -
+            ftglyph->metrics.height)/64.0f));
+    printf("comp.(max_x)        = % 9d   comp.(max_y)        = % 9d\n",
+        (int)ceilf((float)(ftglyph->metrics.horiBearingX +
+            ftglyph->metrics.width)/64.0f),
+        (int)ceilf((float)(ftglyph->metrics.horiBearingY)/64.0f - 1.0f));
+    printf("\n");
 }
 
 /*
