@@ -236,7 +236,7 @@ void text_shaper::shape(std::vector<glyph_shape> &shapes, text_segment *segment)
     const char* text = segment->text.c_str();
     size_t text_len = segment->text.size();
 
-    /* shape text */
+    /* create text buffers */
     hbfont  = hb_ft_font_create(ftface, NULL);
     hblang = hb_language_from_string(text_lang, strlen(text_lang));
 
@@ -246,6 +246,7 @@ void text_shaper::shape(std::vector<glyph_shape> &shapes, text_segment *segment)
     hb_buffer_set_language(buf, hblang);
     hb_buffer_add_utf8(buf, text, text_len, 0, text_len);
 
+    /* shape text */
     hb_shape(hbfont, buf, NULL, 0);
     glyph_info = hb_buffer_get_glyph_infos(buf, &glyph_count);
     glyph_pos = hb_buffer_get_glyph_positions(buf, &glyph_count);
