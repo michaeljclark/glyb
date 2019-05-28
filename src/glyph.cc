@@ -165,9 +165,9 @@ font_atlas::font_atlas(size_t width, size_t height) :
     *static_cast<uint32_t*>(static_cast<void*>(&pixels[0])) = 0xffffffff;
 }
 
-atlas_entry* font_atlas::lookup(int font_id, int font_size, int glyph_index)
+atlas_entry* font_atlas::lookup(int font_id, int font_size, int glyph)
 {
-    auto gi = glyph_map.find(atlas_key(font_id, font_size, glyph_index));
+    auto gi = glyph_map.find(atlas_key(font_id, font_size, glyph));
     if (gi != glyph_map.end()) {
         return &gi->second;
     } else {
@@ -175,7 +175,7 @@ atlas_entry* font_atlas::lookup(int font_id, int font_size, int glyph_index)
     }
 }
 
-atlas_entry* font_atlas::create(int font_id, int font_size, int glyph_index,
+atlas_entry* font_atlas::create(int font_id, int font_size, int glyph,
     int ox, int oy, int w, int h)
 {
     int bin_id = glyph_map.size();
@@ -192,7 +192,7 @@ atlas_entry* font_atlas::create(int font_id, int font_size, int glyph_index,
     /* insert into glyph_map */
     auto gi = glyph_map.insert(glyph_map.end(),
         std::pair<atlas_key,atlas_entry>(
-            atlas_key(font_id, font_size, glyph_index),
+            atlas_key(font_id, font_size, glyph),
             atlas_entry(bin_id, r.second.a.x, r.second.a.y, ox, oy, w, h, uv)));
 
     return &gi->second;
@@ -256,7 +256,7 @@ void text_shaper::shape(std::vector<glyph_shape> &shapes, text_segment *segment)
  */
 
 atlas_entry* text_renderer::render_glyph(font_face *face, int font_size,
-    int glyph_index)
+    int glyph)
 {
     FT_Library ftlib;
     FT_Face ftface;
@@ -273,9 +273,9 @@ atlas_entry* text_renderer::render_glyph(font_face *face, int font_size,
     ftlib = ftglyph->library;
 
     /* load glyph */
-    if ((fterr = FT_Load_Glyph(ftface, glyph_index, 0))) {
+    if ((fterr = FT_Load_Glyph(ftface, glyph, 0))) {
         fprintf(stderr, "error: FT_Load_Glyph failed: glyph=%d fterr=%d\n",
-            glyph_index, fterr);
+            glyph, fterr);
         exit(1);
     }
     if (ftface->glyph->format != FT_GLYPH_FORMAT_OUTLINE) {
@@ -318,11 +318,11 @@ atlas_entry* text_renderer::render_glyph(font_face *face, int font_size,
 
     if (span.min_x == INT_MAX && span.min_y == INT_MAX) {
         /* create atlas entry for white space glyph with zero dimensions */
-        entry = atlas->create(face->font_id, font_size, glyph_index,
+        entry = atlas->create(face->font_id, font_size, glyph,
             0, 0, 0, 0);
     } else {
         /* create atlas entry for glyph using dimensions from span */
-        entry = atlas->create(face->font_id, font_size, glyph_index,
+        entry = atlas->create(face->font_id, font_size, glyph,
             offset_x, offset_y, width, height);
         /* copy pixels from span to atlas */
         if(entry) {
@@ -357,10 +357,10 @@ void text_renderer::render(std::vector<text_vertex> &vertices,
     float dx = 0, dy = 0;
     for (auto shape : shapes) {
         atlas_entry *entry = atlas->lookup
-            (face->font_id, font_size, shape.glyph_index);
+            (face->font_id, font_size, shape.glyph);
         if (!entry) {
             /* render glyph and create entry in atlas */
-            if (!(entry = render_glyph(face, font_size, shape.glyph_index))) {
+            if (!(entry = render_glyph(face, font_size, shape.glyph))) {
                 continue;
             }
             /* apply harfbuzz offsets */

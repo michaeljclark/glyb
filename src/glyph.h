@@ -55,8 +55,8 @@ struct atlas_key
     uint64_t opaque;
 
     atlas_key() = default;
-    inline atlas_key(int64_t font_id, int64_t font_size, int64_t glyph_index) :
-        opaque(glyph_index | (font_size << 20) | (font_id << 40)) {}
+    inline atlas_key(int64_t font_id, int64_t font_size, int64_t glyph) :
+        opaque(glyph | (font_size << 20) | (font_id << 40)) {}
 
     bool operator<(const atlas_key &o) const { return opaque < o.opaque; }
 };
@@ -95,8 +95,8 @@ struct font_atlas
     font_atlas();
     font_atlas(size_t width, size_t height);
 
-    atlas_entry* lookup(int font_id, int font_size, int glyph_index);
-    atlas_entry* create(int font_id, int font_size, int glyph_index,
+    atlas_entry* lookup(int font_id, int font_size, int glyph);
+    atlas_entry* create(int font_id, int font_size, int glyph,
         int ox, int oy, int w, int h);
 };
 
@@ -116,7 +116,7 @@ struct text_segment
 
 struct glyph_shape
 {
-    unsigned glyph_index;     /* glyph index for the chosen font */
+    unsigned glyph;           /* glyph index for the chosen font */
     unsigned cluster;         /* offset within original string */
     int x_offset, y_offset;   /* integer with 6 fraction bits */
     int x_advance, y_advance; /* integer with 6 fraction bits */
@@ -149,7 +149,7 @@ struct text_renderer
         text_segment *segment);
 
 private:
-    atlas_entry* render_glyph(font_face *face, int font_size, int glyph_index);
+    atlas_entry* render_glyph(font_face *face, int font_size, int glyph);
 };
 
 void span_measure_fn(int y, int count, const FT_Span* spans, void *user);
