@@ -74,12 +74,12 @@ struct atlas_entry
     float uv[4];
 
     atlas_entry() = default;
-    atlas_entry(int bin_id, short x, short y, short offset_x, short offset_y,
-        short width, short height, float uv[4]);
+    atlas_entry(int bin_id, int x, int y, int offset_x, int offset_y,
+        int width, int height, float uv[4]);
 };
 
-inline atlas_entry::atlas_entry(int bin_id, short x, short y,
-    short offset_x, short offset_y, short width, short height, float uv[4]) :
+inline atlas_entry::atlas_entry(int bin_id, int x, int y,
+    int offset_x, int offset_y, int width, int height, float uv[4]) :
     bin_id(bin_id), x(x), y(y), offset_x(offset_x), offset_y(offset_y),
     width(width), height(height), uv{uv[0], uv[1], uv[2], uv[3]} {}
 

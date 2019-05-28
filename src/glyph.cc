@@ -177,7 +177,7 @@ font_atlas::font_atlas(size_t width, size_t height) :
 
 atlas_entry* font_atlas::lookup(int font_id, int font_size, int glyph)
 {
-    auto gi = glyph_map.find(atlas_key(font_id, font_size, glyph));
+    auto gi = glyph_map.find({font_id, font_size, glyph});
     if (gi != glyph_map.end()) {
         return &gi->second;
     } else {
@@ -200,10 +200,10 @@ atlas_entry* font_atlas::create(int font_id, int font_size, int glyph,
     float uv[4] = { x1/width, y2/width, x2/width, y1/width };
 
     /* insert into glyph_map */
+    auto a = r.second.a;
     auto gi = glyph_map.insert(glyph_map.end(),
-        std::pair<atlas_key,atlas_entry>(
-            atlas_key(font_id, font_size, glyph),
-            atlas_entry(bin_id, r.second.a.x, r.second.a.y, ox, oy, w, h, uv)));
+        std::pair<atlas_key,atlas_entry>({font_id, font_size, glyph},
+            {bin_id, a.x, a.y, ox, oy, w, h, uv}));
 
     return &gi->second;
 }
