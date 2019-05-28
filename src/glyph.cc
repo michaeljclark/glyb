@@ -268,9 +268,9 @@ atlas_entry* text_renderer::render_glyph(font_face *face, int point_size,
     atlas_entry *entry;
 
     /* get freetype handles */
-    ftlib = manager->ftlib;
     ftface = face->ftface;
     ftglyph = ftface->glyph;
+    ftlib = ftglyph->library;
 
     /* load glyph */
     if ((fterr = FT_Load_Glyph(ftface, glyph_index, 0))) {
