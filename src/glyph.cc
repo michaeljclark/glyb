@@ -72,7 +72,7 @@ font_face* font_manager::lookup_font(std::string path)
     if ((fterr = FT_New_Face(ftlib, path.c_str(), 0, &ftface))) {
         fprintf(stderr, "error: FT_New_Face failed: fterr=%d, path=%s\n",
             fterr, path.c_str());
-        exit(1);
+        return nullptr;
     }
 
     for (int i = 0; i < ftface->num_charmaps; i++)
@@ -286,11 +286,11 @@ atlas_entry* text_renderer::render_glyph(font_face *face, int font_size,
     if ((fterr = FT_Load_Glyph(ftface, glyph, 0))) {
         fprintf(stderr, "error: FT_Load_Glyph failed: glyph=%d fterr=%d\n",
             glyph, fterr);
-        exit(1);
+        return nullptr;
     }
     if (ftface->glyph->format != FT_GLYPH_FORMAT_OUTLINE) {
         fprintf(stderr, "error: FT_Load_Glyph format is not outline\n");
-        exit(1);
+        return nullptr;
     }
 
     /* set up render parameters */
