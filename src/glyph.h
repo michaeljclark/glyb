@@ -167,6 +167,3 @@ private:
 
 void span_measure_fn(int y, int count, const FT_Span* spans, void *user);
 void span_vector_fn(int y, int count, const FT_Span* spans, void *user);
-
-void print_face(FT_Face ftface);
-void print_glyph(FT_GlyphSlot ftglyph, int codepoint, span_measure *d);
