@@ -15,15 +15,6 @@
 #include <map>
 #include <memory>
 
-#include <ft2build.h>
-#include FT_FREETYPE_H
-#include FT_MODULE_H
-#include FT_GLYPH_H
-#include FT_OUTLINE_H
-
-#include <hb.h>
-#include <hb-ft.h>
-
 #define GL_GLEXT_PROTOTYPES
 #include <GL/gl.h>
 #include <GL/glext.h>

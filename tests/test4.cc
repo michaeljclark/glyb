@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <climits>
 
 #include <memory>
@@ -8,15 +9,6 @@
 #include <map>
 #include <tuple>
 #include <chrono>
-
-#include <ft2build.h>
-#include FT_FREETYPE_H
-#include FT_MODULE_H
-#include FT_GLYPH_H
-#include FT_OUTLINE_H
-
-#include <hb.h>
-#include <hb-ft.h>
 
 #include "binpack.h"
 #include "utf8.h"

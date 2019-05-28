@@ -15,15 +15,6 @@
 #include <map>
 #include <memory>
 
-#include <ft2build.h>
-#include FT_FREETYPE_H
-#include FT_MODULE_H
-#include FT_GLYPH_H
-#include FT_OUTLINE_H
-
-#include <hb.h>
-#include <hb-ft.h>
-
 #define GL_GLEXT_PROTOTYPES
 #include <GL/gl.h>
 #include <GL/glext.h>
@@ -125,7 +116,7 @@ static void update_geometry()
         shaper.shape(shapes, &render_segment);
         if (show_lines) {
             int width = 0;
-            int height = face->ftface->size->metrics.height >> 6;
+            int height = face->get_height(render_segment.font_size) >> 6;
             for (auto &s : shapes) {
                 width += s.x_advance/64;
             }

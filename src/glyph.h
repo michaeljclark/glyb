@@ -1,5 +1,10 @@
 #pragma once
 
+typedef struct FT_FaceRec_* FT_Face;
+typedef struct FT_LibraryRec_* FT_Library;
+typedef struct FT_GlyphSlotRec_* FT_GlyphSlot;
+typedef struct FT_Span_ FT_Span;
+
 struct font_face
 {
     int font_id;
@@ -9,6 +14,8 @@ struct font_face
 
     font_face() = default;
     font_face(int font_id, FT_Face ftface, std::string path);
+
+    int get_height(int font_size);
 };
 
 struct font_manager

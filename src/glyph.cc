@@ -40,6 +40,17 @@ font_face::font_face(int font_id, FT_Face ftface, std::string path) :
     name = FT_Get_Postscript_Name(ftface);
 }
 
+int font_face::get_height(int font_size)
+{
+    /* get metrics for our point size */
+    FT_Size_Metrics *metrics = &ftface->size->metrics;
+    int points = (int)(font_size * metrics->x_scale) / ftface->units_per_EM;
+    if (metrics->x_scale != metrics->y_scale || font_size != points) {
+        FT_Set_Char_Size(ftface, 0, font_size, font_dpi, font_dpi);
+    }
+    return ftface->size->metrics.height;
+}
+
 
 /*
  * font manger
