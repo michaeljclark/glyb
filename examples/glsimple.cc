@@ -75,11 +75,13 @@ static void update_geometry()
 {
     font_face *face = manager.lookup_font(font_path);
 
+    const int x = 100, y = 100 + font_size;
+    const uint32_t color = 0xff000000;
+
     std::vector<glyph_shape> shapes;
     text_shaper shaper;
     text_renderer renderer(&manager, &atlas);
-    text_segment segment(render_text, face, font_size * 64,
-        100, 100 + font_size, 0xff000000);
+    text_segment segment(render_text, face, font_size * 64, x, y, color);
 
     vertices.clear();
     indices.clear();
