@@ -51,12 +51,13 @@ static GLFWwindow* window;
 static const char *font_path = "fonts/RobotoMono-Regular.ttf";
 static const char *render_text = "the quick brown fox jumps over the lazy dog";
 static const int font_dpi = 72;
-static int font_size = 32;
+static int font_size_min = 12;
+static int font_size_max = 32;
 static bool help_text = false;
 static bool show_atlas = false;
 static bool show_lines = false;
 static bool debug = false;
-static int width = 1024, height = 256;
+static int width = 1024, height = 768;
 static font_manager manager;
 static font_atlas atlas;
 
@@ -99,35 +100,44 @@ static void rect(std::vector<text_vertex> &vertices,
 
 static void update_geometry()
 {
-    font_face *face = manager.lookup_font(font_path);
-
-    int x = 100, y = 100 + font_size;
-    uint32_t black = 0xff000000, light_gray = 0xffcccccc;
+    const uint32_t black = 0xff000000, light_gray = 0xffcccccc;
 
     text_shaper shaper;
     text_renderer renderer(&manager, &atlas);
-    text_segment segment(render_text, face, font_size * 64, x, y, black);
+    font_face *face = manager.lookup_font(font_path);
     std::vector<glyph_shape> shapes;
+
+    int x = 100, y = 100;
 
     vertices.clear();
     indices.clear();
-    shaper.shape(shapes, &segment);
 
-    if (show_lines) {
-        int width = 0;
-        int height = face->ftface->size->metrics.height >> 6;
-        for (auto &s : shapes) {
-            width += s.x_advance/64;
+    for (int sz = font_size_min; sz <= font_size_max; sz++)
+    {
+        y += sz;
+        std::string size_text = std::to_string(sz);
+        text_segment size_segment(size_text, face, 12 * 64, x - 50, y, black);
+        text_segment render_segment(render_text, face, sz * 64, x, y, black);
+        shapes.clear();
+        shaper.shape(shapes, &size_segment);
+        renderer.render(vertices, indices, shapes, &size_segment);
+        shapes.clear();
+        shaper.shape(shapes, &render_segment);
+        if (show_lines) {
+            int width = 0;
+            int height = face->ftface->size->metrics.height >> 6;
+            for (auto &s : shapes) {
+                width += s.x_advance/64;
+            }
+            rect(vertices, indices,
+                x, y-1, x + width, y+1, 0, light_gray);
+            rect(vertices, indices,
+                x, y-height/2-1, x + width, y-height/2+1, 0, light_gray);
+            rect(vertices, indices,
+                x, y-height-1, x + width, y-height+1, 0, light_gray);
         }
-        rect(vertices, indices,
-            x, y-1, x + width, y+1, 0, light_gray);
-        rect(vertices, indices,
-            x, y-height/2-1, x + width, y-height/2+1, 0, light_gray);
-        rect(vertices, indices,
-            x, y-height-1, x + width, y-height+1, 0, light_gray);
+        renderer.render(vertices, indices, shapes, &render_segment);
     }
-
-    renderer.render(vertices, indices, shapes, &segment);
 
     if (show_atlas) {
         vertices.clear();
@@ -256,14 +266,16 @@ void print_help(int argc, char **argv)
         "Usage: %s [options]\n"
         "\n"
         "Options:\n"
-        "  -f, --font <ttf-file>  font file (default %s)\n"
-        "  -s, --size <points>    font size (default %d)\n"
-        "  -t, --text <string>    text to render (default \"%s\")\n"
-        "  -a, --show-atlas       show the atlas instead of the text\n"
-        "  -l, --show-lines       show baseline, half-height and height\n"
-        "  -d, --debug            print debugging information\n"
-        "  -h, --help             command line help\n",
-        argv[0], font_path, font_size, render_text);
+        "  -f, --font <ttf-file>      font file (default %s)\n"
+        "  -min, --min-size <points>  font size minimum (default %d)\n"
+        "  -max, --max-size <points>  font size maximum (default %d)\n"
+        "  -s, --size <points>        font size (both minimum and maximum)\n"
+        "  -t, --text <string>        text to render (default \"%s\")\n"
+        "  -a, --show-atlas           show the atlas instead of the text\n"
+        "  -l, --show-lines           show baseline, half-height and height\n"
+        "  -d, --debug                print debugging information\n"
+        "  -h, --help                 command line help\n",
+        argv[0], font_path, font_size_min, font_size_max, render_text);
 }
 
 /* option parsing */
@@ -293,7 +305,13 @@ void parse_options(int argc, char **argv)
             font_path = argv[i++];
         } else if (match_opt(argv[i], "-s", "--size")) {
             if (check_param(++i == argc, "--size")) break;
-            font_size = atoi(argv[i++]);
+            font_size_min = font_size_max = atoi(argv[i++]);
+        } else if (match_opt(argv[i], "-min", "--min-size")) {
+            if (check_param(++i == argc, "--size")) break;
+            font_size_min  = atoi(argv[i++]);
+        } else if (match_opt(argv[i], "-max", "--max-size")) {
+            if (check_param(++i == argc, "--size")) break;
+            font_size_max = atoi(argv[i++]);
         } else if (match_opt(argv[i], "-t", "--text")) {
             if (check_param(++i == argc, "--font-size")) break;
             render_text = argv[i++];
