@@ -8,8 +8,7 @@ struct font_face
     std::string name;
 
     font_face() = default;
-    font_face(int font_id, FT_Face ftface, std::string path, std::string name) :
-        font_id(font_id), ftface(ftface), path(path), name(name) {}
+    font_face(int font_id, FT_Face ftface, std::string path);
 };
 
 struct font_manager
@@ -55,11 +54,13 @@ struct atlas_key
     uint64_t opaque;
 
     atlas_key() = default;
-    inline atlas_key(int64_t font_id, int64_t font_size, int64_t glyph) :
-        opaque(glyph | (font_size << 20) | (font_id << 40)) {}
+    atlas_key(int64_t font_id, int64_t font_size, int64_t glyph);
 
     bool operator<(const atlas_key &o) const { return opaque < o.opaque; }
 };
+
+inline atlas_key::atlas_key(int64_t font_id, int64_t font_size, int64_t glyph) :
+    opaque(glyph | (font_size << 20) | (font_id << 40)) {}
 
 struct atlas_entry
 {
@@ -73,12 +74,14 @@ struct atlas_entry
     float uv[4];
 
     atlas_entry() = default;
-    inline atlas_entry(int bin_id, short x, short y,
-        short offset_x, short offset_y,
-        short width, short height, float uv[4]) : bin_id(bin_id), x(x), y(y),
-        offset_x(offset_x), offset_y(offset_y), width(width), height(height),
-        uv{uv[0], uv[1], uv[2], uv[3]} {}
+    atlas_entry(int bin_id, short x, short y, short offset_x, short offset_y,
+        short width, short height, float uv[4]);
 };
+
+inline atlas_entry::atlas_entry(int bin_id, short x, short y,
+    short offset_x, short offset_y, short width, short height, float uv[4]) :
+    bin_id(bin_id), x(x), y(y), offset_x(offset_x), offset_y(offset_y),
+    width(width), height(height), uv{uv[0], uv[1], uv[2], uv[3]} {}
 
 struct font_atlas
 {
@@ -110,9 +113,12 @@ struct text_segment
 
     text_segment() = default;
     text_segment(std::string text, font_face *face, int font_size,
-        int x, int y, uint32_t color) : text(text), face(face),
-        font_size(font_size), x(x), y(y), color(color) {}
+        int x, int y, uint32_t color);
 };
+
+inline text_segment::text_segment(std::string text, font_face *face,
+    int font_size, int x, int y, uint32_t color) :
+    text(text), face(face), font_size(font_size), x(x), y(y), color(color) {}
 
 struct glyph_shape
 {

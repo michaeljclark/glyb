@@ -31,6 +31,17 @@ static const char* text_lang = "en";
 
 
 /*
+ * font
+ */
+
+font_face::font_face(int font_id, FT_Face ftface, std::string path) :
+    font_id(font_id), ftface(ftface), path(path), name()
+{
+    name = FT_Get_Postscript_Name(ftface);
+}
+
+
+/*
  * font manger
  */
 
@@ -73,11 +84,10 @@ font_face* font_manager::lookup_font(std::string path)
         break;
     }
 
-    std::string font_name = FT_Get_Postscript_Name(ftface);
     font_face *face = &*faces.insert(faces.end(),
-        font_face(faces.size(), ftface, path, font_name));
+        font_face(faces.size(), ftface, path));
     path_map[path] = face->font_id;
-    font_name_map[font_name] = face->font_id;
+    font_name_map[face->name] = face->font_id;
 
     return face;
 }
