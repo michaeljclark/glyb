@@ -55,8 +55,8 @@ struct atlas_key
     uint64_t opaque;
 
     atlas_key() = default;
-    inline atlas_key(int64_t font_id, int64_t point_size, int64_t glyph_index) :
-        opaque(glyph_index | (point_size << 20) | (font_id << 40)) {}
+    inline atlas_key(int64_t font_id, int64_t font_size, int64_t glyph_index) :
+        opaque(glyph_index | (font_size << 20) | (font_id << 40)) {}
 
     bool operator<(const atlas_key &o) const { return opaque < o.opaque; }
 };
@@ -95,8 +95,8 @@ struct font_atlas
     font_atlas();
     font_atlas(size_t width, size_t height);
 
-    atlas_entry* lookup(int font_id, int point_size, int glyph_index);
-    atlas_entry* create(int font_id, int point_size, int glyph_index,
+    atlas_entry* lookup(int font_id, int font_size, int glyph_index);
+    atlas_entry* create(int font_id, int font_size, int glyph_index,
         int ox, int oy, int w, int h);
 };
 
@@ -104,14 +104,14 @@ struct text_segment
 {
     std::string text;
     font_face *face;
-    int point_size;
+    int font_size;
     int x, y;
     uint32_t color;
 
     text_segment() = default;
-    text_segment(std::string text, font_face *face, int point_size,
+    text_segment(std::string text, font_face *face, int font_size,
         int x, int y, uint32_t color) : text(text), face(face),
-        point_size(point_size), x(x), y(y), color(color) {}
+        font_size(font_size), x(x), y(y), color(color) {}
 };
 
 struct glyph_shape
@@ -149,7 +149,7 @@ struct text_renderer
         text_segment *segment);
 
 private:
-    atlas_entry* render_glyph(font_face *face, int point_size, int glyph_index);
+    atlas_entry* render_glyph(font_face *face, int font_size, int glyph_index);
 };
 
 void span_measure_fn(int y, int count, const FT_Span* spans, void *user);

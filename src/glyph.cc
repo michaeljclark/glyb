@@ -165,9 +165,9 @@ font_atlas::font_atlas(size_t width, size_t height) :
     *static_cast<uint32_t*>(static_cast<void*>(&pixels[0])) = 0xffffffff;
 }
 
-atlas_entry* font_atlas::lookup(int font_id, int point_size, int glyph_index)
+atlas_entry* font_atlas::lookup(int font_id, int font_size, int glyph_index)
 {
-    auto gi = glyph_map.find(atlas_key(font_id, point_size, glyph_index));
+    auto gi = glyph_map.find(atlas_key(font_id, font_size, glyph_index));
     if (gi != glyph_map.end()) {
         return &gi->second;
     } else {
@@ -175,7 +175,7 @@ atlas_entry* font_atlas::lookup(int font_id, int point_size, int glyph_index)
     }
 }
 
-atlas_entry* font_atlas::create(int font_id, int point_size, int glyph_index,
+atlas_entry* font_atlas::create(int font_id, int font_size, int glyph_index,
     int ox, int oy, int w, int h)
 {
     int bin_id = glyph_map.size();
@@ -192,7 +192,7 @@ atlas_entry* font_atlas::create(int font_id, int point_size, int glyph_index,
     /* insert into glyph_map */
     auto gi = glyph_map.insert(glyph_map.end(),
         std::pair<atlas_key,atlas_entry>(
-            atlas_key(font_id, point_size, glyph_index),
+            atlas_key(font_id, font_size, glyph_index),
             atlas_entry(bin_id, r.second.a.x, r.second.a.y, ox, oy, w, h, uv)));
 
     return &gi->second;
@@ -206,7 +206,7 @@ atlas_entry* font_atlas::create(int font_id, int point_size, int glyph_index,
 void text_shaper::shape(std::vector<glyph_shape> &shapes, text_segment *segment)
 {
     font_face *face = segment->face;
-    int point_size = segment->point_size;;
+    int font_size = segment->font_size;;
     FT_Face ftface = face->ftface;
     FT_Size_Metrics *metrics = &face->ftface->size->metrics;
 
@@ -217,9 +217,9 @@ void text_shaper::shape(std::vector<glyph_shape> &shapes, text_segment *segment)
     unsigned glyph_count;
 
     /* get metrics for our point size */
-    int points = (int)(point_size * metrics->x_scale) / ftface->units_per_EM;
-    if (metrics->x_scale != metrics->y_scale || point_size != points) {
-        FT_Set_Char_Size(ftface, 0, point_size, font_dpi, font_dpi);
+    int points = (int)(font_size * metrics->x_scale) / ftface->units_per_EM;
+    if (metrics->x_scale != metrics->y_scale || font_size != points) {
+        FT_Set_Char_Size(ftface, 0, font_size, font_dpi, font_dpi);
     }
 
     /* get text to render */
@@ -255,7 +255,7 @@ void text_shaper::shape(std::vector<glyph_shape> &shapes, text_segment *segment)
  * text renderer
  */
 
-atlas_entry* text_renderer::render_glyph(font_face *face, int point_size,
+atlas_entry* text_renderer::render_glyph(font_face *face, int font_size,
     int glyph_index)
 {
     FT_Library ftlib;
@@ -318,11 +318,11 @@ atlas_entry* text_renderer::render_glyph(font_face *face, int point_size,
 
     if (span.min_x == INT_MAX && span.min_y == INT_MAX) {
         /* create atlas entry for white space glyph with zero dimensions */
-        entry = atlas->create(face->font_id, point_size, glyph_index,
+        entry = atlas->create(face->font_id, font_size, glyph_index,
             0, 0, 0, 0);
     } else {
         /* create atlas entry for glyph using dimensions from span */
-        entry = atlas->create(face->font_id, point_size, glyph_index,
+        entry = atlas->create(face->font_id, font_size, glyph_index,
             offset_x, offset_y, width, height);
         /* copy pixels from span to atlas */
         if(entry) {
@@ -343,24 +343,24 @@ void text_renderer::render(std::vector<text_vertex> &vertices,
     text_segment *segment)
 {
     font_face *face = segment->face;
-    int point_size = segment->point_size;;
+    int font_size = segment->font_size;;
     FT_Face ftface = face->ftface;
     FT_Size_Metrics *metrics = &face->ftface->size->metrics;
 
     /* get metrics for our point size */
-    int points = (int)(point_size * metrics->x_scale) / ftface->units_per_EM;
-    if (metrics->x_scale != metrics->y_scale || point_size != points) {
-        FT_Set_Char_Size(ftface, 0, point_size, font_dpi, font_dpi);
+    int points = (int)(font_size * metrics->x_scale) / ftface->units_per_EM;
+    if (metrics->x_scale != metrics->y_scale || font_size != points) {
+        FT_Set_Char_Size(ftface, 0, font_size, font_dpi, font_dpi);
     }
 
     /* lookup glyphs in font atlas, creating them if they don't exist */
     float dx = 0, dy = 0;
     for (auto shape : shapes) {
         atlas_entry *entry = atlas->lookup
-            (face->font_id, point_size, shape.glyph_index);
+            (face->font_id, font_size, shape.glyph_index);
         if (!entry) {
             /* render glyph and create entry in atlas */
-            if (!(entry = render_glyph(face, point_size, shape.glyph_index))) {
+            if (!(entry = render_glyph(face, font_size, shape.glyph_index))) {
                 continue;
             }
             /* apply harfbuzz offsets */
