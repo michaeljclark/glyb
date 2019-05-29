@@ -39,22 +39,28 @@ struct span_measure
     int min_x, min_y, max_x, max_y;
 
     span_measure();
+
+    static void fn(int y, int count, const FT_Span* spans, void *user);
 };
+
+inline span_measure::span_measure() :
+    min_x(INT_MAX), min_y(INT_MAX), max_x(INT_MIN), max_y(INT_MIN) {}
 
 struct span_vector : span_measure
 {
-    int global_x;
-    int global_y;
-    int offset_x;
-    int offset_y;
-    int width;
-    int height;
+    int gx, gy, ox, oy, w, h;
+
     std::vector<uint8_t> pixels;
 
     span_vector();
 
     void reset(int width, int height);
+
+    static void fn(int y, int count, const FT_Span* spans, void *user);
 };
+
+inline span_vector::span_vector() :
+    gx(0), gy(0), ox(0), oy(0), w(0), h(0), pixels() {}
 
 struct atlas_key
 {
@@ -72,23 +78,17 @@ inline atlas_key::atlas_key(int64_t font_id, int64_t font_size, int64_t glyph) :
 struct atlas_entry
 {
     int bin_id;
-    short x;
-    short y;
-    short offset_x;
-    short offset_y;
-    short width;
-    short height;
+    short x, y, ox, oy, w, h;
     float uv[4];
 
     atlas_entry() = default;
-    atlas_entry(int bin_id, int x, int y, int offset_x, int offset_y,
-        int width, int height, float uv[4]);
+    atlas_entry(int bin_id, int x, int y, int ox, int oy, int w, int h,
+        float uv[4]);
 };
 
 inline atlas_entry::atlas_entry(int bin_id, int x, int y,
-    int offset_x, int offset_y, int width, int height, float uv[4]) :
-    bin_id(bin_id), x(x), y(y), offset_x(offset_x), offset_y(offset_y),
-    width(width), height(height), uv{uv[0], uv[1], uv[2], uv[3]} {}
+    int ox, int oy, int w, int h, float uv[4]) : bin_id(bin_id),
+    x(x), y(y), ox(ox), oy(oy), w(w), h(h), uv{uv[0], uv[1], uv[2], uv[3]} {}
 
 struct font_atlas
 {
@@ -164,6 +164,3 @@ struct text_renderer
 private:
     atlas_entry* render_glyph(font_face *face, int font_size, int glyph);
 };
-
-void span_measure_fn(int y, int count, const FT_Span* spans, void *user);
-void span_vector_fn(int y, int count, const FT_Span* spans, void *user);

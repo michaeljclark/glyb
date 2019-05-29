@@ -46,36 +46,36 @@ std::string ansi_color(int r, int g, int b)
     return std::string(buf);
 }
 
-void render_block(span_vector *d)
+void render_block(span_vector *s)
 {
-    for (int y = 0; y < d->height; y += 2) {
-        std::string s;
-        size_t b1 = (d->height - y - 1) * d->width;
-        size_t b2 = (std::max)((d->height - y - 2), 0) * d->width;
-        for (int x = 0; x < d->width; x += 2) {
-            uint8_t c00 = d->pixels[b1 + x];
-            uint8_t c01 = d->pixels[b1 + (std::min)(x + 1, d->width - 1)];
-            uint8_t c10 = d->pixels[b2 + x];
-            uint8_t c11 = d->pixels[b2 + (std::min)(x + 1, d->width - 1)];
+    for (int y = 0; y < s->h; y += 2) {
+        std::string o;
+        size_t b1 = (s->h - y - 1) * s->w;
+        size_t b2 = (std::max)((s->h - y - 2), 0) * s->w;
+        for (int x = 0; x < s->w; x += 2) {
+            uint8_t c00 = s->pixels[b1 + x];
+            uint8_t c01 = s->pixels[b1 + (std::min)(x + 1, s->w - 1)];
+            uint8_t c10 = s->pixels[b2 + x];
+            uint8_t c11 = s->pixels[b2 + (std::min)(x + 1, s->w - 1)];
             bool b00 = c00 > 128, b01 = c01 > 128;
             bool b10 = c10 > 128, b11 = c11 > 128;
             int sum = (c00 + c01 + c10 + c11) / 4;
-            s.append(ansi_color(sum, sum, sum));
-            s.append(shades[b00 << 1 | b01][b10 << 1 | b11]);
+            o.append(ansi_color(sum, sum, sum));
+            o.append(shades[b00 << 1 | b01][b10 << 1 | b11]);
         }
-        printf("%s\n", s.c_str());
+        printf("%s\n", o.c_str());
     }
 }
 
-void render_ascii(span_vector *d)
+void render_ascii(span_vector *s)
 {
-    for (int y = 0; y < d->height; y++) {
-        std::string s;
-        for (int x = 0; x < d->width; x++) {
-            uint8_t c = d->pixels[(d->height - y - 1) * d->width + x];
-            s.append(1, ascii_palette[c/(255/(strlen(ascii_palette)-1))]);
+    for (int y = 0; y < s->h; y++) {
+        std::string o;
+        for (int x = 0; x < s->w; x++) {
+            uint8_t c = s->pixels[(s->h - y - 1) * s->w + x];
+            o.append(1, ascii_palette[c/(255/(strlen(ascii_palette)-1))]);
         }
-        printf("%s\n", s.c_str());
+        printf("%s\n", o.c_str());
     }
 }
 
@@ -281,7 +281,7 @@ int main(int argc, char **argv)
     rp.black_spans = 0;
     rp.bit_set = 0;
     rp.bit_test = 0;
-    rp.gray_spans = span_vector_fn;
+    rp.gray_spans = span_vector::fn;
 
     size_t width = 0;
     for (size_t i = 0; i < glyph_count; i++) {
@@ -289,8 +289,8 @@ int main(int argc, char **argv)
     }
 
     /* set global offset and size the render buffer */
-    span.global_x = 0;
-    span.global_y = -ftface->size->metrics.descender/64;
+    span.gx = 0;
+    span.gy = -ftface->size->metrics.descender/64;
     span.reset(width, (ftface->size->metrics.ascender -
         ftface->size->metrics.descender)/64);
 
@@ -312,8 +312,8 @@ int main(int argc, char **argv)
         span.max_x = INT_MIN;
         span.max_y = INT_MIN;
 
-        span.offset_x = glyph_pos[i].x_offset/64;
-        span.offset_y = glyph_pos[i].y_offset/64;
+        span.ox = glyph_pos[i].x_offset/64;
+        span.oy = glyph_pos[i].y_offset/64;
 
         if ((fterr = FT_Outline_Render(ftlib, &ftface->glyph->outline, &rp))) {
             printf("error: FT_Outline_Render failed: fterr=%d\n", fterr);
@@ -324,8 +324,8 @@ int main(int argc, char **argv)
             print_glyph(ftface->glyph, glyph_info[i].codepoint, &span);
         }
 
-        span.global_x += glyph_pos[i].x_advance/64;
-        span.global_y += glyph_pos[i].y_advance/64;
+        span.gx += glyph_pos[i].x_advance/64;
+        span.gy += glyph_pos[i].y_advance/64;
     }
 
     /* display rendered output */
