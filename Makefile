@@ -15,7 +15,8 @@ LIBS        += $(FT_LIBS) $(HB_LIBS)
 
 COMMON_HDRS = $(wildcard src/*.h)
 
-COMMON_OBJS = build/obj/binpack.o \
+COMMON_OBJS = build/obj/text.o \
+              build/obj/binpack.o \
               build/obj/glyph.o \
               build/obj/utf8.o
 
