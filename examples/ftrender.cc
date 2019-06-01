@@ -104,18 +104,6 @@ void print_face(FT_Face ftface)
     printf("metrics.height      = %9.3f   metrics.max_advance = %9.3f\n",
         (float)metrics->height/64.0f,
         (float)metrics->max_advance/64.0f);
-    printf("bbox.xMin           = %9.3f   bbox.xMax           = %9.3f\n",
-        (float)ftface->bbox.xMin/64.0f,
-        (float)ftface->bbox.xMax/64.0f);
-    printf("bbox.yMin           = %9.3f   bbox.yMax           = %9.3f\n",
-        (float)ftface->bbox.yMin/64.0f,
-        (float)ftface->bbox.yMax/64.0f);
-    printf("ascender            = %9.3f   descender           = %9.3f\n",
-        (float)ftface->ascender/64.0f,
-        (float)ftface->descender/64.0f);
-    printf("max_advance_width   = %9.3f   max_advance_height  = %9.3f\n",
-        (float)ftface->max_advance_width/64.0f,
-        (float)ftface->max_advance_height/64.0f);
     printf("\n");
 }
 
@@ -138,21 +126,6 @@ void print_glyph(FT_GlyphSlot ftglyph, int codepoint, span_measure *span)
     printf("metrics.vBearingX   = %9.3f   metrics.vBearingY   = %9.3f\n",
         (float)ftglyph->metrics.vertBearingX/64.0f,
         (float)ftglyph->metrics.vertBearingY/64.0f);
-
-    printf("span.min_x          = % 9d   span.min_y          = % 9d\n",
-        span->min_x, span->min_y);
-    printf("span.max_x          = % 9d   span.max_y          = % 9d\n",
-        span->max_x, span->max_y);
-    printf("span.(width)        = % 9d   span.(height)       = % 9d\n",
-        span->max_x - span->min_x, span->max_y - span->min_y);
-    printf("comp.(min_x)        = % 9d   comp.(min_y)        = % 9d\n",
-        (int)floorf((float)ftglyph->metrics.horiBearingX/64.0f),
-        (int)floorf((float)(ftglyph->metrics.horiBearingY -
-            ftglyph->metrics.height)/64.0f));
-    printf("comp.(max_x)        = % 9d   comp.(max_y)        = % 9d\n",
-        (int)ceilf((float)(ftglyph->metrics.horiBearingX +
-            ftglyph->metrics.width)/64.0f),
-        (int)ceilf((float)(ftglyph->metrics.horiBearingY)/64.0f - 1.0f));
     printf("\n");
 }
 
