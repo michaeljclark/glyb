@@ -15,14 +15,14 @@ LIBS        += $(FT_LIBS) $(HB_LIBS)
 
 COMMON_HDRS = $(wildcard src/*.h)
 
-COMMON_OBJS = build/obj/text.o \
-              build/obj/binpack.o \
+COMMON_OBJS = build/obj/binpack.o \
               build/obj/glyph.o \
+              build/obj/text.o \
               build/obj/utf8.o
 
 all: programs tests
 
-programs: build/bin/glbinpack build/bin/glfont build/bin/glsimple
+programs: build/bin/glbinpack build/bin/glfont build/bin/glsimple build/bin/ftrender
 
 tests: $(test_progs)
 
