@@ -2,13 +2,18 @@
 #include <cstdint>
 #include <cstdlib>
 #include <climits>
+#include <cstring>
+#include <cmath>
 
 #include <vector>
+#include <memory>
 #include <map>
 #include <tuple>
 
-#include "binpack.h"
 #include "utf8.h"
+#include "color.h"
+#include "binpack.h"
+#include "font.h"
 #include "glyph.h"
 #include "text.h"
 
@@ -32,12 +37,12 @@ std::string text_part::to_string()
     std::string s;
     for (auto i = tags.begin(); i != tags.end(); i++) {
         s.append("{");
-        s.append(std::to_string(i->first));
+        s.append(i->first);
         s.append("=");
-        s.append(std::to_string(i->second));
+        s.append(i->second);
         s.append(" ");
     }
-    s.append("\"");
+    s.append(": \"");
     s.append(text);
     s.append("\"");
     for (auto i = tags.begin(); i != tags.end(); i++) {
@@ -150,8 +155,8 @@ void text_container::append(text_part c)
     coalesce();
 }
 
-void text_container::mark(size_t offset, size_t count, intptr_t attr,
-    intptr_t val)
+void text_container::mark(size_t offset, size_t count, std::string attr,
+    std::string val)
 {
     if (parts.size() == 0) {
         parts.insert(parts.end(),std::string());
@@ -206,7 +211,7 @@ void text_container::mark(size_t offset, size_t count, intptr_t attr,
     coalesce();
 }
 
-void text_container::unmark(size_t offset, size_t count, intptr_t attr)
+void text_container::unmark(size_t offset, size_t count, std::string attr)
 {
     if (parts.size() == 0) {
         parts.insert(parts.end(),std::string());
@@ -293,4 +298,201 @@ std::string text_container::to_string()
         s.append(parts[i].to_string());
     }
     return s;
+}
+
+/*
+ * Text Layout
+ */
+
+static const char* language_default = "en";
+ 
+inline bool compare(std::string s1, std::string s2)
+{
+    return ((s1.size() == s2.size()) &&
+        std::equal(s1.begin(), s1.end(), s2.begin(), [](char & c1, char & c2) {
+            return (c1 == c2 || std::toupper(c1) == std::toupper(c2));
+    }));
+}
+
+inline std::string lookupString(tag_map_t &map, std::string key, std::string val = "")
+{
+    auto i = map.find(key);
+    return (i == map.end()) ? val : i->second;
+}
+
+inline int lookupInteger(tag_map_t &map, std::string key, int val = 0)
+{
+    auto i = map.find(key);
+    return (i == map.end()) ? val : atoi(i->second.c_str());
+}
+
+inline float lookupFloat(tag_map_t &map, std::string key, float val = 0)
+{
+    auto i = map.find(key);
+    return (i == map.end()) ? val : (float)atof(i->second.c_str());
+}
+
+inline int lookupEnumInteger(tag_map_t &map, std::string key,
+    const char* names[], const int values[], size_t count, int val = 0)
+{
+    auto i = map.find(key);
+    if (i == map.end()) return val;
+    for (size_t j = 0; j < count; j++) {
+        if (compare(i->second, names[j])) return j;
+    }
+    return val;
+}
+
+inline int lookupEnumFloat(tag_map_t &map, std::string key, 
+    const char* names[], const float values[], size_t count, float val = 0)
+{
+    auto i = map.find(key);
+    if (i == map.end()) return val;
+    for (size_t j = 0; j < count; j++) {
+        if (compare(i->second, names[j])) return j;
+    }
+    return val;
+}
+
+void text_layout::style(text_segment *segment, text_part *part)
+{
+    /* converts text part attributes into a font face and size */
+
+    font_data fontData;
+    std::string colorStr;
+    std::string languageStr;
+
+    fontData.familyName =
+        lookupString(part->tags, "font-family", font_family_any);
+    fontData.styleName =
+        lookupString(part->tags, "font-style", font_style_any);
+    fontData.fontWeight =
+        (font_weight)lookupEnumInteger(part->tags, "font-weight",
+            font_manager::weightName, font_manager::weightTable,
+            font_weight_count, font_weight_any);
+    fontData.fontSlope =
+        (font_slope)lookupEnumInteger(part->tags, "font-slope",
+            font_manager::slopeName, font_manager::slopeTable,
+            font_slope_count, font_slope_any);
+    fontData.fontStretch =
+        (font_stretch)lookupEnumFloat(part->tags, "font-stretch",
+            font_manager::stretchName, font_manager::stretchPercentTable,
+            font_stretch_count, font_stretch_any);
+    fontData.fontSpacing =
+        (font_spacing)lookupEnumInteger(part->tags, "font-spacing", 
+            font_manager::spacingName, font_manager::spacingTable,
+            font_spacing_count, font_spacing_any);
+
+    segment->face = manager->findFontByData(fontData);
+    segment->font_size = (int)ceilf(
+        lookupFloat(part->tags, "font-size", font_size_default) * 64.0f);
+    segment->baseline_shift = lookupInteger(part->tags, "baseline-shift",
+        baseline_shift_default);
+    segment->tracking = lookupInteger(part->tags, "tracking",
+        tracking_default);
+    segment->line_spacing = lookupInteger(part->tags, "line-spacing");
+
+    if (segment->line_spacing == 0) {
+        segment->line_spacing = (int)roundf((float)static_cast<font_face_ft*>
+            (segment->face)->get_height(segment->font_size) / 64.0f);
+    }
+
+    colorStr = lookupString(part->tags, "color");
+    if (colorStr.size() == 0) {
+        segment->color = color_default;
+    } else {
+        segment->color = color(colorStr).rgba32();
+    }
+
+    languageStr = lookupString(part->tags, "language");
+    if (colorStr.size() == 0) {
+        segment->language = language_default;
+    } else {
+        segment->language = languageStr;
+    }
+}
+
+void text_layout::layout(std::vector<text_segment> &segments,
+    text_container *container, int x, int y, int width, int height)
+{
+    text_shaper shaper;
+    std::vector<glyph_shape> shapes;
+
+    /* layout the text in the container into styled text segments */
+    int dx = x, dy = y;
+    float line_height;
+    for (size_t i = 0; i < container->parts.size(); i++)
+    {
+        text_part *part = &container->parts[i];
+
+        /* make a text segment */
+        text_segment segment(part->text, language_default);
+
+        /* get font, font size, tracking, line_height, color, etc. */
+        style(&segment, part);
+
+        /* set segment position */
+        segment.x = dx;
+        segment.y = dy + segment.line_spacing;
+
+        /* measure text, splitting over multiple lines */
+        float segment_width = 0;
+        unsigned break_cluster = 0, space_cluster = 0;
+        for (;;) {
+            break_cluster = 0;
+            segment_width = 0;
+
+            /* find fitting segment width */
+            shapes.clear();
+            shaper.shape(shapes, &segment);
+            for (auto &s : shapes) {
+                segment_width += s.x_advance/64.0f + segment.tracking;
+                if (segment.text[s.cluster] == ' ') {
+                    space_cluster = s.cluster;
+                }
+                if (dx + segment_width > x + width) {
+                    break_cluster = s.cluster;
+                    break;
+                }
+            }
+
+            /* exit inner loop if segment fits width */
+            if (break_cluster == 0) {
+                break;
+            }
+
+            /* break segment at space character if seen */
+            if (space_cluster > 0) {
+                break_cluster = space_cluster + 1;
+            }
+
+            /* perform segment split */
+            std::string s1 = segment.text.substr(0, break_cluster - 1);
+            std::string s2 = segment.text.substr(break_cluster);
+            segment.text = s1;
+            segments.push_back(segment);
+
+            /* advance to next line */
+            dx = x;
+            dy += segment.line_spacing;
+
+            /* loop with remaining text */
+            segment.text = s2;
+            segment.x = dx;
+            segment.y = dy + segment.line_spacing;
+        }
+
+        /* add segment to the list */
+        segments.push_back(segment);
+
+        /* increment position, advancing to next line if required */
+        dx += (int)ceilf(segment_width);
+        if (dx > width) {
+            dx = x;
+            dy += segment.line_spacing;
+        }
+        if (dy > y + height) {
+            break;
+        }
+    }
 }

@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <climits>
+#include <cstring>
 #include <cmath>
 
 #include <memory>
@@ -20,107 +21,12 @@
 
 #include "binpack.h"
 #include "utf8.h"
+#include "font.h"
 #include "glyph.h"
 
-/*
- * locals
- */
-
-static const int font_dpi = 72;
-static const char* text_lang = "en";
-
 
 /*
- * font
- */
-
-font_face::font_face(int font_id, FT_Face ftface, std::string path) :
-    font_id(font_id), ftface(ftface), path(path), name()
-{
-    name = FT_Get_Postscript_Name(ftface);
-}
-
-int font_face::get_height(int font_size)
-{
-    /* get metrics for our point size */
-    FT_Size_Metrics *metrics = &ftface->size->metrics;
-    int points = (int)(font_size * metrics->x_scale) / ftface->units_per_EM;
-    if (metrics->x_scale != metrics->y_scale || font_size != points) {
-        FT_Set_Char_Size(ftface, 0, font_size, font_dpi, font_dpi);
-    }
-    return ftface->size->metrics.height;
-}
-
-
-/*
- * font manger
- */
-
-font_manager::font_manager()
-{
-    FT_Error fterr;
-    if ((fterr = FT_Init_FreeType(&ftlib))) {
-        fprintf(stderr, "error: FT_Init_FreeType failed: fterr=%d\n", fterr);
-        exit(1);
-    }
-}
-
-font_manager::~font_manager()
-{
-    FT_Done_Library(ftlib);
-}
-
-font_face* font_manager::lookup_font(std::string path)
-{
-    FT_Error fterr;
-    FT_Face ftface;
-
-    auto fi = path_map.find(path);
-    if (fi != path_map.end()) {
-        return &faces[fi->second];
-    }
-
-    if ((fterr = FT_New_Face(ftlib, path.c_str(), 0, &ftface))) {
-        fprintf(stderr, "error: FT_New_Face failed: fterr=%d, path=%s\n",
-            fterr, path.c_str());
-        return nullptr;
-    }
-
-    for (int i = 0; i < ftface->num_charmaps; i++)
-        if (((ftface->charmaps[i]->platform_id == 0) &&
-            (ftface->charmaps[i]->encoding_id == 3))
-         || ((ftface->charmaps[i]->platform_id == 3) &&
-            (ftface->charmaps[i]->encoding_id == 1))) {
-        FT_Set_Charmap(ftface, ftface->charmaps[i]);
-        break;
-    }
-
-    font_face *face = &*faces.insert(faces.end(),
-        font_face(faces.size(), ftface, path));
-    path_map[path] = face->font_id;
-    font_name_map[face->name] = face->font_id;
-
-    return face;
-}
-
-font_face* font_manager::lookup_font_by_name(std::string font_name)
-{
-    auto fi = font_name_map.find(font_name);
-    if (fi != font_name_map.end()) {
-        return &faces[fi->second];
-    } else {
-        return nullptr;
-    }
-}
-
-font_face* font_manager::lookup_font_by_id(int font_id)
-{
-    return &faces[font_id];
-}
-
-
-/*
- * span rasterization
+ * freetype span rasterization
  */
 
 void span_measure::fn(int y, int count, const FT_Span* spans, void *user)
@@ -216,10 +122,9 @@ atlas_entry* font_atlas::create(int font_id, int font_size, int glyph,
 
 void text_shaper::shape(std::vector<glyph_shape> &shapes, text_segment *segment)
 {
-    font_face *face = segment->face;
-    int font_size = segment->font_size;;
+    font_face_ft *face = static_cast<font_face_ft*>(segment->face);
     FT_Face ftface = face->ftface;
-    FT_Size_Metrics *metrics = &face->ftface->size->metrics;
+    int font_size = segment->font_size;;
 
     hb_font_t *hbfont;
     hb_language_t hblang;
@@ -227,11 +132,8 @@ void text_shaper::shape(std::vector<glyph_shape> &shapes, text_segment *segment)
     hb_glyph_position_t *glyph_pos;
     unsigned glyph_count;
 
-    /* get metrics for our point size */
-    int points = (int)(font_size * metrics->x_scale) / ftface->units_per_EM;
-    if (metrics->x_scale != metrics->y_scale || font_size != points) {
-        FT_Set_Char_Size(ftface, 0, font_size, font_dpi, font_dpi);
-    }
+    /* we need to set up our font metrics */
+    face->get_metrics(font_size);
 
     /* get text to render */
     const char* text = segment->text.c_str();
@@ -239,7 +141,8 @@ void text_shaper::shape(std::vector<glyph_shape> &shapes, text_segment *segment)
 
     /* create text buffers */
     hbfont  = hb_ft_font_create(ftface, NULL);
-    hblang = hb_language_from_string(text_lang, strlen(text_lang));
+    hblang = hb_language_from_string(segment->language.c_str(),
+        segment->language.size());
 
     hb_buffer_t *buf = hb_buffer_create();
     hb_buffer_set_direction(buf, HB_DIRECTION_LTR);
@@ -264,10 +167,10 @@ void text_shaper::shape(std::vector<glyph_shape> &shapes, text_segment *segment)
 }
 
 /*
- * text renderer
+ * glyph renderer
  */
 
-atlas_entry* text_renderer::render_glyph(font_face *face, int font_size,
+atlas_entry* glyph_renderer::render(font_face_ft *face, int font_size,
     int glyph)
 {
     FT_Library ftlib;
@@ -278,7 +181,7 @@ atlas_entry* text_renderer::render_glyph(font_face *face, int font_size,
     int ox, oy, w, h;
     atlas_entry *ae;
 
-    /* get freetype handles */
+    /* freetype library and glyph pointers */
     ftface = face->ftface;
     ftglyph = ftface->glyph;
     ftlib = ftglyph->library;
@@ -346,21 +249,19 @@ atlas_entry* text_renderer::render_glyph(font_face *face, int font_size,
     return ae;
 }
 
+/*
+ * text renderer
+ */
+
 void text_renderer::render(std::vector<text_vertex> &vertices,
     std::vector<uint32_t> &indices,
     std::vector<glyph_shape> &shapes,
     text_segment *segment)
 {
-    font_face *face = segment->face;
-    int font_size = segment->font_size;;
-    FT_Face ftface = face->ftface;
-    FT_Size_Metrics *metrics = &face->ftface->size->metrics;
-
-    /* get metrics for our point size */
-    int points = (int)(font_size * metrics->x_scale) / ftface->units_per_EM;
-    if (metrics->x_scale != metrics->y_scale || font_size != points) {
-        FT_Set_Char_Size(ftface, 0, font_size, font_dpi, font_dpi);
-    }
+    font_face_ft *face = static_cast<font_face_ft*>(segment->face);
+    int font_size = segment->font_size;
+    int baseline_shift = segment->baseline_shift;
+    int tracking = segment->tracking;
 
     /* lookup glyphs in font atlas, creating them if they don't exist */
     float dx = 0, dy = 0;
@@ -368,17 +269,17 @@ void text_renderer::render(std::vector<text_vertex> &vertices,
         atlas_entry *ae = atlas->lookup(face->font_id, font_size, shape.glyph);
         if (!ae) {
             /* render glyph and create entry in atlas */
-            if (!(ae = render_glyph(face, font_size, shape.glyph))) {
+            if (!(ae = renderer.render(face, font_size, shape.glyph))) {
                 continue;
             }
-            /* apply harfbuzz offsets */
+            /* apply harfbuzz offsets to the newly created entry */
             ae->ox += shape.x_offset/64;
             ae->oy += shape.y_offset/64;
         }
         /* create polygons in vertex array */
         int x1 = segment->x + ae->ox + roundf(dx);
         int x2 = x1 + ae->w;
-        int y1 = segment->y - ae->oy + roundf(dy) - ae->h;
+        int y1 = segment->y - ae->oy + roundf(dy) - ae->h - baseline_shift;
         int y2 = y1 + ae->h;
         if (ae->w > 0 && ae->h > 0) {
             float x1p = 0.5f + x1, x2p = 0.5f + x2;
@@ -393,7 +294,7 @@ void text_renderer::render(std::vector<text_vertex> &vertices,
             indices.insert(indices.end(), {o+0, o+3, o+1, o+1, o+3, o+2});
         }
         /* advance */
-        dx += shape.x_advance/64.0f;
+        dx += shape.x_advance/64.0f + tracking;
         dy += shape.y_advance/64.0f;
     }
 }

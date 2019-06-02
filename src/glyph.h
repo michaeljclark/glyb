@@ -1,49 +1,5 @@
 #pragma once
 
-typedef struct FT_FaceRec_* FT_Face;
-typedef struct FT_LibraryRec_* FT_Library;
-typedef struct FT_GlyphSlotRec_* FT_GlyphSlot;
-typedef struct FT_Span_ FT_Span;
-
-/*
- * Font Face
- *
- * Font Face is a wrapper around FreeType FT_Face.
- */
-struct font_face
-{
-    int font_id;
-    FT_Face ftface;
-    std::string path;
-    std::string name;
-
-    font_face() = default;
-    font_face(int font_id, FT_Face ftface, std::string path);
-
-    int get_height(int font_size);
-};
-
-/*
- * Font Manager
- *
- * The Font Manager handles loading and caching of FreeType fonts.
- */
-struct font_manager
-{
-    FT_Library ftlib;
-
-    std::vector<font_face> faces;
-    std::map<std::string,size_t> path_map;
-    std::map<std::string,size_t> font_name_map;
-
-    font_manager();
-    ~font_manager();
-
-    font_face* lookup_font(std::string path);
-    font_face* lookup_font_by_name(std::string font_name);
-    font_face* lookup_font_by_id(int font_id);
-};
-
 /*
  * FreeType Span Measurement
  *
@@ -159,19 +115,29 @@ struct font_atlas
 struct text_segment
 {
     std::string text;
+    std::string language;
     font_face *face;
     int font_size;
     int x, y;
+    int baseline_shift;
+    int line_spacing;
+    int tracking;
     uint32_t color;
 
     text_segment() = default;
-    text_segment(std::string text, font_face *face, int font_size,
-        int x, int y, uint32_t color);
+    text_segment(std::string text, std::string languag);
+    text_segment(std::string text, std::string language, font_face *face,
+        int font_size, int x, int y, uint32_t color);
 };
 
-inline text_segment::text_segment(std::string text, font_face *face,
-    int font_size, int x, int y, uint32_t color) :
-    text(text), face(face), font_size(font_size), x(x), y(y), color(color) {}
+inline text_segment::text_segment(std::string text, std::string language) :
+    text(text), language(language), face(nullptr), font_size(0),
+    x(0), y(0), baseline_shift(0), line_spacing(0), tracking(0), color(0) {}
+
+inline text_segment::text_segment(std::string text, std::string language,
+    font_face *face, int font_size, int x, int y, uint32_t color) :
+    text(text), language(language), face(face), font_size(font_size),
+    x(x), y(y), baseline_shift(0), line_spacing(0), tracking(0), color(color) {}
 
 /*
  * Glyph Shape
@@ -184,6 +150,36 @@ struct glyph_shape
     unsigned cluster;         /* offset within original string */
     int x_offset, y_offset;   /* integer with 6 fraction bits */
     int x_advance, y_advance; /* integer with 6 fraction bits */
+};
+
+/*
+ * Text Vertex
+ *
+ * Structure to hold the vertex output of the text renderer.
+ */
+struct text_vertex
+{
+    float pos[3];
+    float uv[2];
+    uint32_t rgba;
+};
+
+/*
+ * Glyph Renderer
+ *
+ * Implementation of a simple freetype based glyph renderer. The output
+ * of the glyph renderer is a bitmap which is stored in a font atlas.
+ */
+struct glyph_renderer
+{
+    font_manager_ft* manager;
+    font_atlas* atlas;
+    span_vector span;
+
+    glyph_renderer(font_manager_ft* manager, font_atlas* atlas) :
+        manager(manager), atlas(atlas) {}
+
+    atlas_entry* render(font_face_ft *face, int font_size, int glyph);
 };
 
 /*
@@ -201,18 +197,6 @@ struct text_shaper
 };
 
 /*
- * Text Vertex
- *
- * Structure to hold the vertex output of the text renderer.
- */
-struct text_vertex
-{
-    float pos[3];
-    float uv[2];
-    uint32_t rgba;
-};
-
-/*
  * Text Renderer
  *
  * Implementation of a simple freetype based text renderer. The output
@@ -222,18 +206,15 @@ struct text_vertex
  */
 struct text_renderer
 {
-    font_manager* manager;
+    font_manager_ft* manager;
     font_atlas* atlas;
-    span_vector span;
+    glyph_renderer renderer;
 
-    text_renderer(font_manager* manager, font_atlas* atlas) :
-        manager(manager), atlas(atlas) {}
+    text_renderer(font_manager_ft* manager, font_atlas* atlas) :
+        manager(manager), atlas(atlas), renderer(manager, atlas) {}
 
     void render(std::vector<text_vertex> &vertices,
         std::vector<uint32_t> &indices,
         std::vector<glyph_shape> &shapes,
         text_segment *segment);
-
-private:
-    atlas_entry* render_glyph(font_face *face, int font_size, int glyph);
 };

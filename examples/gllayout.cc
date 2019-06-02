@@ -28,6 +28,7 @@
 #include "binpack.h"
 #include "font.h"
 #include "glyph.h"
+#include "text.h"
 
 
 /* globals */
@@ -40,12 +41,8 @@ static std::vector<uint32_t> indices;
 static mat4x4 mvp;
 static GLFWwindow* window;
 
-static const char *font_path = "fonts/RobotoMono-Regular.ttf";
-static const char *render_text = "the quick brown fox jumps over the lazy dog";
-static const char* text_lang = "en";
 static const int font_dpi = 72;
-static int font_size = 32;
-static int width = 1024, height = 256;
+static int width = 1024, height = 768;
 static font_manager_ft manager;
 static font_atlas atlas;
 
@@ -75,21 +72,45 @@ static void reshape(int width, int height)
 
 static void update_geometry()
 {
-    auto face = manager.findFontByPath(font_path);
-
-    const int x = 100, y = 100 + font_size;
-    const uint32_t color = 0xff000000;
-
+    std::vector<text_segment> segments;
     std::vector<glyph_shape> shapes;
+
     text_shaper shaper;
     text_renderer renderer(&manager, &atlas);
-    text_segment segment(render_text, text_lang, face,
-        font_size * 64, x, y, color);
+    text_layout layout(&manager, &atlas, &shaper, &renderer);
+    text_container c;
+
+    c.append(text_part("Γειά ",
+        {{ "tracking", "2" }, { "baseline-shift", "9" }, { "color", "#800000" }}));
+    c.append(text_part("σου ",
+        {{ "tracking", "2" }, { "baseline-shift", "6" }, { "color", "#008000" }}));
+    c.append(text_part("Κόσμε ",
+        {{ "tracking", "2" }, { "baseline-shift", "3" }, { "color", "#000080" }}));
+    c.append(text_part(
+        "    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
+        "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud "
+        "exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure "
+        "dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. "
+        "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt "
+        "mollit anim id est laborum.    ",
+        {{ "font-size", "18" }, { "font-style", "regular" }, { "color", "#000040" }}));
+    c.append(text_part(
+        "    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
+        "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud "
+        "exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure "
+        "dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. "
+        "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt "
+        "mollit anim id est laborum.    ",
+        {{ "font-size", "36" }, { "font-style", "bold" }, { "color", "#7f7f9f" }}));
 
     vertices.clear();
     indices.clear();
-    shaper.shape(shapes, &segment);
-    renderer.render(vertices, indices, shapes, &segment);
+    layout.layout(segments, &c, 50, 50, 900, 700);
+    for (auto &segment : segments) {
+        shapes.clear();
+        shaper.shape(shapes, &segment);
+        renderer.render(vertices, indices, shapes, &segment);
+    }
 }
 
 static void vertex_array_config()
@@ -136,6 +157,9 @@ static void initialize()
     vsh = compile_shader(GL_VERTEX_SHADER, "shaders/simple.vsh");
     fsh = compile_shader(GL_FRAGMENT_SHADER, "shaders/simple.fsh");
     program = link_program(vsh, fsh);
+
+    /* load font metadata */
+    manager.scanFontDir("fonts");
 
     /* create vertex buffers and font atlas texture */
     update_buffers();

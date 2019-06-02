@@ -5,16 +5,22 @@
  */
 
 typedef enum : intptr_t {
+    text_attr_none,
+    text_attr_font_name,
     text_attr_font_family,
     text_attr_font_style,
+    text_attr_font_weight,
+    text_attr_font_slope,
+    text_attr_font_stretch,
+    text_attr_font_spacing,
     text_attr_font_size,
     text_attr_color,
     text_attr_underline,
     text_attr_strike,
 } text_attr;
 
-typedef std::pair<intptr_t,intptr_t> tag_pair_t;
-typedef std::map<intptr_t,intptr_t> tag_map_t;
+typedef std::pair<std::string,std::string> tag_pair_t;
+typedef std::map<std::string,std::string> tag_map_t;
 typedef std::initializer_list<tag_pair_t> tags_initializer_t;
 
 /*
@@ -53,10 +59,38 @@ struct text_container
     void insert(size_t offset, text_part c);
     void append(std::string s);
     void append(text_part c);
-    void mark(size_t offset, size_t count, intptr_t attr, intptr_t val);
-    void unmark(size_t offset, size_t count, intptr_t attr);
+    void mark(size_t offset, size_t count, std::string attr, std::string val);
+    void unmark(size_t offset, size_t count, std::string attr);
     void coalesce();
 
     std::string as_plaintext();
-	std::string to_string();
+    std::string to_string();
 };
+
+/*
+ * Text Layout
+ */
+
+struct text_layout
+{
+    font_manager_ft* manager;
+    font_atlas* atlas;
+    text_shaper* shaper;
+    text_renderer* renderer;
+
+    const float font_size_default = 12.0f;
+    const uint32_t color_default = 0xff000000;
+    const int baseline_shift_default = 0;
+    const int tracking_default = 0;
+
+    text_layout(font_manager_ft* manager, font_atlas* atlas,
+        text_shaper* shaper, text_renderer* renderer);
+
+    void style(text_segment *segment, text_part *part);
+    void layout(std::vector<text_segment> &segments,
+        text_container *container, int x, int y, int width, int height);
+};
+
+inline text_layout::text_layout(font_manager_ft* manager, font_atlas* atlas,
+        text_shaper* shaper, text_renderer* renderer) :
+        manager(manager), atlas(atlas), shaper(shaper), renderer(renderer) {}

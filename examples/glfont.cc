@@ -26,6 +26,7 @@
 #include "linmath.h"
 #include "glcommon.h"
 #include "binpack.h"
+#include "font.h"
 #include "glyph.h"
 
 
@@ -41,6 +42,7 @@ static GLFWwindow* window;
 
 static const char *font_path = "fonts/RobotoMono-Regular.ttf";
 static const char *render_text = "the quick brown fox jumps over the lazy dog";
+static const char* text_lang = "en";
 static const int font_dpi = 72;
 static int font_size_min = 12;
 static int font_size_max = 32;
@@ -49,7 +51,7 @@ static bool show_atlas = false;
 static bool show_lines = false;
 static bool debug = false;
 static int width = 1024, height = 768;
-static font_manager manager;
+static font_manager_ft manager;
 static font_atlas atlas;
 
 
@@ -95,7 +97,7 @@ static void update_geometry()
 
     text_shaper shaper;
     text_renderer renderer(&manager, &atlas);
-    font_face *face = manager.lookup_font(font_path);
+    font_face *face = manager.findFontByPath(font_path);
     std::vector<glyph_shape> shapes;
 
     int x = 100, y = 100;
@@ -107,8 +109,10 @@ static void update_geometry()
     {
         y += sz;
         std::string size_text = std::to_string(sz);
-        text_segment size_segment(size_text, face, 12 * 64, x - 50, y, black);
-        text_segment render_segment(render_text, face, sz * 64, x, y, black);
+        text_segment size_segment(size_text, text_lang, face,
+            12 * 64, x - 50, y, black);
+        text_segment render_segment(render_text, text_lang, face,
+            sz * 64, x, y, black);
         shapes.clear();
         shaper.shape(shapes, &size_segment);
         renderer.render(vertices, indices, shapes, &size_segment);
@@ -116,7 +120,8 @@ static void update_geometry()
         shaper.shape(shapes, &render_segment);
         if (show_lines) {
             int width = 0;
-            int height = face->get_height(render_segment.font_size) >> 6;
+            int height = static_cast<font_face_ft*>
+                (face)->get_height(render_segment.font_size) >> 6;
             for (auto &s : shapes) {
                 width += s.x_advance/64;
             }

@@ -16,13 +16,15 @@ LIBS        += $(FT_LIBS) $(HB_LIBS)
 COMMON_HDRS = $(wildcard src/*.h)
 
 COMMON_OBJS = build/obj/binpack.o \
+              build/obj/font.o \
               build/obj/glyph.o \
               build/obj/text.o \
-              build/obj/utf8.o
+              build/obj/utf8.o \
+              build/obj/util.o
 
 all: programs tests
 
-programs: build/bin/glbinpack build/bin/glfont build/bin/glsimple build/bin/ftrender
+programs: build/bin/glbinpack build/bin/glfont build/bin/glsimple build/bin/gllayout build/bin/ftrender build/bin/fontdb
 
 tests: $(test_progs)
 
@@ -46,6 +48,7 @@ clean:
 
 build/bin/glfont: LIBS += -lGL -lglfw
 build/bin/glsimple: LIBS += -lGL -lglfw
+build/bin/gllayout: LIBS += -lGL -lglfw
 build/bin/glbinpack: LIBS += -lGL -lglfw
 build/obj/glfont.o: examples/glfont.cc examples/glcommon.h src/binpack.h
 build/obj/glbinpack.o: examples/glbinpack.cc examples/glcommon.h src/binpack.h

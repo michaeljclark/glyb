@@ -1,13 +1,15 @@
 #include <cstdio>
-#include <cstdint>
 #include <cstdlib>
+#include <cstring>
+#include <cerrno>
+#include <cctype>
 #include <climits>
 #include <cmath>
+#include <ctime>
 
-#include <memory>
 #include <vector>
 #include <map>
-#include <tuple>
+#include <memory>
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -20,6 +22,7 @@
 
 #include "binpack.h"
 #include "utf8.h"
+#include "font.h"
 #include "glyph.h"
 
 static const char* ascii_palette = " .:-=+*#%@";

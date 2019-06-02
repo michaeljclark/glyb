@@ -1,29 +1,35 @@
 #include <cstdio>
-#include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <cerrno>
+#include <cctype>
 #include <climits>
+#include <cmath>
+#include <ctime>
 
-#include <memory>
 #include <vector>
 #include <map>
+#include <memory>
 #include <tuple>
 #include <chrono>
 
 #include "binpack.h"
 #include "utf8.h"
+#include "font.h"
 #include "glyph.h"
+#include "text.h"
 
 using namespace std::chrono;
 
 const char* test_str_1 = "the quick brown fox jumps over the lazy dog";
+static const char* text_lang = "en";
 size_t iterations = 100000;
 
 int main()
 {
-    font_manager manager;
+    font_manager_ft manager;
     font_atlas atlas;
-    font_face *face = manager.lookup_font("fonts/Roboto-Regular.ttf");
+    auto face = manager.findFontByPath("fonts/Roboto-Regular.ttf");
 
     std::vector<glyph_shape> shapes;
     std::vector<text_vertex> vertices;
@@ -31,8 +37,8 @@ int main()
 
     text_shaper shaper;
     text_renderer renderer(&manager, &atlas);
-    text_segment segment(test_str_1, face, 48 * 64, 0, 0, 0xffffffff);
-
+    text_segment segment(test_str_1, text_lang, face,
+        48 * 64, 0, 0, 0xffffffff);
 
     /* shape (cold) */
     const auto t1 = high_resolution_clock::now();
