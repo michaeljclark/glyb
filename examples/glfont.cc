@@ -162,7 +162,7 @@ static void vertex_array_config()
 
 static void update_buffers()
 {
-    static const GLint swizzleMask[] = {GL_RED, GL_RED, GL_RED, GL_RED};
+    static const GLint swizzleMask[] = {GL_ONE, GL_ONE, GL_ONE, GL_RED};
 
     /* create vertex and index arrays */
     update_geometry();
