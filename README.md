@@ -7,9 +7,9 @@ and index arrays which can be used with OpenGL, Vulkan and DirectX.
 
 glyphic includes a font-atlas based text renderer using HarfBuzz
 and FreeType. Render time is less than 1 microsecond per glyph.
-glyphic contains a 2D bin packer implementing the **MAXRECTS-BSSF**
-algorithm as outlined in "A Thousand Ways to Pack the Bin - A Practical
-Approach to Two-Dimensional Rectangle Bin Packing, Jukka Jylänki.
+glyphic contains a 2D bin packer implementing the _**MAXRECTS-BSSF**_
+algorithm as outlined in _"A Thousand Ways to Pack the Bin - A Practical
+Approach to Two-Dimensional Rectangle Bin Packing, Jukka Jylänki_.
 
 The project also contains several OpenGL examples using the library.
 
