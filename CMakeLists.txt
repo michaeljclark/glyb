@@ -39,6 +39,8 @@ if(WIN32)
   set(USE_BUNDLED_LIBS true)
 endif()
 
+add_subdirectory(third_party/glad)
+
 if(USE_BUNDLED_LIBS)
   add_subdirectory(third_party/glfw)
   add_subdirectory(third_party/freetype2)
@@ -71,16 +73,16 @@ set(BINPACK_SOURCES
 add_library(binpack STATIC ${BINPACK_SOURCES})
 
 add_executable(glbinpack examples/glbinpack.cc)
-target_link_libraries(glbinpack binpack ${LIBS})
+target_link_libraries(glbinpack binpack ${LIBS} glad ${CMAKE_DL_LIBS})
 
 add_executable(glfont examples/glfont.cc)
-target_link_libraries(glfont binpack ${LIBS})
+target_link_libraries(glfont binpack ${LIBS} glad ${CMAKE_DL_LIBS})
 
 add_executable(gllayout examples/gllayout.cc)
-target_link_libraries(gllayout binpack ${LIBS})
+target_link_libraries(gllayout binpack ${LIBS} glad ${CMAKE_DL_LIBS})
 
 add_executable(glsimple examples/glsimple.cc)
-target_link_libraries(glsimple binpack ${LIBS})
+target_link_libraries(glsimple binpack ${LIBS} glad ${CMAKE_DL_LIBS})
 
 file(GLOB BINPACK_TESTS tests/*.cc)
 foreach(src ${BINPACK_TESTS})

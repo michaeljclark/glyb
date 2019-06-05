@@ -15,9 +15,7 @@
 #include <map>
 #include <string>
 
-#define GL_GLEXT_PROTOTYPES
-#include <GL/gl.h>
-#include <GL/glext.h>
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
 #define CTX_OPENGL_MAJOR 3
@@ -348,6 +346,7 @@ static void binpack_gui(int argc, char **argv)
 
     window = glfwCreateWindow(width, height, argv[0], NULL, NULL);
     glfwMakeContextCurrent(window);
+    gladLoadGL();
     glfwSwapInterval(1);
     glfwSetFramebufferSizeCallback(window, resize);
     glfwSetKeyCallback(window, keyboard);

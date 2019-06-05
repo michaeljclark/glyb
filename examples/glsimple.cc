@@ -15,9 +15,7 @@
 #include <map>
 #include <string>
 
-#define GL_GLEXT_PROTOTYPES
-#include <GL/gl.h>
-#include <GL/glext.h>
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
 #define CTX_OPENGL_MAJOR 3
@@ -122,7 +120,7 @@ static void update_buffers()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, atlas.width, atlas.height, 0,
         GL_RED, GL_UNSIGNED_BYTE, (GLvoid*)&atlas.pixels[0]);
-    glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA_EXT, swizzleMask);
+    glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
     glActiveTexture(GL_TEXTURE0);
 }
 
@@ -170,6 +168,7 @@ static void glfont(int argc, char **argv)
 
     window = glfwCreateWindow(width, height, argv[0], NULL, NULL);
     glfwMakeContextCurrent(window);
+    gladLoadGL();
     glfwSwapInterval(1);
     glfwSetFramebufferSizeCallback(window, resize);
     glfwGetFramebufferSize(window, &width, &height);
