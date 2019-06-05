@@ -2,9 +2,7 @@
 #include <cstring>
 #include <cerrno>
 
-#ifdef _WIN32
-#define PATH_MAX MAX_PATH
-#else
+#ifndef _WIN32
 #include <dirent.h>
 #include <sys/types.h>
 #endif
