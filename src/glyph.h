@@ -90,8 +90,9 @@ struct font_atlas
     size_t width, height;
     std::map<atlas_key,atlas_entry> glyph_map;
     std::vector<uint8_t> pixels;
-    bin_packer bp;
     float uv1x1;
+    bin_packer bp;
+    bin_rect delta;
 
     static const int PADDING = 1;
     static const int DEFAULT_WIDTH = 2048;
@@ -103,6 +104,10 @@ struct font_atlas
     atlas_entry* lookup(int font_id, int font_size, int glyph);
     atlas_entry* create(int font_id, int font_size, int glyph,
         int ox, int oy, int w, int h);
+
+    /* tracking minimum required update rectangle */
+    bin_rect get_delta();
+    void expand_delta(bin_rect b);
 };
 
 /*

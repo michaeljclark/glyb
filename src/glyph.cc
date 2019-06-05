@@ -77,22 +77,14 @@ font_atlas::font_atlas() :
     font_atlas(font_atlas::DEFAULT_WIDTH, font_atlas::DEFAULT_HEIGHT) {}
 
 font_atlas::font_atlas(size_t width, size_t height) :
-    width(width), height(height), glyph_map(),
-    pixels(), bp(bin_point((int)width, (int)height)), uv1x1(1.0f / width)
+    width(width), height(height),
+    glyph_map(), pixels(), uv1x1(1.0f / width),
+    bp(bin_point((int)width, (int)height)),
+    delta(bin_point(width,height),bin_point(0,0))
 {
     pixels.resize(width * height);
     bp.find_region(0, bin_point(2,2)); /* reserve 0x0 - 1x1 with padding */
     *static_cast<uint32_t*>(static_cast<void*>(&pixels[0])) = 0xffffffff;
-}
-
-atlas_entry* font_atlas::lookup(int font_id, int font_size, int glyph)
-{
-    auto gi = glyph_map.find({font_id, font_size, glyph});
-    if (gi != glyph_map.end()) {
-        return &gi->second;
-    } else {
-        return nullptr;
-    }
 }
 
 atlas_entry* font_atlas::create(int font_id, int font_size, int glyph,
@@ -103,6 +95,7 @@ atlas_entry* font_atlas::create(int font_id, int font_size, int glyph,
     if (!r.first) {
         return nullptr; /* atlas full */
     }
+    expand_delta(r.second); /* track minimum update rectangle */
 
     /* create uv coordinates */
     float x1 = 0.5f + r.second.a.x,     y1 = 0.5f + r.second.a.y;
@@ -116,6 +109,43 @@ atlas_entry* font_atlas::create(int font_id, int font_size, int glyph,
             {bin_id, a.x, a.y, ox, oy, w, h, uv}));
 
     return &gi->second;
+}
+
+bin_rect font_atlas::get_delta()
+{
+    /*
+     * return the dela rectangle, and reset it to its smallest value.
+     *
+     * This interface is called to get the smalled possible update
+     * rectangle to use with APIs such as glTexSubImage2D.
+     */
+    bin_rect r = delta;
+    delta = bin_rect(bin_point(width,height),bin_point(0,0));
+    return r;
+}
+
+void font_atlas::expand_delta(bin_rect b)
+{
+    /*
+     * expand the delta rectangle.
+     *
+     * This interface is called after find_region with each newly
+     * allocated region, to keep track of the minimum update rectangle.
+     */
+    delta.a.x = (std::min)(delta.a.x,b.a.x);
+    delta.a.y = (std::min)(delta.a.y,b.a.y);
+    delta.b.x = (std::max)(delta.b.x,b.b.x);
+    delta.b.y = (std::max)(delta.b.y,b.b.y);
+}
+
+atlas_entry* font_atlas::lookup(int font_id, int font_size, int glyph)
+{
+    auto gi = glyph_map.find({font_id, font_size, glyph});
+    if (gi != glyph_map.end()) {
+        return &gi->second;
+    } else {
+        return nullptr;
+    }
 }
 
 
