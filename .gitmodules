@@ -1,0 +1,12 @@
+[submodule "third_party/harfbuzz"]
+	path = third_party/harfbuzz
+	url = https://github.com/harfbuzz/harfbuzz
+[submodule "third_party/freetype2"]
+	path = third_party/freetype2
+	url = https://github.com/aseprite/freetype2
+[submodule "third_party/glfw"]
+	path = third_party/glfw
+	url = https://github.com/glfw/glfw
+[submodule "third_party/glad"]
+	path = third_party/glad
+	url = https://github.com/Dav1dde/glad.git
