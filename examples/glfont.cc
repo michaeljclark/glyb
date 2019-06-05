@@ -41,7 +41,6 @@ static GLFWwindow* window;
 static const char *font_path = "fonts/RobotoMono-Regular.ttf";
 static const char *render_text = "the quick brown fox jumps over the lazy dog";
 static const char* text_lang = "en";
-static const int font_dpi = 72;
 static int font_size_min = 12;
 static int font_size_max = 32;
 static bool help_text = false;
