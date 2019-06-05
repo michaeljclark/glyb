@@ -68,7 +68,7 @@ inline char hexdigit(int d) { return (d < 10) ? '0' + d : 'A' + (d-10); }
 inline std::string color::to_string() const
 {
     char buf[10];
-    union { unsigned char c[4]; uint rgba; } tou32 = { .rgba = rgba32() };
+    union { unsigned rgba; unsigned char c[4]; } tou32 = { rgba32() };
     sprintf(buf, "#%c%c%c%c%c%c%c%c",
             hexdigit(tou32.c[0] / 16), hexdigit(tou32.c[0] % 16),
             hexdigit(tou32.c[1] / 16), hexdigit(tou32.c[1] % 16),
@@ -79,11 +79,12 @@ inline std::string color::to_string() const
 
 inline unsigned int color::rgba32() const
 {
-    union { unsigned char c[4]; uint rgba; } tou32;
-    tou32.c[0] = (unsigned char)(std::max)(0, (std::min)(255, (int)(r * 255.0f)));
-    tou32.c[1] = (unsigned char)(std::max)(0, (std::min)(255, (int)(g * 255.0f)));
-    tou32.c[2] = (unsigned char)(std::max)(0, (std::min)(255, (int)(b * 255.0f)));
-    tou32.c[3] = (unsigned char)(std::max)(0, (std::min)(255, (int)(a * 255.0f)));
+    union { unsigned char c[4]; unsigned rgba; } tou32 = {
+        (unsigned char)(std::max)(0, (std::min)(255, (int)(r * 255.0f))),
+        (unsigned char)(std::max)(0, (std::min)(255, (int)(g * 255.0f))),
+        (unsigned char)(std::max)(0, (std::min)(255, (int)(b * 255.0f))),
+        (unsigned char)(std::max)(0, (std::min)(255, (int)(a * 255.0f)))
+    };
     return tou32.rgba;
 }
 

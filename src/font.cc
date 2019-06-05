@@ -5,12 +5,15 @@
 #include <cstdlib>
 #include <climits>
 #include <cstring>
+#include <cctype>
 #include <cmath>
 
+#include <string>
 #include <vector>
 #include <memory>
 #include <map>
 #include <tuple>
+#include <algorithm>
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -22,6 +25,10 @@
 #include "font.h"
 #include "glyph.h"
 #include "util.h"
+
+#ifdef _WIN32
+#define strncasecmp _strnicmp
+#endif
 
 const std::string font_family_any = "*";
 const std::string font_style_any = "*";
@@ -458,13 +465,13 @@ void font_manager_ft::scanFontPath(std::string path)
     }
 
     size_t font_id = faces.size();
-    faces.emplace_back(font_face_ft(faces.size(), ftface, path));
+    faces.emplace_back(font_face_ft((int)faces.size(), ftface, path));
     indexFace(&faces[font_id]);
 }
 
 size_t font_manager_ft::fontCount() { return faces.size(); }
 
-font_face* font_manager_ft::findFontById(int font_id)
+font_face* font_manager_ft::findFontById(size_t font_id)
 {
     return &faces[font_id];
 }

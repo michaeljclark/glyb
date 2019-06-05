@@ -3,12 +3,15 @@
 #include <cstdlib>
 #include <climits>
 #include <cstring>
+#include <cctype>
 #include <cmath>
 
+#include <string>
 #include <vector>
 #include <memory>
 #include <map>
 #include <tuple>
+#include <algorithm>
 
 #include "utf8.h"
 #include "color.h"
@@ -338,18 +341,18 @@ inline int lookupEnumInteger(tag_map_t &map, std::string key,
     auto i = map.find(key);
     if (i == map.end()) return val;
     for (size_t j = 0; j < count; j++) {
-        if (compare(i->second, names[j])) return j;
+        if (compare(i->second, names[j])) return (int)j;
     }
     return val;
 }
 
 inline int lookupEnumFloat(tag_map_t &map, std::string key, 
-    const char* names[], const float values[], size_t count, float val = 0)
+    const char* names[], const float values[], size_t count, int val = 0)
 {
     auto i = map.find(key);
     if (i == map.end()) return val;
     for (size_t j = 0; j < count; j++) {
-        if (compare(i->second, names[j])) return j;
+        if (compare(i->second, names[j])) return (int)j;
     }
     return val;
 }

@@ -13,6 +13,7 @@
 
 #include <vector>
 #include <map>
+#include <string>
 
 #define GL_GLEXT_PROTOTYPES
 #include <GL/gl.h>
@@ -25,6 +26,7 @@
 #include "linmath.h"
 #include "glcommon.h"
 #include "binpack.h"
+#include "util.h"
 
 
 /* OpenGL objects and buffers */

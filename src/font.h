@@ -235,7 +235,7 @@ struct font_manager
     virtual void scanFontDir(std::string dir) = 0;
     virtual void scanFontPath(std::string path) = 0;
     virtual size_t fontCount() = 0;
-    virtual font_face* findFontById(int font_id) = 0;
+    virtual font_face* findFontById(size_t font_id) = 0;
     virtual font_face* findFontByPath(std::string path);
     virtual font_face* findFontByName(std::string font_name);
     virtual font_face* findFontByFamily(std::string familyName,
@@ -273,7 +273,7 @@ struct font_manager_ft : font_manager
     virtual void scanFontDir(std::string dir);
     virtual void scanFontPath(std::string path);
     virtual size_t fontCount();
-    virtual font_face* findFontById(int font_id);
+    virtual font_face* findFontById(size_t font_id);
     virtual font_face* findFontByPath(std::string path);
 
     const std::vector<font_face_ft>& getFontList() { return faces; }

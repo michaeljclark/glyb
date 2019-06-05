@@ -3,12 +3,15 @@
 #include <cstdlib>
 #include <climits>
 #include <cstring>
+#include <cctype>
 #include <cmath>
 
+#include <string>
 #include <memory>
 #include <vector>
 #include <map>
 #include <tuple>
+#include <algorithm>
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -75,7 +78,7 @@ font_atlas::font_atlas() :
 
 font_atlas::font_atlas(size_t width, size_t height) :
     width(width), height(height), glyph_map(),
-    pixels(), bp(bin_point(width, height)), uv1x1(1.0f / width)
+    pixels(), bp(bin_point((int)width, (int)height)), uv1x1(1.0f / width)
 {
     pixels.resize(width * height);
     bp.find_region(0, bin_point(2,2)); /* reserve 0x0 - 1x1 with padding */
@@ -95,7 +98,7 @@ atlas_entry* font_atlas::lookup(int font_id, int font_size, int glyph)
 atlas_entry* font_atlas::create(int font_id, int font_size, int glyph,
     int ox, int oy, int w, int h)
 {
-    int bin_id = glyph_map.size();
+    int bin_id = (int)glyph_map.size();
     auto r = bp.find_region(bin_id, bin_point(w + PADDING , h + PADDING));
     if (!r.first) {
         return nullptr; /* atlas full */
@@ -142,13 +145,13 @@ void text_shaper::shape(std::vector<glyph_shape> &shapes, text_segment *segment)
     /* create text buffers */
     hbfont  = hb_ft_font_create(ftface, NULL);
     hblang = hb_language_from_string(segment->language.c_str(),
-        segment->language.size());
+        (int)segment->language.size());
 
     hb_buffer_t *buf = hb_buffer_create();
     hb_buffer_set_direction(buf, HB_DIRECTION_LTR);
     hb_buffer_set_script(buf, HB_SCRIPT_LATIN);
     hb_buffer_set_language(buf, hblang);
-    hb_buffer_add_utf8(buf, text, text_len, 0, text_len);
+    hb_buffer_add_utf8(buf, text, (int)text_len, 0, (int)text_len);
 
     /* shape text */
     hb_shape(hbfont, buf, NULL, 0);
@@ -277,16 +280,16 @@ void text_renderer::render(std::vector<text_vertex> &vertices,
             ae->oy += shape.y_offset/64;
         }
         /* create polygons in vertex array */
-        int x1 = segment->x + ae->ox + roundf(dx);
+        int x1 = segment->x + ae->ox + (int)roundf(dx);
         int x2 = x1 + ae->w;
-        int y1 = segment->y - ae->oy + roundf(dy) - ae->h - baseline_shift;
+        int y1 = segment->y - ae->oy + (int)roundf(dy) - ae->h - baseline_shift;
         int y2 = y1 + ae->h;
         if (ae->w > 0 && ae->h > 0) {
             float x1p = 0.5f + x1, x2p = 0.5f + x2;
             float y1p = 0.5f + y1, y2p = 0.5f + y2;
             float u1 = ae->uv[0], v1 = ae->uv[1];
             float u2 = ae->uv[2], v2 = ae->uv[3];
-            uint32_t o = vertices.size();
+            uint32_t o = (int)vertices.size();
             vertices.push_back({{x1p, y1p, 0.f}, {u1, v1}, segment->color});
             vertices.push_back({{x2p, y1p, 0.f}, {u2, v1}, segment->color});
             vertices.push_back({{x2p, y2p, 0.f}, {u2, v2}, segment->color});

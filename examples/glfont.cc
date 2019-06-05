@@ -13,7 +13,7 @@
 
 #include <vector>
 #include <map>
-#include <memory>
+#include <string>
 
 #define GL_GLEXT_PROTOTYPES
 #include <GL/gl.h>

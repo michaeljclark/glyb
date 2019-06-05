@@ -4,6 +4,7 @@
 #include <cassert>
 
 #include <string>
+#include <algorithm>
 
 #include "color.h"
 
