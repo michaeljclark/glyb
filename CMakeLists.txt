@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(binpack)
+project(glyphic)
 
 if(UNIX AND NOT APPLE)
   set(LINUX true)
@@ -8,14 +8,8 @@ endif()
 
 if(LINUX)
   find_package(PkgConfig)
-  pkg_check_modules(GLFW3 REQUIRED glfw3)
-  pkg_check_modules(HARFBUZZ REQUIRED harfbuzz)
-  pkg_check_modules(FREETYPE2 REQUIRED freetype2)
-  add_definitions(${GLFW3_CFLAGS})
-  add_definitions(${HARFBUZZ_CFLAGS})
-  add_definitions(${FREETYPE2_CFLAGS})
   find_library(OPENGL_LIBRARY GL)
-  list(APPEND LIBS ${HARFBUZZ_LDFLAGS} ${FREETYPE2_LDFLAGS} ${GLFW3_LDFLAGS} ${OPENGL_LIBRARY})
+  list(APPEND LIBS ${OPENGL_LIBRARY})
 endif()
 
 if(APPLE)
@@ -57,11 +51,19 @@ if(USE_BUNDLED_LIBS)
   add_subdirectory(third_party/harfbuzz)
   include_directories(third_party/harfbuzz/src)
   list(INSERT LIBS 0 harfbuzz freetype glfw)
+else()
+  pkg_check_modules(GLFW3 REQUIRED glfw3)
+  pkg_check_modules(HARFBUZZ REQUIRED harfbuzz)
+  pkg_check_modules(FREETYPE2 REQUIRED freetype2)
+  add_definitions(${GLFW3_CFLAGS})
+  add_definitions(${HARFBUZZ_CFLAGS})
+  add_definitions(${FREETYPE2_CFLAGS})
+  list(INSERT LIBS 0 ${HARFBUZZ_LDFLAGS} ${FREETYPE2_LDFLAGS} ${GLFW3_LDFLAGS})
 endif()
 
 include_directories(src)
 
-set(BINPACK_SOURCES
+set(GLYPHIC_SOURCES
   src/binpack.cc
   src/binpack.h
   src/font.cc
@@ -75,23 +77,23 @@ set(BINPACK_SOURCES
   src/util.cc
   src/util.h
 )
-add_library(binpack STATIC ${BINPACK_SOURCES})
+add_library(glyphic STATIC ${GLYPHIC_SOURCES})
 
 add_executable(glbinpack examples/glbinpack.cc)
-target_link_libraries(glbinpack binpack ${LIBS} glad ${CMAKE_DL_LIBS})
+target_link_libraries(glbinpack glyphic ${LIBS} glad ${CMAKE_DL_LIBS})
 
 add_executable(glfont examples/glfont.cc)
-target_link_libraries(glfont binpack ${LIBS} glad ${CMAKE_DL_LIBS})
+target_link_libraries(glfont glyphic ${LIBS} glad ${CMAKE_DL_LIBS})
 
 add_executable(gllayout examples/gllayout.cc)
-target_link_libraries(gllayout binpack ${LIBS} glad ${CMAKE_DL_LIBS})
+target_link_libraries(gllayout glyphic ${LIBS} glad ${CMAKE_DL_LIBS})
 
 add_executable(glsimple examples/glsimple.cc)
-target_link_libraries(glsimple binpack ${LIBS} glad ${CMAKE_DL_LIBS})
+target_link_libraries(glsimple glyphic ${LIBS} glad ${CMAKE_DL_LIBS})
 
 file(GLOB BINPACK_TESTS tests/*.cc)
 foreach(src ${BINPACK_TESTS})
   get_filename_component(name ${src} NAME_WE)
   add_executable(${name} ${src})
-  target_link_libraries(${name} binpack ${LIBS})
+  target_link_libraries(${name} glyphic ${LIBS})
 endforeach(src)
