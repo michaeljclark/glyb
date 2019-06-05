@@ -7,7 +7,6 @@ and index arrays which can be used with OpenGL, Vulkan and DirectX.
 
 glyphic includes a font-atlas based text renderer using HarfBuzz
 and FreeType. Render time is less than 1 microsecond per glyph.
-
 glyphic contains a 2D bin packer implementing the **MAXRECTS-BSSF**
 algorithm as outlined in "A Thousand Ways to Pack the Bin - A Practical
 Approach to Two-Dimensional Rectangle Bin Packing, Jukka Jylänki.
@@ -33,6 +32,34 @@ The project also contains several OpenGL examples using the library.
   - `harfbuzz` - _text shaping engine_
   - `glad` - _OpenGL extension loader used by examples_
   - `glfw` - _OpenGL window library used by examples_
+
+## Building
+
+glyphic requires cmake to build. The remaining dependencies for
+the library and examples are included as submodules.
+
+_**Windows:**_
+
+To create Visual Studio 2017 project, open _Visual Studio 2017 x64
+Native Tools command prompt_, and run:
+
+```
+git clone --recursive https://github.com/michaeljclark/glyphic.git
+cd glyphic
+mkdir build
+cd build
+cmake -G "Visual Studio 15 2017 Win64" ..
+```
+
+_**Linux:**_
+
+The Linux cmake build is set up by default to locate FreeType,
+HarfBuzz and GLFW3 system packages. To install these dependencies
+for Ubuntu 18.04, run:
+
+```
+sudo apt-get install libfreetype6-dev libharfbuzz-dev libglfw3-dev
+```
 
 ## Example Code
 
