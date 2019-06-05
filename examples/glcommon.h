@@ -36,7 +36,7 @@ static GLuint compile_shader(GLenum type, const char *filename)
     GLuint shader;
 
     buf = load_file(filename);
-    length = buf.size();
+    length = (GLint)buf.size();
     if (!buf.size()) {
         printf("failed to load shader: %s\n", filename);
         exit(1);
@@ -49,7 +49,7 @@ static GLuint compile_shader(GLenum type, const char *filename)
     glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);
     if (length > 0) {
         buf.resize(length + 1);
-        glGetShaderInfoLog(shader, buf.size() - 1, &length, buf.data());
+        glGetShaderInfoLog(shader, (GLsizei)buf.size() - 1, &length, buf.data());
         printf("shader compile log: %s\n", buf.data());
     }
     

@@ -77,10 +77,10 @@ static void display()
 
     glUseProgram(program);
     glBindVertexArray(rect_vao);
-    glDrawElements(GL_TRIANGLES, rect_ind.size(), GL_UNSIGNED_INT, (void*)0);
+    glDrawElements(GL_TRIANGLES, (GLsizei)rect_ind.size(), GL_UNSIGNED_INT, (void*)0);
 
     glBindVertexArray(line_vao);
-    glDrawElements(GL_LINES, line_ind.size(), GL_UNSIGNED_INT, (void*)0);
+    glDrawElements(GL_LINES, (GLsizei)line_ind.size(), GL_UNSIGNED_INT, (void*)0);
     glfwSwapBuffers(window);
 }
 
@@ -148,7 +148,7 @@ static void update_geometry()
         rect(op_fill, rect_vtx, rect_ind, x1, y1, x2, y2, 0.0f,
             color(64.0f, 32.0f, 8, 16,
                 (float)i.first / (float)(bp.alloc_map.size())));
-        rect(op_stroke, line_vtx, line_ind, x1, y1, x2, y2, 0.000001,
+        rect(op_stroke, line_vtx, line_ind, x1, y1, x2, y2, 0.000001f,
             color(128.0f, 32.0f, 8, 16,
                 (float)i.first / (float)(bp.alloc_map.size())));
     }
@@ -160,7 +160,7 @@ static void update_geometry()
         rect(op_fill, rect_vtx, rect_ind, x1, y1, x2, y2, 0.0f,
             color(64.0f, 32.0f, 0, 8,
                 (float)i / (float)(bp.free_list.size())));
-        rect(op_stroke, line_vtx, line_ind, x1, y1, x2, y2, 0.000001,
+        rect(op_stroke, line_vtx, line_ind, x1, y1, x2, y2, 0.000001f,
             color(128.0f, 32.0f, 0, 8,
                 (float)i / (float)(bp.free_list.size())));
     }    
@@ -212,7 +212,7 @@ enum step_type {
 
 static void step(step_type st)
 {
-    srand(seed);
+    srand((unsigned)seed);
     bp.reset();
 
     size_t i = 0;

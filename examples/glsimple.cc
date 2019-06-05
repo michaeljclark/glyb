@@ -57,7 +57,7 @@ static void display()
 
     glUseProgram(program);
     glBindVertexArray(vao);
-    glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, (void*)0);
+    glDrawElements(GL_TRIANGLES, (GLsizei)indices.size(), GL_UNSIGNED_INT, (void*)0);
 
     glfwSwapBuffers(window);
 }
@@ -118,8 +118,8 @@ static void update_buffers()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, atlas.width, atlas.height, 0,
-        GL_RED, GL_UNSIGNED_BYTE, (GLvoid*)&atlas.pixels[0]);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, (GLsizei)atlas.width, (GLsizei)atlas.height,
+		0, GL_RED, GL_UNSIGNED_BYTE, (GLvoid*)&atlas.pixels[0]);
     glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
     glActiveTexture(GL_TEXTURE0);
 }

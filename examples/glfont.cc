@@ -62,7 +62,7 @@ static void display()
 
     glUseProgram(program);
     glBindVertexArray(vao);
-    glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, (void*)0);
+    glDrawElements(GL_TRIANGLES, (GLsizei)indices.size(), GL_UNSIGNED_INT, (void*)0);
 
     glfwSwapBuffers(window);
 }
@@ -123,12 +123,14 @@ static void update_geometry()
             for (auto &s : shapes) {
                 width += s.x_advance/64;
             }
-            rect(vertices, indices,
-                x, y-1, x + width, y+1, 0, light_gray);
-            rect(vertices, indices,
-                x, y-height/2-1, x + width, y-height/2+1, 0, light_gray);
-            rect(vertices, indices,
-                x, y-height-1, x + width, y-height+1, 0, light_gray);
+            float x1 = (float)x, x2 = (float)x + (float)width;
+            float y1 = (float)y - 1.0f, y2 = (float)y1 + 2.0f;
+            float y3 = (float)y - (float)height / 2.0f - 1.0f, y4 = y3 + 2.0f;
+            float y5 = (float)y - (float)height - 1.0f, y6 = y5 + 2.0f;
+            float fwidth = (float)width, fheight = (float)height;
+            rect(vertices, indices, x1, y1, x2, y2, 0, light_gray);
+            rect(vertices, indices, x1, y3, x2, y4, 0, light_gray);
+            rect(vertices, indices, x1, y5, x2, y6, 0, light_gray);
         }
         renderer.render(vertices, indices, shapes, &render_segment);
     }
@@ -140,7 +142,7 @@ static void update_geometry()
         float u2 = 1.0f, v2 = 0.0f;
         float x1 = 100, y1 = 100;
         float x2 = 1124, y2 = 1124;
-        uint32_t o = vertices.size();
+        uint32_t o = (uint32_t)vertices.size();
         uint32_t color = 0xff000000;
         vertices.push_back({{x1, y1, 0.f}, {u1, v1}, color});
         vertices.push_back({{x2, y1, 0.f}, {u2, v1}, color});
@@ -178,8 +180,8 @@ static void update_buffers()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, atlas.width, atlas.height, 0,
-        GL_RED, GL_UNSIGNED_BYTE, (GLvoid*)&atlas.pixels[0]);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, (GLsizei)atlas.width, (GLsizei)atlas.height,
+        0, GL_RED, GL_UNSIGNED_BYTE, (GLvoid*)&atlas.pixels[0]);
     glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
     glActiveTexture(GL_TEXTURE0);
 }
