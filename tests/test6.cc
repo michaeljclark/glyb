@@ -13,9 +13,6 @@
 #include <tuple>
 #include <chrono>
 
-#include <sys/types.h>
-#include <dirent.h>
-
 #include "binpack.h"
 #include "font.h"
 #include "glyph.h"
