@@ -442,6 +442,7 @@ static void binpack_offline(int argc, char **argv)
 
     window = glfwCreateWindow(width, height, argv[0], NULL, NULL);
     glfwMakeContextCurrent(window);
+    gladLoadGL();
 
     fbo_initialize();
     initialize(true);
