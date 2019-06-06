@@ -7,7 +7,7 @@ test -d ${video}/gif || mkdir -p ${video}/gif
 
 rm -f ${video}/ppm/* ${video}/gif/binpack.gif
 
-./build/bin/glbinpack --offline \
+./build/glbinpack --offline \
 	--frame-size 1024x576 --frame-step 5 --frame-count 10000 \
 	--template "${video}/ppm/binpack-%09d.ppm"
 
