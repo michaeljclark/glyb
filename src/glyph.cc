@@ -157,7 +157,7 @@ void text_shaper::shape(std::vector<glyph_shape> &shapes, text_segment *segment)
 {
     font_face_ft *face = static_cast<font_face_ft*>(segment->face);
     FT_Face ftface = face->ftface;
-    int font_size = segment->font_size;;
+    int font_size = segment->font_size;
 
     hb_font_t *hbfont;
     hb_language_t hblang;
