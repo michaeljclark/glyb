@@ -79,7 +79,7 @@ static void update_geometry()
     const uint32_t color = 0xff000000;
 
     std::vector<glyph_shape> shapes;
-    text_shaper shaper;
+    text_shaper_hb shaper;
     text_renderer renderer(&manager, &atlas);
     text_segment segment(render_text, text_lang, face,
         font_size * 64, x, y, color);

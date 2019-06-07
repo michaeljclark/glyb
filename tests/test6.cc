@@ -84,7 +84,7 @@ void t2()
     std::vector<text_vertex> vertices;
     std::vector<uint32_t> indices;
 
-    text_shaper shaper;
+    text_shaper_hb shaper;
     text_renderer renderer(&manager, &atlas);
     text_segment segment(test_str_1, text_lang, face,
         48 * 64, 0, 0, 0xffffffff);

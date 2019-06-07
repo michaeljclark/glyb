@@ -72,7 +72,7 @@ static void update_geometry()
     std::vector<text_segment> segments;
     std::vector<glyph_shape> shapes;
 
-    text_shaper shaper;
+    text_shaper_hb shaper;
     text_renderer renderer(&manager, &atlas);
     text_layout layout(&manager, &atlas, &shaper, &renderer);
     text_container c;

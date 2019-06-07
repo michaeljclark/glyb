@@ -150,14 +150,55 @@ atlas_entry* font_atlas::lookup(int font_id, int font_size, int glyph)
 
 
 /*
- * text shaper
+ * text shaper (FreeType)
  */
 
-void text_shaper::shape(std::vector<glyph_shape> &shapes, text_segment *segment)
+void text_shaper_ft::shape(std::vector<glyph_shape> &shapes, text_segment *segment)
 {
     font_face_ft *face = static_cast<font_face_ft*>(segment->face);
     FT_Face ftface = face->ftface;
-    int font_size = segment->font_size;
+    FT_GlyphSlot ftglyph = ftface->glyph;
+    FT_Error fterr;
+
+    /* we need to set up our font metrics */
+    face->get_metrics(segment->font_size);
+
+    /* shape text with FreeType (does not apply glyph-glyph kerning) */
+    const char* text = segment->text.c_str();
+    size_t text_len = segment->text.size();
+    for (size_t i = 0; i < text_len; i += utf8_codelen(text + i)) {
+
+        uint32_t codepoint = utf8_to_utf32(text + i);
+        uint32_t glyph = FT_Get_Char_Index(ftface, codepoint);
+
+        if ((fterr = FT_Load_Glyph(ftface, glyph, 0))) {
+            fprintf(stderr, "error: FT_Load_Glyph failed: glyph=%d fterr=%d\n",
+                glyph, fterr);
+            return;
+        }
+        if (ftface->glyph->format != FT_GLYPH_FORMAT_OUTLINE) {
+            fprintf(stderr, "error: FT_Load_Glyph format is not outline\n");
+            return;
+        }
+
+        shapes.push_back({
+            glyph, (unsigned)i,
+            (int)ftglyph->metrics.horiBearingX,
+            0,
+            (int)ftglyph->advance.x,
+            (int)ftglyph->advance.y
+        });
+    }
+}
+
+/*
+ * text shaper (HarfBuff)
+ */
+
+void text_shaper_hb::shape(std::vector<glyph_shape> &shapes, text_segment *segment)
+{
+    font_face_ft *face = static_cast<font_face_ft*>(segment->face);
+    FT_Face ftface = face->ftface;
 
     hb_font_t *hbfont;
     hb_language_t hblang;
@@ -166,7 +207,7 @@ void text_shaper::shape(std::vector<glyph_shape> &shapes, text_segment *segment)
     unsigned glyph_count;
 
     /* we need to set up our font metrics */
-    face->get_metrics(font_size);
+    face->get_metrics(segment->font_size);
 
     /* get text to render */
     const char* text = segment->text.c_str();
@@ -183,7 +224,7 @@ void text_shaper::shape(std::vector<glyph_shape> &shapes, text_segment *segment)
     hb_buffer_set_language(buf, hblang);
     hb_buffer_add_utf8(buf, text, (int)text_len, 0, (int)text_len);
 
-    /* shape text */
+    /* shape text with HarfBuzz */
     hb_shape(hbfont, buf, NULL, 0);
     glyph_info = hb_buffer_get_glyph_infos(buf, &glyph_count);
     glyph_pos = hb_buffer_get_glyph_positions(buf, &glyph_count);

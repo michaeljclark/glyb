@@ -158,6 +158,39 @@ struct glyph_shape
 };
 
 /*
+ * Text Shapers
+ *
+ * The shaper takes the font face, font size and text fromt a Text Segment
+ * and calculates the position of each character. The Text Shaper output is
+ * fed into the Text Renderer. This decomposition allows measurement of a
+ * text segment before rendering it. Thhere are multiple implementations:
+ *
+ * - text_shaper_ft - FreeType based text shaper with round to integer kerning.
+ *                    (suitable for monospaced fonts)
+ * - text_shaper_hb - HarfBuzz based text shaper with round to integer kerning.
+ *                    (sutable for any fonts)
+ *
+ * Note: the Freetype Shaper is not measurably faster than the HarfBuzz shaper,
+ * although it could be made faster with google dense hashmap. The main benefit
+ * is that it elminates a dependency.
+ */
+
+struct text_shaper
+{
+    virtual void shape(std::vector<glyph_shape> &shapes, text_segment *segment) = 0;
+};
+
+struct text_shaper_ft : text_shaper
+{
+    virtual void shape(std::vector<glyph_shape> &shapes, text_segment *segment);
+};
+
+struct text_shaper_hb : text_shaper
+{
+    virtual void shape(std::vector<glyph_shape> &shapes, text_segment *segment);
+};
+
+/*
  * Text Vertex
  *
  * Structure to hold the vertex output of the text renderer.
@@ -185,20 +218,6 @@ struct glyph_renderer
         manager(manager), atlas(atlas) {}
 
     atlas_entry* render(font_face_ft *face, int font_size, int glyph);
-};
-
-/*
- * Text Shaper
- *
- * Implementation of a simple HarfBuzz based text shaper. The shaper takes
- * the font face, font size and text fromt a Text Segment and calculates
- * the position of each character. The Text Shaper output is fed into the
- * Text Renderer. This decomposition allows measurement of a text segment
- * before rendering.
- */
-struct text_shaper
-{
-    void shape(std::vector<glyph_shape> &shapes, text_segment *segment);
 };
 
 /*

@@ -418,7 +418,6 @@ void text_layout::style(text_segment *segment, text_part *part)
 void text_layout::layout(std::vector<text_segment> &segments,
     text_container *container, int x, int y, int width, int height)
 {
-    text_shaper shaper;
     std::vector<glyph_shape> shapes;
 
     /* layout the text in the container into styled text segments */
@@ -447,7 +446,7 @@ void text_layout::layout(std::vector<text_segment> &segments,
 
             /* find fitting segment width */
             shapes.clear();
-            shaper.shape(shapes, &segment);
+            shaper->shape(shapes, &segment);
             for (auto &s : shapes) {
                 segment_width += s.x_advance/64.0f + segment.tracking;
                 if (segment.text[s.cluster] == ' ') {
