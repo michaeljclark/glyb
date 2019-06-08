@@ -35,6 +35,10 @@ endif()
 
 add_subdirectory(third_party/glad)
 
+add_subdirectory(third_party/msdfgen)
+include_directories(third_party/msdfgen)
+list(APPEND LIBS lib_msdfgen)
+
 if(USE_BUNDLED_LIBS)
   add_subdirectory(third_party/glfw)
   include_directories(third_party/glfw/include)
