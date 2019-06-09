@@ -74,15 +74,16 @@ void span_vector::fn(int y, int count, const FT_Span* spans, void *user)
  */
 
 font_atlas::font_atlas() :
-    font_atlas(font_atlas::DEFAULT_WIDTH, font_atlas::DEFAULT_HEIGHT) {}
+    font_atlas(font_atlas::DEFAULT_WIDTH, font_atlas::DEFAULT_HEIGHT,
+    font_atlas::DEFAULT_DEPTH) {}
 
-font_atlas::font_atlas(size_t width, size_t height) :
-    width(width), height(height),
+font_atlas::font_atlas(size_t width, size_t height, size_t depth) :
+    width(width), height(height), depth(depth),
     glyph_map(), pixels(), uv1x1(1.0f / width),
     bp(bin_point((int)width, (int)height)),
     delta(bin_point(width,height),bin_point(0,0))
 {
-    pixels.resize(width * height);
+    pixels.resize(width * height * depth);
     bp.find_region(0, bin_point(2,2)); /* reserve 0x0 - 1x1 with padding */
     *static_cast<uint32_t*>(static_cast<void*>(&pixels[0])) = 0xffffffff;
 }

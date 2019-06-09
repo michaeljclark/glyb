@@ -87,7 +87,7 @@ inline atlas_entry::atlas_entry(int bin_id, int x, int y,
  */
 struct font_atlas
 {
-    size_t width, height;
+    size_t width, height, depth;
     std::map<atlas_key,atlas_entry> glyph_map;
     std::vector<uint8_t> pixels;
     float uv1x1;
@@ -97,9 +97,10 @@ struct font_atlas
     static const int PADDING = 1;
     static const int DEFAULT_WIDTH = 2048;
     static const int DEFAULT_HEIGHT = 2048;
+    static const int DEFAULT_DEPTH = 1;
 
     font_atlas();
-    font_atlas(size_t width, size_t height);
+    font_atlas(size_t width, size_t height, size_t depth);
 
     atlas_entry* lookup(int font_id, int font_size, int glyph);
     atlas_entry* create(int font_id, int font_size, int glyph,
