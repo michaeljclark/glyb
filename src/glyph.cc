@@ -26,6 +26,7 @@
 #include "utf8.h"
 #include "font.h"
 #include "glyph.h"
+#include "image.h"
 
 
 /*
@@ -79,12 +80,21 @@ font_atlas::font_atlas() :
 
 font_atlas::font_atlas(size_t width, size_t height, size_t depth) :
     width(width), height(height), depth(depth),
-    glyph_map(), pixels(), uv1x1(1.0f / width),
+    glyph_map(), pixels(), uv1x1(1.0f / (float)width),
     bp(bin_point((int)width, (int)height)),
     delta(bin_point(width,height),bin_point(0,0))
 {
+    init();
+}
+
+void font_atlas::init()
+{
+    /* reserve 0x0 - 1x1 with padding */
+    bp.find_region(0, bin_point(2,2));
+
+    /* clear bitmap */
+    pixels.clear();
     pixels.resize(width * height * depth);
-    bp.find_region(0, bin_point(2,2)); /* reserve 0x0 - 1x1 with padding */
     switch (depth) {
         case 1:
             pixels[0] = 0xff;
@@ -98,6 +108,19 @@ font_atlas::font_atlas(size_t width, size_t height, size_t depth) :
             *static_cast<uint32_t*>(static_cast<void*>(&pixels[0])) = 0xffffffff;
             break;
     }
+}
+
+void font_atlas::reset(size_t width, size_t height, size_t depth)
+{
+    this->width = width;
+    this->height = height;
+    this->depth = depth;
+
+    uv1x1 = 1.0f / (float)width;
+    bp.set_bin_size(bin_point(width, height));
+    delta = bin_rect(bin_point(width,height),bin_point(0,0));
+
+    init();
 }
 
 atlas_entry* font_atlas::create(int font_id, int font_size, int glyph,
@@ -158,6 +181,80 @@ atlas_entry* font_atlas::lookup(int font_id, int font_size, int glyph)
         return &gi->second;
     } else {
         return nullptr;
+    }
+}
+
+#define FLOAT32 "%.9g"
+
+void font_atlas::save_map(FILE *out)
+{
+    std::vector<atlas_key> v;
+    for(auto i = glyph_map.begin(); i != glyph_map.end(); i++) {
+        v.push_back(i->first);
+    }
+    sort(v.begin(), v.end(), [&](const atlas_key &a, const atlas_key &b)
+        -> bool { return glyph_map[a].bin_id < glyph_map[b].bin_id; });
+    for (auto &k : v) {
+        auto i = glyph_map.find(k);
+        const atlas_key &key = i->first;
+        const atlas_entry &ent = i->second;
+        fprintf(out, "%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+            ent.bin_id, key.font_id(), key.glyph(),
+            ent.x, ent.y, ent.ox, ent.oy, ent.w, ent.h);
+    }
+}
+
+void font_atlas::load_map(FILE *in)
+{
+    const int num_fields = 9;
+    int ret;
+    do {
+        int bin_id, font_id, font_size, glyph;
+        atlas_entry ent;
+        ret = fscanf(in, "%d,%d,%d,%hd,%hd,%hd,%hd,%hd,%hd\n",
+            &bin_id, &font_id, &glyph,
+            &ent.x, &ent.y, &ent.ox, &ent.oy, &ent.w, &ent.h);
+        if (ret == num_fields) {
+            create(font_id, /*size*/0, glyph, ent.ox, ent.oy, ent.w, ent.h);
+        }
+    } while (ret == num_fields);
+}
+
+void font_atlas::save(std::string basename)
+{
+    std::string img_filename = basename + ".atlas.png";
+    std::string csv_filename = basename + ".atlas.csv";
+    FILE *fcsv = fopen(csv_filename.c_str(), "w");
+    if (fcsv == nullptr) {
+        fprintf(stderr, "error: fopen: %s: %s\n",
+            csv_filename.c_str(), strerror(errno));
+        exit(1);
+    }
+    save_map(fcsv);
+    fclose(fcsv);
+    image_ptr img = image::createBitmap(width, height,
+        depth == 4 ? pixel_format_rgba : pixel_format_alpha, &pixels[0]);
+    image::saveToFile(img_filename, img);
+}
+
+void font_atlas::load(std::string basename)
+{
+    std::string img_filename = basename + ".atlas.png";
+    std::string csv_filename = basename + ".atlas.csv";
+    FILE *fcsv = fopen(csv_filename.c_str(), "r");
+    if (fcsv == nullptr) {
+        fprintf(stderr, "error: fopen: %s: %s\n",
+            csv_filename.c_str(), strerror(errno));
+        exit(1);
+    }
+    load_map(fcsv);
+    fclose(fcsv);
+    image_ptr img = image::createFromFile(img_filename);
+    reset(img->getWidth(), img->getHeight(), img->getBytesPerPixel());
+    for (size_t y = 0; y < width; y++) {
+        uint8_t *src = img->getData() + y * width * depth;
+        uint8_t *dest = pixels.data() + y * width * depth;
+        memcpy(dest, src, width * depth);
     }
 }
 

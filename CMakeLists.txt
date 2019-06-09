@@ -94,6 +94,9 @@ set(GLYPHIC_SOURCES
 )
 add_library(glyphic STATIC ${GLYPHIC_SOURCES})
 
+add_executable(genatlas examples/genatlas.cc)
+target_link_libraries(genatlas glyphic ${LIBS} ${CMAKE_DL_LIBS})
+
 add_executable(glbinpack examples/glbinpack.cc)
 target_link_libraries(glbinpack glyphic ${LIBS} glad ${CMAKE_DL_LIBS})
 

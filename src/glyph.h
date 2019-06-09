@@ -53,10 +53,18 @@ struct atlas_key
     atlas_key(int64_t font_id, int64_t font_size, int64_t glyph);
 
     bool operator<(const atlas_key &o) const { return opaque < o.opaque; }
+
+    int font_id() const;
+    int font_size() const;
+    int glyph() const;
 };
 
 inline atlas_key::atlas_key(int64_t font_id, int64_t font_size, int64_t glyph) :
     opaque(glyph | (font_size << 20) | (font_id << 40)) {}
+
+inline int atlas_key::font_id() const { return (opaque >> 40) & ((1 << 20)-1); }
+inline int atlas_key::font_size() const { return (opaque >> 20) & ((1 << 20)-1); }
+inline int atlas_key::glyph() const { return opaque & ((1 << 20)-1); }
 
 /*
  * Font Atlas Entry
@@ -102,6 +110,9 @@ struct font_atlas
     font_atlas();
     font_atlas(size_t width, size_t height, size_t depth);
 
+    void init();
+    void reset(size_t width, size_t height, size_t depth);
+
     atlas_entry* lookup(int font_id, int font_size, int glyph);
     atlas_entry* create(int font_id, int font_size, int glyph,
         int ox, int oy, int w, int h);
@@ -109,6 +120,12 @@ struct font_atlas
     /* tracking minimum required update rectangle */
     bin_rect get_delta();
     void expand_delta(bin_rect b);
+
+    /* persistance */
+    void save_map(FILE *out);
+    void load_map(FILE *in);
+    void save(std::string basename);
+    void load(std::string basename);
 };
 
 /*
