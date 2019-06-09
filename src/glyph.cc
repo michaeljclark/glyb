@@ -85,7 +85,19 @@ font_atlas::font_atlas(size_t width, size_t height, size_t depth) :
 {
     pixels.resize(width * height * depth);
     bp.find_region(0, bin_point(2,2)); /* reserve 0x0 - 1x1 with padding */
-    *static_cast<uint32_t*>(static_cast<void*>(&pixels[0])) = 0xffffffff;
+    switch (depth) {
+        case 1:
+            pixels[0] = 0xff;
+            break;
+        case 4:
+            for (int x = 0; x < width; x++) {
+                for (int y = 0; y < height; y++) {
+                    *(uint32_t*)&pixels[(y * width + x) * depth] = 0xff000000;
+                }
+            }
+            *static_cast<uint32_t*>(static_cast<void*>(&pixels[0])) = 0xffffffff;
+            break;
+    }
 }
 
 atlas_entry* font_atlas::create(int font_id, int font_size, int glyph,
