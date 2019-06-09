@@ -75,10 +75,16 @@ include_directories(src)
 set(GLYPHIC_SOURCES
   src/binpack.cc
   src/binpack.h
+  src/file.cc
+  src/file.h
   src/font.cc
   src/font.h
   src/glyph.cc
   src/glyph.h
+  src/image.cc
+  src/image.h
+  src/logger.cc
+  src/logger.h
   src/text.cc
   src/text.h
   src/utf8.cc
