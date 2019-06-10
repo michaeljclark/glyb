@@ -11,7 +11,6 @@
 #include <vector>
 #include <map>
 #include <tuple>
-#include <chrono>
 #include <algorithm>
 
 #include <sys/types.h>
@@ -26,8 +25,6 @@
 #else
 #define PATH_SEPARATOR "/"
 #endif
-
-using namespace std::chrono;
 
 static font_manager_ft manager;
 static font_atlas atlas;

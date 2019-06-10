@@ -11,7 +11,6 @@
 #include <map>
 #include <memory>
 #include <tuple>
-#include <chrono>
 
 #include "binpack.h"
 #include "font.h"
