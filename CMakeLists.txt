@@ -85,6 +85,8 @@ set(GLYPHIC_SOURCES
   src/image.h
   src/logger.cc
   src/logger.h
+  src/msdf.cc
+  src/msdf.h
   src/text.cc
   src/text.h
   src/utf8.cc

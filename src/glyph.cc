@@ -181,7 +181,7 @@ atlas_entry* font_atlas::lookup(int font_id, int font_size, int glyph)
     auto gi = glyph_map.find({font_id, font_size, glyph});
     if (gi != glyph_map.end()) {
         return &gi->second;
-    } else if (depth == 4) {
+    } else if (depth == 4 /* hack to detect MSDF texture */) {
         /* look up multi-channel entry template */
         auto gi = glyph_map.find({font_id, 0, glyph});
         if (gi != glyph_map.end()) {
@@ -197,7 +197,6 @@ atlas_entry* font_atlas::lookup(int font_id, int font_size, int glyph)
         } else {
             return nullptr;
         }
-
     } else {
         return nullptr;
     }
