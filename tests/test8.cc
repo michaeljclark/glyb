@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <climits>
 #include <cstring>
+#include <cassert>
 
 #include <map>
 #include <vector>
@@ -12,6 +13,7 @@
 
 #include "binpack.h"
 #include "utf8.h"
+#include "draw.h"
 #include "font.h"
 #include "glyph.h"
 #include "logger.h"

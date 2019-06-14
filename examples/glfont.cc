@@ -8,9 +8,11 @@
 #include <cerrno>
 #include <cctype>
 #include <climits>
+#include <cassert>
 #include <cmath>
 #include <ctime>
 
+#include <memory>
 #include <vector>
 #include <map>
 #include <string>
@@ -22,6 +24,7 @@
 #define CTX_OPENGL_MINOR 2
 
 #include "linmath.h"
+#include "draw.h"
 #include "glcommon.h"
 #include "binpack.h"
 #include "font.h"
@@ -30,10 +33,10 @@
 
 /* globals */
 
-static GLuint program, tex;
+static GLuint tex;
 static GLuint vao, vbo, ibo;
-static std::vector<text_vertex> vertices;
-static std::vector<uint32_t> indices;
+static program simple, msdf;
+static draw_list batch;
 
 static mat4x4 mvp;
 static GLFWwindow* window;
@@ -46,6 +49,7 @@ static int font_size_max = 32;
 static bool help_text = false;
 static bool show_atlas = false;
 static bool show_lines = false;
+static bool use_msdf = false;
 static bool debug = false;
 static int width = 1024, height = 768;
 static font_manager_ft manager;
@@ -54,14 +58,20 @@ static font_atlas atlas;
 
 /* display  */
 
+static void update_uniforms(program *prog)
+{
+    uniform_matrix_4fv(prog, "u_mvp", (const GLfloat *)mvp);
+    uniform_1i(prog, "u_tex0", 0);
+}
+
 static void display()
 {
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glUseProgram(program);
+    glUseProgram(use_msdf ? msdf.pid : simple.pid);
     glBindVertexArray(vao);
-    glDrawElements(GL_TRIANGLES, (GLsizei)indices.size(), GL_UNSIGNED_INT, (void*)0);
+    glDrawElements(GL_TRIANGLES, (GLsizei)batch.indices.size(), GL_UNSIGNED_INT, (void*)0);
 
     glfwSwapBuffers(window);
 }
@@ -69,38 +79,46 @@ static void display()
 static void reshape(int width, int height)
 {
     mat4x4_ortho(mvp, 0.0f, (float)width, (float)height, 0.0f, 0.0f, 100.0f);
-    uniform_matrix_4fv("u_mvp", (const GLfloat *)mvp);
     glViewport(0, 0, width, height);
+
+    glUseProgram(msdf.pid);
+    update_uniforms(&msdf);
+
+    glUseProgram(simple.pid);
+    update_uniforms(&simple);
 }
 
 /* geometry */
 
-static void rect(std::vector<text_vertex> &vertices,
-    std::vector<uint> &indices, float x1, float y1, float x2, float y2,
+static void rect(draw_list &batch, float x1, float y1, float x2, float y2,
     float z, uint color)
 {
-    uint o = static_cast<uint>(vertices.size());
+    uint o = static_cast<uint>(batch.vertices.size());
     float uv1 = 0.0f, uv2 = atlas.uv1x1;
-    vertices.push_back({{x1, y1, z}, {uv1, uv1}, color});
-    vertices.push_back({{x2, y1, z}, {uv2, uv1}, color});
-    vertices.push_back({{x2, y2, z}, {uv2, uv2}, color});
-    vertices.push_back({{x1, y2, z}, {uv1, uv2}, color});
-    indices.insert(indices.end(), {o+0, o+3, o+1, o+1, o+3, o+2});
+    uint o0 = draw_list_vertex(batch, {{x1, y1, z}, {uv1, uv1}, color});
+    uint o1 = draw_list_vertex(batch, {{x2, y1, z}, {uv2, uv1}, color});
+    uint o2 = draw_list_vertex(batch, {{x2, y2, z}, {uv2, uv2}, color});
+    uint o3 = draw_list_vertex(batch, {{x1, y2, z}, {uv1, uv2}, color});
+    draw_list_add(batch, image_none, mode_triangles, shader_simple,
+        {o0, o3, o1, o1, o3, o2});
 }
 
 static void update_geometry()
 {
     const uint32_t black = 0xff000000, light_gray = 0xffcccccc;
 
+    if (use_msdf && atlas.glyph_map.size() == 0) {
+        atlas.load(font_path);
+    }
+
     text_shaper_hb shaper;
-    text_renderer renderer(&manager, &atlas);
+    text_renderer_ft renderer(&manager, &atlas);
     font_face *face = manager.findFontByPath(font_path);
     std::vector<glyph_shape> shapes;
 
     int x = 100, y = 100;
 
-    vertices.clear();
-    indices.clear();
+    draw_list_clear(batch);
 
     for (int sz = font_size_min; sz <= font_size_max; sz++)
     {
@@ -112,7 +130,7 @@ static void update_geometry()
             sz * 64, x, y, black);
         shapes.clear();
         shaper.shape(shapes, &size_segment);
-        renderer.render(vertices, indices, shapes, &size_segment);
+        renderer.render(batch, shapes, &size_segment);
         shapes.clear();
         shaper.shape(shapes, &render_segment);
         if (show_lines) {
@@ -127,62 +145,51 @@ static void update_geometry()
             float y3 = (float)y - (float)height / 2.0f - 1.0f, y4 = y3 + 2.0f;
             float y5 = (float)y - (float)height - 1.0f, y6 = y5 + 2.0f;
             float fwidth = (float)width, fheight = (float)height;
-            rect(vertices, indices, x1, y1, x2, y2, 0, light_gray);
-            rect(vertices, indices, x1, y3, x2, y4, 0, light_gray);
-            rect(vertices, indices, x1, y5, x2, y6, 0, light_gray);
+            rect(batch, x1, y1, x2, y2, 0, light_gray);
+            rect(batch, x1, y3, x2, y4, 0, light_gray);
+            rect(batch, x1, y5, x2, y6, 0, light_gray);
         }
-        renderer.render(vertices, indices, shapes, &render_segment);
+        renderer.render(batch, shapes, &render_segment);
     }
 
     if (show_atlas) {
-        vertices.clear();
-        indices.clear();
+        draw_list_clear(batch);
         float u1 = 0.0f, v1 = 1.0f;
         float u2 = 1.0f, v2 = 0.0f;
         float x1 = 100, y1 = 100;
         float x2 = 1124, y2 = 1124;
-        uint32_t o = (uint32_t)vertices.size();
+        uint32_t o = (uint32_t)batch.vertices.size();
         uint32_t color = 0xff000000;
-        vertices.push_back({{x1, y1, 0.f}, {u1, v1}, color});
-        vertices.push_back({{x2, y1, 0.f}, {u2, v1}, color});
-        vertices.push_back({{x2, y2, 0.f}, {u2, v2}, color});
-        vertices.push_back({{x1, y2, 0.f}, {u1, v2}, color});
-        indices.insert(indices.end(), {o+0, o+3, o+1, o+1, o+3, o+2});
+        batch.vertices.push_back({{x1, y1, 0.f}, {u1, v1}, color});
+        batch.vertices.push_back({{x2, y1, 0.f}, {u2, v1}, color});
+        batch.vertices.push_back({{x2, y2, 0.f}, {u2, v2}, color});
+        batch.vertices.push_back({{x1, y2, 0.f}, {u1, v2}, color});
+        batch.indices.insert(batch.indices.end(), {o+0, o+3, o+1, o+1, o+3, o+2});
     }
 }
 
-static void vertex_array_config()
+static void vertex_array_config(program *prog)
 {
-    vertex_array_pointer("a_pos", 3, GL_FLOAT, 0, &vertex::pos);
-    vertex_array_pointer("a_uv0", 2, GL_FLOAT, 0, &vertex::uv);
-    vertex_array_pointer("a_color", 4, GL_UNSIGNED_BYTE, 1, &vertex::color);
-    vertex_array_1f("a_gamma", 2.0f);
+    vertex_array_pointer(prog, "a_pos", 3, GL_FLOAT, 0, &draw_vertex::pos);
+    vertex_array_pointer(prog, "a_uv0", 2, GL_FLOAT, 0, &draw_vertex::uv);
+    vertex_array_pointer(prog, "a_color", 4, GL_UNSIGNED_BYTE, 1, &draw_vertex::color);
+    vertex_array_1f(prog, "a_gamma", 2.0f);
 }
 
 static void update_buffers()
 {
-    static const GLint swizzleMask[] = {GL_ONE, GL_ONE, GL_ONE, GL_RED};
-
     /* create vertex and index arrays */
     update_geometry();
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
-    vertex_buffer_create("vbo", &vbo, GL_ARRAY_BUFFER, vertices);
-    vertex_buffer_create("ibo", &ibo, GL_ELEMENT_ARRAY_BUFFER, indices);
-    vertex_array_config();
+    vertex_buffer_create("vbo", &vbo, GL_ARRAY_BUFFER, batch.vertices);
+    vertex_buffer_create("ibo", &ibo, GL_ELEMENT_ARRAY_BUFFER, batch.indices);
+    vertex_array_config(use_msdf ? &msdf : &simple);
     glBindVertexArray(0);
 
     /* create font atlas texture */
-    glGenTextures(1, &tex);
-    glBindTexture(GL_TEXTURE_2D, tex);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, (GLsizei)atlas.width, (GLsizei)atlas.height,
-        0, GL_RED, GL_UNSIGNED_BYTE, (GLvoid*)&atlas.pixels[0]);
-    glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
-    glActiveTexture(GL_TEXTURE0);
+    image_create_texture(&tex, atlas.width, atlas.height, atlas.depth,
+        &atlas.pixels[0], atlas.depth == 4 ? GL_LINEAR : GL_NEAREST);
 }
 
 /* keyboard callback */
@@ -198,19 +205,20 @@ static void keyboard(GLFWwindow* window, int key, int scancode, int action, int 
 
 static void initialize()
 {
-    GLuint fsh, vsh;
+    GLuint simple_fsh, msdf_fsh, vsh;
 
     /* shader program */
     vsh = compile_shader(GL_VERTEX_SHADER, "shaders/simple.vsh");
-    fsh = compile_shader(GL_FRAGMENT_SHADER, "shaders/simple.fsh");
-    program = link_program(vsh, fsh);
+    simple_fsh = compile_shader(GL_FRAGMENT_SHADER, "shaders/simple.fsh");
+    msdf_fsh = compile_shader(GL_FRAGMENT_SHADER, "shaders/msdf.fsh");
+    link_program(&simple, vsh, simple_fsh);
+    link_program(&msdf, vsh, msdf_fsh);
+    glDeleteShader(vsh);
+    glDeleteShader(simple_fsh);
+    glDeleteShader(msdf_fsh);
 
     /* create vertex buffers and font atlas texture */
     update_buffers();
-
-    /* uniforms */
-    glUseProgram(program);
-    uniform_1i("u_tex0", 0);
 
     /* pipeline */
     glEnable(GL_CULL_FACE);
@@ -220,6 +228,7 @@ static void initialize()
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_MULTISAMPLE);
+    glLineWidth(1.0);
 }
 
 /* GLFW GUI entry point */
@@ -269,6 +278,7 @@ void print_help(int argc, char **argv)
         "  -t, --text <string>        text to render (default \"%s\")\n"
         "  -a, --show-atlas           show the atlas instead of the text\n"
         "  -l, --show-lines           show baseline, half-height and height\n"
+        "  -m, --use-msdf             use multi-channel signed distance field\n"
         "  -d, --debug                print debugging information\n"
         "  -h, --help                 command line help\n",
         argv[0], font_path, font_size_min, font_size_max, render_text);
@@ -316,6 +326,9 @@ void parse_options(int argc, char **argv)
             i++;
         } else if (match_opt(argv[i], "-l", "--show-lines")) {
             show_lines = true;
+            i++;
+        } else if (match_opt(argv[i], "-m", "--use-msdf")) {
+            use_msdf = true;
             i++;
         } else if (match_opt(argv[i], "-h", "--help")) {
             help_text = true;

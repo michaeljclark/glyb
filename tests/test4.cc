@@ -4,6 +4,7 @@
 #include <cerrno>
 #include <cctype>
 #include <climits>
+#include <cassert>
 #include <cmath>
 #include <ctime>
 
@@ -15,6 +16,7 @@
 
 #include "binpack.h"
 #include "utf8.h"
+#include "draw.h"
 #include "font.h"
 #include "glyph.h"
 #include "text.h"
@@ -32,11 +34,10 @@ int main()
     auto face = manager.findFontByPath("fonts/Roboto-Regular.ttf");
 
     std::vector<glyph_shape> shapes;
-    std::vector<text_vertex> vertices;
-    std::vector<uint32_t> indices;
+    draw_list batch;
 
     text_shaper_hb shaper;
-    text_renderer renderer(&manager, &atlas);
+    text_renderer_ft renderer(&manager, &atlas);
     text_segment segment(test_str_1, text_lang, face,
         48 * 64, 0, 0, 0xffffffff);
 
@@ -54,15 +55,14 @@ int main()
 
     /* render (cold) */
     const auto t5 = high_resolution_clock::now();
-    renderer.render(vertices, indices, shapes, &segment);
+    renderer.render(batch, shapes, &segment);
     const auto t6 = high_resolution_clock::now();
 
-    indices.clear();
-    vertices.clear();
+    draw_list_clear(batch);
 
     /* render (hot) */
     const auto t7 = high_resolution_clock::now();
-    renderer.render(vertices, indices, shapes, &segment);
+    renderer.render(batch, shapes, &segment);
     const auto t8 = high_resolution_clock::now();
 
     /* shape (loop) */
@@ -76,9 +76,8 @@ int main()
     /* render (loop) */
     const auto t11 = high_resolution_clock::now();
     for (size_t i = 0; i < iterations; i++) {
-        vertices.clear();
-        indices.clear();
-        renderer.render(vertices, indices, shapes, &segment);
+        draw_list_clear(batch);
+        renderer.render(batch, shapes, &segment);
     }
     const auto t12 = high_resolution_clock::now();
 

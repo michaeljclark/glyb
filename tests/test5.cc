@@ -4,6 +4,7 @@
 #include <cerrno>
 #include <cctype>
 #include <climits>
+#include <cassert>
 #include <cmath>
 #include <ctime>
 
@@ -14,6 +15,7 @@
 
 #include "binpack.h"
 #include "utf8.h"
+#include "draw.h"
 #include "font.h"
 #include "glyph.h"
 #include "text.h"

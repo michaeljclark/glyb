@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <climits>
 #include <cstring>
+#include <cassert>
 #include <cctype>
 #include <cmath>
 
@@ -24,6 +25,7 @@
 
 #include "binpack.h"
 #include "utf8.h"
+#include "draw.h"
 #include "font.h"
 #include "glyph.h"
 #include "image.h"
@@ -179,6 +181,23 @@ atlas_entry* font_atlas::lookup(int font_id, int font_size, int glyph)
     auto gi = glyph_map.find({font_id, font_size, glyph});
     if (gi != glyph_map.end()) {
         return &gi->second;
+    } else if (depth == 4) {
+        /* look up multi-channel entry template */
+        auto gi = glyph_map.find({font_id, 0, glyph});
+        if (gi != glyph_map.end()) {
+            atlas_entry ae = gi->second;
+            float scale = (float)font_size / (128.0f * 64.0f);
+            ae.ox = (int)roundf((float)ae.ox * scale);
+            ae.oy = (int)roundf((float)ae.oy * scale);
+            ae.w = (int)roundf((float)ae.w * scale);
+            ae.h = (int)roundf((float)ae.h * scale);
+            auto gj = glyph_map.insert(glyph_map.end(),
+                std::pair<atlas_key,atlas_entry>({font_id, font_size, glyph},ae));
+            return &gj->second;
+        } else {
+            return nullptr;
+        }
+
     } else {
         return nullptr;
     }
@@ -354,7 +373,7 @@ void text_shaper_hb::shape(std::vector<glyph_shape> &shapes, text_segment *segme
  * glyph renderer
  */
 
-atlas_entry* glyph_renderer::render(font_face_ft *face, int font_size,
+atlas_entry* glyph_renderer_ft::render(font_face_ft *face, int font_size,
     int glyph)
 {
     FT_Library ftlib;
@@ -437,8 +456,7 @@ atlas_entry* glyph_renderer::render(font_face_ft *face, int font_size,
  * text renderer
  */
 
-void text_renderer::render(std::vector<text_vertex> &vertices,
-    std::vector<uint32_t> &indices,
+void text_renderer_ft::render(draw_list &batch,
     std::vector<glyph_shape> &shapes,
     text_segment *segment)
 {
@@ -453,7 +471,7 @@ void text_renderer::render(std::vector<text_vertex> &vertices,
         atlas_entry *ae = atlas->lookup(face->font_id, font_size, shape.glyph);
         if (!ae) {
             /* render glyph and create entry in atlas */
-            if (!(ae = renderer.render(face, font_size, shape.glyph))) {
+            if (!(ae = renderer->render(face, font_size, shape.glyph))) {
                 continue;
             }
             /* apply harfbuzz offsets to the newly created entry */
@@ -470,12 +488,14 @@ void text_renderer::render(std::vector<text_vertex> &vertices,
             float y1p = 0.5f + y1, y2p = 0.5f + y2;
             float u1 = ae->uv[0], v1 = ae->uv[1];
             float u2 = ae->uv[2], v2 = ae->uv[3];
-            uint32_t o = (int)vertices.size();
-            vertices.push_back({{x1p, y1p, 0.f}, {u1, v1}, segment->color});
-            vertices.push_back({{x2p, y1p, 0.f}, {u2, v1}, segment->color});
-            vertices.push_back({{x2p, y2p, 0.f}, {u2, v2}, segment->color});
-            vertices.push_back({{x1p, y2p, 0.f}, {u1, v2}, segment->color});
-            indices.insert(indices.end(), {o+0, o+3, o+1, o+1, o+3, o+2});
+            uint o = (int)batch.vertices.size();
+            uint c = segment->color;
+            uint o0 = draw_list_vertex(batch, {{x1p, y1p, 0}, {u1, v1}, c});
+            uint o1 = draw_list_vertex(batch, {{x2p, y1p, 0}, {u2, v1}, c});
+            uint o2 = draw_list_vertex(batch, {{x2p, y2p, 0}, {u2, v2}, c});
+            uint o3 = draw_list_vertex(batch, {{x1p, y2p, 0}, {u1, v2}, c});
+            draw_list_add(batch, image_none, mode_triangles, shader_simple,
+                {o0, o3, o1, o1, o3, o2});
         }
         /* advance */
         dx += shape.x_advance/64.0f + tracking;

@@ -4,6 +4,7 @@
 #include <climits>
 #include <cstring>
 #include <cctype>
+#include <cassert>
 #include <cmath>
 
 #include <string>
@@ -17,6 +18,7 @@
 #include "color.h"
 #include "binpack.h"
 #include "font.h"
+#include "draw.h"
 #include "glyph.h"
 #include "text.h"
 

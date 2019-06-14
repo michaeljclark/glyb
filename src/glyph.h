@@ -6,6 +6,7 @@
  * Measures minimum and maximum x and y coordinates for one glyph.
  * Used as a callback to FT_Outline_Render. 
  */
+
 struct span_measure
 {
     int min_x, min_y, max_x, max_y;
@@ -18,12 +19,14 @@ struct span_measure
 inline span_measure::span_measure() :
     min_x(INT_MAX), min_y(INT_MAX), max_x(INT_MIN), max_y(INT_MIN) {}
 
+
 /*
  * FreeType Span Recorder
  *
  * Collects the output of span coverage into an 8-bit grayscale bitmap.
  * Used as a callback to FT_Outline_Render. 
  */
+
 struct span_vector : span_measure
 {
     int gx, gy, ox, oy, w, h;
@@ -40,11 +43,13 @@ struct span_vector : span_measure
 inline span_vector::span_vector() :
     gx(0), gy(0), ox(0), oy(0), w(0), h(0), pixels() {}
 
+
 /*
  * Font Atlas Key
  *
  * Holds the details for a key in the Font Atlas glyph map.
  */
+
 struct atlas_key
 {
     uint64_t opaque;
@@ -66,11 +71,13 @@ inline int atlas_key::font_id() const { return (opaque >> 40) & ((1 << 20)-1); }
 inline int atlas_key::font_size() const { return (opaque >> 20) & ((1 << 20)-1); }
 inline int atlas_key::glyph() const { return opaque & ((1 << 20)-1); }
 
+
 /*
  * Font Atlas Entry
  *
  * Holds the details for an entry in the Font Atlas glyph map.
  */
+
 struct atlas_entry
 {
     int bin_id;
@@ -86,6 +93,7 @@ inline atlas_entry::atlas_entry(int bin_id, int x, int y,
     int ox, int oy, int w, int h, float uv[4]) : bin_id(bin_id),
     x(x), y(y), ox(ox), oy(oy), w(w), h(h), uv{uv[0], uv[1], uv[2], uv[3]} {}
 
+
 /*
  * Font Atlas
  *
@@ -93,6 +101,7 @@ inline atlas_entry::atlas_entry(int bin_id, int x, int y,
  * The Font Atlas is graphics API agnostic. It is necessary for client
  * code to update an atlas texture after text has been rendered.
  */
+
 struct font_atlas
 {
     size_t width, height, depth;
@@ -128,6 +137,7 @@ struct font_atlas
     void load(std::string basename);
 };
 
+
 /*
  * Text Segment
  *
@@ -135,6 +145,7 @@ struct font_atlas
  * and color. Also contains coordinates used by the Text Renderer when
  * outputting vertices.
  */
+
 struct text_segment
 {
     std::string text;
@@ -162,11 +173,13 @@ inline text_segment::text_segment(std::string text, std::string language,
     text(text), language(language), face(face), font_size(font_size),
     x(x), y(y), baseline_shift(0), line_spacing(0), tracking(0), color(color) {}
 
+
 /*
  * Glyph Shape
  *
  * Structure to hold the output of the text shaper.
  */
+
 struct glyph_shape
 {
     unsigned glyph;           /* glyph index for the chosen font */
@@ -174,6 +187,7 @@ struct glyph_shape
     int x_offset, y_offset;   /* integer with 6 fraction bits */
     int x_advance, y_advance; /* integer with 6 fraction bits */
 };
+
 
 /*
  * Text Shapers
@@ -208,17 +222,6 @@ struct text_shaper_hb : text_shaper
     virtual void shape(std::vector<glyph_shape> &shapes, text_segment *segment);
 };
 
-/*
- * Text Vertex
- *
- * Structure to hold the vertex output of the text renderer.
- */
-struct text_vertex
-{
-    float pos[3];
-    float uv[2];
-    uint32_t rgba;
-};
 
 /*
  * Glyph Renderer
@@ -226,17 +229,30 @@ struct text_vertex
  * Implementation of a simple freetype based glyph renderer. The output
  * of the glyph renderer is a bitmap which is stored in a font atlas.
  */
+
 struct glyph_renderer
+{
+    virtual ~glyph_renderer() = default;
+
+    virtual atlas_entry* render(font_face_ft *face,
+        int font_size, int glyph) = 0;
+};
+
+struct glyph_renderer_ft : glyph_renderer
 {
     font_manager_ft* manager;
     font_atlas* atlas;
     span_vector span;
 
-    glyph_renderer(font_manager_ft* manager, font_atlas* atlas) :
-        manager(manager), atlas(atlas) {}
+    glyph_renderer_ft(font_manager_ft* manager, font_atlas* atlas);
+    virtual ~glyph_renderer_ft() = default;
 
     atlas_entry* render(font_face_ft *face, int font_size, int glyph);
 };
+
+inline glyph_renderer_ft::glyph_renderer_ft(font_manager_ft* manager,
+    font_atlas* atlas) : manager(manager), atlas(atlas) {}
+
 
 /*
  * Text Renderer
@@ -246,17 +262,31 @@ struct glyph_renderer
  * The output is graphics API agnostic and can be utilized by DirectX,
  * OpenGL, Metal or Vulkan.
  */
+
 struct text_renderer
+{
+    virtual ~text_renderer() = default;
+
+    virtual void render(draw_list &batch,
+        std::vector<glyph_shape> &shapes,
+        text_segment *segment) = 0;
+};
+
+struct text_renderer_ft : text_renderer
 {
     font_manager_ft* manager;
     font_atlas* atlas;
-    glyph_renderer renderer;
+    std::unique_ptr<glyph_renderer> renderer;
 
-    text_renderer(font_manager_ft* manager, font_atlas* atlas) :
-        manager(manager), atlas(atlas), renderer(manager, atlas) {}
+    text_renderer_ft(font_manager_ft* manager, font_atlas* atlas);
+    virtual ~text_renderer_ft() = default;
 
-    void render(std::vector<text_vertex> &vertices,
-        std::vector<uint32_t> &indices,
+    void render(draw_list &batch,
         std::vector<glyph_shape> &shapes,
         text_segment *segment);
 };
+
+inline text_renderer_ft::text_renderer_ft(font_manager_ft* manager,
+    font_atlas* atlas) :
+    manager(manager), atlas(atlas),
+    renderer(new glyph_renderer_ft(manager, atlas)) {}

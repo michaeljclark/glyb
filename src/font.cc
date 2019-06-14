@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <climits>
 #include <cstring>
+#include <cassert>
 #include <cctype>
 #include <cmath>
 
@@ -22,6 +23,7 @@
 #include FT_OUTLINE_H
 
 #include "binpack.h"
+#include "draw.h"
 #include "font.h"
 #include "glyph.h"
 #include "util.h"

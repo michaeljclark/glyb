@@ -13,6 +13,7 @@
 #include <chrono>
 
 #include "binpack.h"
+#include "draw.h"
 #include "font.h"
 #include "glyph.h"
 #include "logger.h"

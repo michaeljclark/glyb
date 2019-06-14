@@ -8,6 +8,7 @@
 #include <cerrno>
 #include <cctype>
 #include <climits>
+#include <cassert>
 #include <cmath>
 #include <ctime>
 
@@ -22,6 +23,7 @@
 #define CTX_OPENGL_MINOR 2
 
 #include "linmath.h"
+#include "draw.h"
 #include "glcommon.h"
 #include "binpack.h"
 #include "util.h"
@@ -29,14 +31,10 @@
 
 /* OpenGL objects and buffers */
 
-static GLuint program, tex;
-static GLuint line_vao, line_vbo, line_ibo;
-static std::vector<vertex> line_vtx;
-static std::vector<uint> line_ind;
-static GLuint rect_vao, rect_vbo, rect_ibo;
-static std::vector<vertex> rect_vtx;
-static std::vector<uint> rect_ind;
-
+static GLuint tex;
+static GLuint vao, vbo, ibo;
+static program simple;
+static draw_list batch;
 static mat4x4 m, p, mvp;
 static GLFWwindow* window;
 
@@ -75,12 +73,16 @@ static void display()
     glClearColor(0.2f, 0.2f, 0.2f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glUseProgram(program);
-    glBindVertexArray(rect_vao);
-    glDrawElements(GL_TRIANGLES, (GLsizei)rect_ind.size(), GL_UNSIGNED_INT, (void*)0);
-
-    glBindVertexArray(line_vao);
-    glDrawElements(GL_LINES, (GLsizei)line_ind.size(), GL_UNSIGNED_INT, (void*)0);
+    glUseProgram(simple.pid);
+    glBindVertexArray(vao);
+    for (auto &cmd : batch.cmds) {
+        GLenum mode;
+        switch (cmd.mode) {
+            case mode_triangles: mode = GL_TRIANGLES; break;
+            case mode_lines:     mode = GL_LINES;     break;
+        }
+        glDrawElements(mode, cmd.count, GL_UNSIGNED_INT, (void*)(cmd.offset * sizeof(uint)));
+    }
     glfwSwapBuffers(window);
 }
 
@@ -94,7 +96,7 @@ static void reshape(int width, int height)
     mat4x4_look_at(m, eye, center, up);
     mat4x4_mul(mvp, p, m);
 
-    uniform_matrix_4fv("u_mvp", (const GLfloat *)mvp);
+    uniform_matrix_4fv(&simple, "u_mvp", (const GLfloat *)mvp);
 
     glViewport(0, 0, width, height);
 }
@@ -106,23 +108,24 @@ enum op_type {
     op_stroke
 };
 
-static void rect(op_type op, std::vector<vertex> &vertices,
-    std::vector<uint> &indices, float x1, float y1, float x2, float y2,
-    float z, uint color)
+static void rect(op_type op, draw_list &batch, float x1, float y1,
+    float x2, float y2, float z, uint color)
 {
-    uint o = static_cast<uint>(vertices.size());
-    vertices.push_back({{x1, y1, z}, {0, 0}, color});
-    vertices.push_back({{x2, y1, z}, {0, 0}, color});
-    vertices.push_back({{x2, y2, z}, {0, 0}, color});
-    vertices.push_back({{x1, y2, z}, {0, 0}, color});
+    uint o = static_cast<uint>(batch.vertices.size());
+    uint o0 = draw_list_vertex(batch, {{x1, y1, z}, {0, 0}, color});
+    uint o1 = draw_list_vertex(batch, {{x2, y1, z}, {0, 0}, color});
+    uint o2 = draw_list_vertex(batch, {{x2, y2, z}, {0, 0}, color});
+    uint o3 = draw_list_vertex(batch, {{x1, y2, z}, {0, 0}, color});
     switch (op) {
     case op_fill:
-        indices.insert(indices.end(), {o+0, o+1, o+3, o+1, o+2, o+3});
+        draw_list_add(batch, image_none, mode_triangles, shader_simple,
+            {o0, o1, o3, o1, o2, o3});
         break;
     case op_stroke:
-        indices.insert(indices.end(), {o+0, o+1, o+1, o+2, o+2, o+3, o+3, o+0});
+        draw_list_add(batch, image_none, mode_lines, shader_simple,
+            {o0, o1, o1, o2, o2, o3, o3, o0});
         break;
-    }    
+    }
 }
 
 static uint color(float base, float range, int shift1, int shift2, float value)
@@ -136,19 +139,16 @@ static void update_geometry()
     const float dx = (2.0f/(float)bp.total.width());
     const float dy = (2.0f/(float)bp.total.height());
 
-    line_ind.clear();
-    line_vtx.clear();
-    rect_ind.clear();
-    rect_vtx.clear();
+    draw_list_clear(batch);
 
     for (auto i : bp.alloc_map) {
         bin_rect c = i.second;
         float x1 = ((float)c.a.x*dx)-1.0f, y1 = ((float)c.a.y*dy)-1.0f;
         float x2 = ((float)c.b.x*dx)-1.0f, y2 = ((float)c.b.y*dy)-1.0f;
-        rect(op_fill, rect_vtx, rect_ind, x1, y1, x2, y2, 0.0f,
+        rect(op_fill, batch, x1, y1, x2, y2, 0.0f,
             color(64.0f, 32.0f, 8, 16,
                 (float)i.first / (float)(bp.alloc_map.size())));
-        rect(op_stroke, line_vtx, line_ind, x1, y1, x2, y2, 0.000001f,
+        rect(op_stroke, batch, x1, y1, x2, y2, 0.000001f,
             color(128.0f, 32.0f, 8, 16,
                 (float)i.first / (float)(bp.alloc_map.size())));
     }
@@ -157,39 +157,32 @@ static void update_geometry()
         bin_rect c = bp.free_list[i];
         float x1 = ((float)c.a.x*dx)-1.0f, y1 = ((float)c.a.y*dy)-1.0f;
         float x2 = ((float)c.b.x*dx)-1.0f, y2 = ((float)c.b.y*dy)-1.0f;
-        rect(op_fill, rect_vtx, rect_ind, x1, y1, x2, y2, 0.0f,
+        rect(op_fill, batch, x1, y1, x2, y2, 0.0f,
             color(64.0f, 32.0f, 0, 8,
                 (float)i / (float)(bp.free_list.size())));
-        rect(op_stroke, line_vtx, line_ind, x1, y1, x2, y2, 0.000001f,
+        rect(op_stroke, batch, x1, y1, x2, y2, 0.000001f,
             color(128.0f, 32.0f, 0, 8,
                 (float)i / (float)(bp.free_list.size())));
-    }    
+    }
 }
 
-static void vertex_array_config()
+static void vertex_array_config(program *prog)
 {
-    vertex_array_pointer("a_pos", 3, GL_FLOAT, 0, &vertex::pos);
-    vertex_array_pointer("a_uv0", 2, GL_FLOAT, 0, &vertex::uv);
-    vertex_array_pointer("a_color", 4, GL_UNSIGNED_BYTE, 1, &vertex::color);
-    vertex_array_1f("a_gamma", 1.0f);
+    vertex_array_pointer(prog, "a_pos", 3, GL_FLOAT, 0, &draw_vertex::pos);
+    vertex_array_pointer(prog, "a_uv0", 2, GL_FLOAT, 0, &draw_vertex::uv);
+    vertex_array_pointer(prog, "a_color", 4, GL_UNSIGNED_BYTE, 1, &draw_vertex::color);
+    vertex_array_1f(prog, "a_gamma", 1.0f);
 }
 
 static void update_buffers()
 {
     update_geometry();
 
-    glGenVertexArrays(1, &line_vao);
-    glBindVertexArray(line_vao);
-    vertex_buffer_create("line_vbo", &line_vbo, GL_ARRAY_BUFFER, line_vtx);
-    vertex_buffer_create("line_ibo", &line_ibo, GL_ELEMENT_ARRAY_BUFFER, line_ind);
-    vertex_array_config();
-    glBindVertexArray(0);
-
-    glGenVertexArrays(1, &rect_vao);
-    glBindVertexArray(rect_vao);
-    vertex_buffer_create("rect_vbo", &rect_vbo, GL_ARRAY_BUFFER, rect_vtx);
-    vertex_buffer_create("rect_ibo", &rect_ibo, GL_ELEMENT_ARRAY_BUFFER, rect_ind);
-    vertex_array_config();
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+    vertex_buffer_create("line_vbo", &vbo, GL_ARRAY_BUFFER, batch.vertices);
+    vertex_buffer_create("line_ibo", &ibo, GL_ELEMENT_ARRAY_BUFFER, batch.indices);
+    vertex_array_config(&simple);
     glBindVertexArray(0);
 }
 
@@ -295,13 +288,15 @@ static void keyboard(GLFWwindow* window, int key, int scancode, int action, int 
 static void initialize(bool offscreen)
 {
     const GLuint pixel = 0xffffffff;
+
     GLuint fsh, vsh;
 
     /* shader program */
     vsh = compile_shader(GL_VERTEX_SHADER, "shaders/simple.vsh");
-    fsh = compile_shader(GL_FRAGMENT_SHADER,
-        offscreen ? "shaders/offscreen.fsh" : "shaders/simple.fsh");
-    program = link_program(vsh, fsh);
+    fsh = compile_shader(GL_FRAGMENT_SHADER, "shaders/simple.fsh");
+    link_program(&simple, vsh, fsh);
+    glDeleteShader(vsh);
+    glDeleteShader(fsh);
 
     /* create vertex buffers */
     step(step_single);
@@ -319,8 +314,8 @@ static void initialize(bool offscreen)
     glActiveTexture(GL_TEXTURE0);
 
     /* uniforms */
-    glUseProgram(program);
-    uniform_1i("u_tex0", 0);
+    glUseProgram(simple.pid);
+    uniform_1i(&simple, "u_tex0", 0);
 
     /* pipeline */
     glEnable(GL_CULL_FACE);

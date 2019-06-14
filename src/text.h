@@ -76,7 +76,7 @@ struct text_layout
     font_manager_ft* manager;
     font_atlas* atlas;
     text_shaper* shaper;
-    text_renderer* renderer;
+    text_renderer_ft* renderer;
 
     const float font_size_default = 12.0f;
     const uint32_t color_default = 0xff000000;
@@ -84,7 +84,7 @@ struct text_layout
     const int tracking_default = 0;
 
     text_layout(font_manager_ft* manager, font_atlas* atlas,
-        text_shaper* shaper, text_renderer* renderer);
+        text_shaper* shaper, text_renderer_ft* renderer);
 
     void style(text_segment *segment, text_part *part);
     void layout(std::vector<text_segment> &segments,
@@ -92,5 +92,5 @@ struct text_layout
 };
 
 inline text_layout::text_layout(font_manager_ft* manager, font_atlas* atlas,
-        text_shaper* shaper, text_renderer* renderer) :
+        text_shaper* shaper, text_renderer_ft* renderer) :
         manager(manager), atlas(atlas), shaper(shaper), renderer(renderer) {}

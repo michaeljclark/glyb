@@ -2,14 +2,11 @@
 
 typedef unsigned uint;
 
-static std::map<std::string,GLuint> attrs;
-static std::map<std::string,GLuint> uniforms;
-
 typedef struct {
-    float pos[3];
-    float uv[2];
-    unsigned color;
-} vertex;
+    GLuint pid;
+    std::map<std::string,GLuint> attrs;
+    std::map<std::string,GLuint> uniforms;
+} program;
 
 static std::vector<char> load_file(const char *filename) 
 { 
@@ -62,42 +59,42 @@ static GLuint compile_shader(GLenum type, const char *filename)
     return shader;
 }
 
-static GLuint link_program(GLuint vsh, GLuint fsh)
+static void link_program(program *prog, GLuint vsh, GLuint fsh)
 {
-    GLuint program, n = 1;
+    GLuint n = 1;
     GLint status, numattrs, numuniforms;
 
-    program = glCreateProgram();
-    glAttachShader(program, vsh);
-    glAttachShader(program, fsh);
+    prog->pid = glCreateProgram();
+    glAttachShader(prog->pid, vsh);
+    glAttachShader(prog->pid, fsh);
 
-    glLinkProgram(program);
-    glGetProgramiv(program, GL_LINK_STATUS, &status);
+    glLinkProgram(prog->pid);
+    glGetProgramiv(prog->pid, GL_LINK_STATUS, &status);
     if (status == GL_FALSE) {
         printf("failed to link shader program\n");
         exit(1);
     }
 
-    glGetProgramiv(program, GL_ACTIVE_ATTRIBUTES, &numattrs);
+    glGetProgramiv(prog->pid, GL_ACTIVE_ATTRIBUTES, &numattrs);
     for (GLint i = 0; i < numattrs; i++)  {
         GLint namelen=-1, size=-1;
         GLenum type = GL_ZERO;
         char namebuf[128];
-        glGetActiveAttrib(program, i, sizeof(namebuf)-1, &namelen, &size,
+        glGetActiveAttrib(prog->pid, i, sizeof(namebuf)-1, &namelen, &size,
                           &type, namebuf);
         namebuf[namelen] = 0;
-        attrs[namebuf] = i;
+        prog->attrs[namebuf] = i;
     }
 
-    glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &numuniforms);
+    glGetProgramiv(prog->pid, GL_ACTIVE_UNIFORMS, &numuniforms);
     for (GLint i = 0; i < numuniforms; i++) {
         GLint namelen=-1, size=-1;
         GLenum type = GL_ZERO;
         char namebuf[128];
-        glGetActiveUniform(program, i, sizeof(namebuf)-1, &namelen, &size,
+        glGetActiveUniform(prog->pid, i, sizeof(namebuf)-1, &namelen, &size,
                            &type, namebuf);
         namebuf[namelen] = 0;
-        uniforms[namebuf] = glGetUniformLocation(program, namebuf);
+        prog->uniforms[namebuf] = glGetUniformLocation(prog->pid, namebuf);
     }
 
     /*
@@ -108,28 +105,32 @@ static GLuint link_program(GLuint vsh, GLuint fsh)
      * starting from 1 counting upwards. We then re-link the program,
      * as we don't know the attribute names until shader is linked.
      */
-    for (auto &ent : attrs) {
-        glBindAttribLocation(program, (attrs[ent.first] = n++),
+    for (auto &ent : prog->attrs) {
+        glBindAttribLocation(prog->pid, (prog->attrs[ent.first] = n++),
             ent.first.c_str());
     }
-    glLinkProgram(program);
-    glGetProgramiv(program, GL_LINK_STATUS, &status);
+    glLinkProgram(prog->pid);
+    glGetProgramiv(prog->pid, GL_LINK_STATUS, &status);
     if (status == GL_FALSE) {
         printf("failed to relink shader program\n");
         exit(1);
     }
 
-    glDeleteShader(vsh);
-    glDeleteShader(fsh);
-
-    for (auto &ent : attrs) {
+    for (auto &ent : prog->attrs) {
         printf("attr %s = %d\n", ent.first.c_str(), ent.second);
     }
-    for (auto &ent : uniforms) {
+    for (auto &ent : prog->uniforms) {
         printf("uniform %s = %d\n", ent.first.c_str(), ent.second);
     }
+}
 
-    return program;
+static void use_program(program *prog)
+{
+    glUseProgram(prog->pid);
+    for (auto &ent : prog->attrs) {
+        glBindAttribLocation(prog->pid, prog->attrs[ent.first],
+            ent.first.c_str());
+    }
 }
 
 template <typename T>
@@ -146,35 +147,58 @@ static void vertex_buffer_create(const char* name, GLuint *obj,
 }
 
 template<typename X, typename T>
-static void vertex_array_pointer(const char *attr, GLint size,
+static void vertex_array_pointer(program *prog, const char *attr, GLint size,
     GLenum type, GLboolean norm, X T::*member)
 {
     const void *obj = (const void *)reinterpret_cast<std::ptrdiff_t>(
         &(reinterpret_cast<T const *>(NULL)->*member) );
-    if (attrs.find(attr) != attrs.end()) {
-        glEnableVertexAttribArray(attrs[attr]);
-        glVertexAttribPointer(attrs[attr], size, type, norm, sizeof(T), obj);
+    if (prog->attrs.find(attr) != prog->attrs.end()) {
+        glEnableVertexAttribArray(prog->attrs[attr]);
+        glVertexAttribPointer(prog->attrs[attr], size, type, norm, sizeof(T), obj);
     }
 }
 
-static void vertex_array_1f(const char *attr, float v1)
+static void vertex_array_1f(program *prog, const char *attr, float v1)
 {
-    if (attrs.find(attr) != attrs.end()) {
-        glDisableVertexAttribArray(attrs[attr]);
-        glVertexAttrib1f(attrs[attr], v1);
+    if (prog->attrs.find(attr) != prog->attrs.end()) {
+        glDisableVertexAttribArray(prog->attrs[attr]);
+        glVertexAttrib1f(prog->attrs[attr], v1);
     }
 }
 
-static void uniform_1i(const char *uniform, GLint i)
+static void uniform_1i(program *prog, const char *uniform, GLint i)
 {
-    if (uniforms.find(uniform) != attrs.end()) {
-        glUniform1i(uniforms[uniform], i);
+    if (prog->uniforms.find(uniform) != prog->uniforms.end()) {
+        glUniform1i(prog->uniforms[uniform], i);
     }
 }
 
-static void uniform_matrix_4fv(const char *uniform, const GLfloat *mat)
+static void uniform_matrix_4fv(program *prog, const char *uniform, const GLfloat *mat)
 {
-    if (uniforms.find(uniform) != attrs.end()) {
-        glUniformMatrix4fv(uniforms[uniform], 1, GL_FALSE, mat);
+    if (prog->uniforms.find(uniform) != prog->uniforms.end()) {
+        glUniformMatrix4fv(prog->uniforms[uniform], 1, GL_FALSE, mat);
     }
+}
+
+static void image_create_texture(GLuint *tex, GLsizei width, GLsizei height,
+    int depth, uint8_t *pixels, GLenum filter)
+{
+    static const GLint swizzleMask[] = {GL_ONE, GL_ONE, GL_ONE, GL_RED};
+
+    glGenTextures(1, tex);
+    glBindTexture(GL_TEXTURE_2D, *tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
+    switch (depth) {
+    case 1:
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, (GLsizei)width, (GLsizei)height,
+            0, GL_RED, GL_UNSIGNED_BYTE, (GLvoid*)pixels);
+        glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
+        break;
+    case 4:
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)width, (GLsizei)height,
+            0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)pixels);
+        break;
+    }
+    glActiveTexture(GL_TEXTURE0);
 }
