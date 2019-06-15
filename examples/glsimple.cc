@@ -48,7 +48,6 @@ static const int font_dpi = 72;
 static int font_size = 32;
 static int width = 1024, height = 256;
 static font_manager_ft manager;
-static font_atlas atlas;
 
 
 /* display  */
@@ -83,7 +82,7 @@ static void update_geometry()
 
     std::vector<glyph_shape> shapes;
     text_shaper_hb shaper;
-    text_renderer_ft renderer(&manager, &atlas);
+    text_renderer_ft renderer(&manager);
     text_segment segment(render_text, text_lang, face,
         font_size * 64, x, y, color);
 
@@ -102,7 +101,8 @@ static void vertex_array_config(program *prog)
 
 static void update_buffers()
 {
-    static const GLint swizzleMask[] = {GL_ONE, GL_ONE, GL_ONE, GL_RED};
+    auto face = manager.findFontByPath(font_path);
+    auto atlas = manager.getFontAtlas(face);
 
     /* create vertex and index arrays */
     update_geometry();
@@ -114,16 +114,8 @@ static void update_buffers()
     glBindVertexArray(0);
 
     /* create font atlas texture */
-    glGenTextures(1, &tex);
-    glBindTexture(GL_TEXTURE_2D, tex);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, (GLsizei)atlas.width, (GLsizei)atlas.height,
-        0, GL_RED, GL_UNSIGNED_BYTE, (GLvoid*)&atlas.pixels[0]);
-    glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
-    glActiveTexture(GL_TEXTURE0);
+    image_create_texture(&tex, atlas->width, atlas->height, atlas->depth,
+        &atlas->pixels[0], atlas->depth == 4 ? GL_LINEAR : GL_NEAREST);
 }
 
 /* OpenGL initialization */

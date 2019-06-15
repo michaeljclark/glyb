@@ -44,7 +44,6 @@ const char* text_attributes[] = {
 };
 
 static font_manager_ft manager;
-static font_atlas atlas;
 
 const char* test_str_1 = "the quick brown fox jumps over the lazy dog";
 static const char* text_lang = "en";
@@ -86,10 +85,10 @@ void t2()
     std::vector<uint32_t> indices;
 
     text_shaper_hb shaper;
-    text_renderer_ft renderer(&manager, &atlas);
+    text_renderer_ft renderer(&manager);
     text_segment segment(test_str_1, text_lang, face,
         48 * 64, 0, 0, 0xffffffff);
-    text_layout layout(&manager, &atlas, &shaper, &renderer);
+    text_layout layout(&manager, &shaper, &renderer);
 
     text_container c;
     c.append(text_part("regular ", {{ "font-style", "Regular" }}));

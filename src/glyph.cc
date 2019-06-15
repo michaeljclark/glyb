@@ -125,8 +125,8 @@ void font_atlas::reset(size_t width, size_t height, size_t depth)
     init();
 }
 
-atlas_entry* font_atlas::create(int font_id, int font_size, int glyph,
-    int ox, int oy, int w, int h)
+atlas_entry* font_atlas::create(font_face *face, int font_size, int glyph,
+    int entry_font_size, int ox, int oy, int w, int h)
 {
     int bin_id = (int)glyph_map.size();
     auto r = bp.find_region(bin_id, bin_point(w + PADDING , h + PADDING));
@@ -143,8 +143,8 @@ atlas_entry* font_atlas::create(int font_id, int font_size, int glyph,
     /* insert into glyph_map */
     auto a = r.second.a;
     auto gi = glyph_map.insert(glyph_map.end(),
-        std::pair<atlas_key,atlas_entry>({font_id, font_size, glyph},
-            {bin_id, a.x, a.y, ox, oy, w, h, uv}));
+        std::pair<atlas_key,atlas_entry>({face->font_id, font_size, glyph},
+            {bin_id, entry_font_size, a.x, a.y, ox, oy, w, h, uv}));
 
     return &gi->second;
 }
@@ -176,35 +176,62 @@ void font_atlas::expand_delta(bin_rect b)
     delta.b.y = (std::max)(delta.b.y,b.b.y);
 }
 
-atlas_entry* font_atlas::lookup(int font_id, int font_size, int glyph)
+atlas_entry* font_atlas::resize(font_face *face, int font_size, int glyph,
+    atlas_entry *tmpl)
 {
-    auto gi = glyph_map.find({font_id, font_size, glyph});
+    //atlas_entry(int bin_id, int font_size, int x, int y, int ox, int oy,
+    //    int w, int h, float uv[4]);
+    float scale = (float)font_size / tmpl->font_size;
+    auto gi = glyph_map.insert(glyph_map.end(),
+        std::pair<atlas_key,atlas_entry>(
+            { face->font_id, font_size, glyph},
+            { tmpl->bin_id, font_size, tmpl->x, tmpl->y,
+              (short)roundf((float)tmpl->ox * scale),
+              (short)roundf((float)tmpl->oy * scale),
+              (short)roundf((float)tmpl->w * scale),
+              (short)roundf((float)tmpl->h * scale),
+              tmpl->uv }));
+    return &gi->second;
+}
+
+atlas_entry* font_atlas::lookup(font_face *face, int font_size, int glyph,
+    glyph_renderer *renderer)
+{
+    atlas_entry *ae = nullptr;
+
+    /*
+     * lookup atlas to see if the glyph is in the atlas
+     */
+    auto gi = glyph_map.find({face->font_id, font_size, glyph});
     if (gi != glyph_map.end()) {
         return &gi->second;
-    } else if (depth == 4 /* hack to detect MSDF texture */) {
-        /* look up multi-channel entry template */
-        auto gi = glyph_map.find({font_id, 0, glyph});
-        if (gi != glyph_map.end()) {
-            atlas_entry ae = gi->second;
-            float scale = (float)font_size / (128.0f * 64.0f);
-            ae.ox = (int)roundf((float)ae.ox * scale);
-            ae.oy = (int)roundf((float)ae.oy * scale);
-            ae.w = (int)roundf((float)ae.w * scale);
-            ae.h = (int)roundf((float)ae.h * scale);
-            auto gj = glyph_map.insert(glyph_map.end(),
-                std::pair<atlas_key,atlas_entry>({font_id, font_size, glyph},ae));
-            return &gj->second;
-        } else {
-            return nullptr;
-        }
+    }
+
+    /*
+     * lookup index with font size 0 which is used for variable
+     * sized entries created by signed distance field renderers.
+     */
+    gi = glyph_map.find({face->font_id, 0, glyph});
+    if (gi != glyph_map.end()) {
+        return resize(face, font_size, glyph, &gi->second);
+    }
+
+    /*
+     * rendering a glyph may create a variable size entry, so
+     * we check that we got the font size that we requested.
+     */
+    ae = renderer->render(this, static_cast<font_face_ft*>(face),
+        font_size, glyph);
+    if (ae->font_size != font_size) {
+        return resize(face, font_size, glyph, ae);
     } else {
-        return nullptr;
+        return ae;
     }
 }
 
 #define FLOAT32 "%.9g"
 
-void font_atlas::save_map(FILE *out)
+void font_atlas::save_map(font_manager *manager, FILE *out)
 {
     std::vector<atlas_key> v;
     for(auto i = glyph_map.begin(); i != glyph_map.end(); i++) {
@@ -216,29 +243,30 @@ void font_atlas::save_map(FILE *out)
         auto i = glyph_map.find(k);
         const atlas_key &key = i->first;
         const atlas_entry &ent = i->second;
-        fprintf(out, "%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+        fprintf(out, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
             ent.bin_id, key.font_id(), key.glyph(),
-            ent.x, ent.y, ent.ox, ent.oy, ent.w, ent.h);
+            ent.font_size, ent.x, ent.y, ent.ox, ent.oy, ent.w, ent.h);
     }
 }
 
-void font_atlas::load_map(FILE *in)
+void font_atlas::load_map(font_manager *manager, FILE *in)
 {
-    const int num_fields = 9;
+    const int num_fields = 10;
     int ret;
     do {
-        int bin_id, font_id, font_size, glyph;
+        int bin_id, font_id, glyph;
         atlas_entry ent;
-        ret = fscanf(in, "%d,%d,%d,%hd,%hd,%hd,%hd,%hd,%hd\n",
-            &bin_id, &font_id, &glyph,
+        ret = fscanf(in, "%d,%d,%d,%d,%hd,%hd,%hd,%hd,%hd,%hd\n",
+            &bin_id, &font_id, &glyph, &ent.font_size,
             &ent.x, &ent.y, &ent.ox, &ent.oy, &ent.w, &ent.h);
         if (ret == num_fields) {
-            create(font_id, /*size*/0, glyph, ent.ox, ent.oy, ent.w, ent.h);
+            font_face *face = manager->findFontById(font_id);
+            create(face, /*size*/0, glyph, ent.font_size, ent.ox, ent.oy, ent.w, ent.h);
         }
     } while (ret == num_fields);
 }
 
-void font_atlas::save(std::string basename)
+void font_atlas::save(font_manager *manager, std::string basename)
 {
     std::string img_filename = basename + ".atlas.png";
     std::string csv_filename = basename + ".atlas.csv";
@@ -248,14 +276,14 @@ void font_atlas::save(std::string basename)
             csv_filename.c_str(), strerror(errno));
         exit(1);
     }
-    save_map(fcsv);
+    save_map(manager, fcsv);
     fclose(fcsv);
     image_ptr img = image::createBitmap(width, height,
         depth == 4 ? pixel_format_rgba : pixel_format_alpha, &pixels[0]);
     image::saveToFile(img_filename, img);
 }
 
-void font_atlas::load(std::string basename)
+void font_atlas::load(font_manager *manager, std::string basename)
 {
     std::string img_filename = basename + ".atlas.png";
     std::string csv_filename = basename + ".atlas.csv";
@@ -265,7 +293,7 @@ void font_atlas::load(std::string basename)
             csv_filename.c_str(), strerror(errno));
         exit(1);
     }
-    load_map(fcsv);
+    load_map(manager, fcsv);
     fclose(fcsv);
     image_ptr img = image::createFromFile(img_filename);
     reset(img->getWidth(), img->getHeight(), img->getBytesPerPixel());
@@ -372,8 +400,8 @@ void text_shaper_hb::shape(std::vector<glyph_shape> &shapes, text_segment *segme
  * glyph renderer
  */
 
-atlas_entry* glyph_renderer_ft::render(font_face_ft *face, int font_size,
-    int glyph)
+atlas_entry* glyph_renderer_ft::render(font_atlas *atlas, font_face_ft *face,
+    int font_size, int glyph)
 {
     FT_Library ftlib;
     FT_Face ftface;
@@ -434,10 +462,10 @@ atlas_entry* glyph_renderer_ft::render(font_face_ft *face, int font_size,
 
     if (span.min_x == INT_MAX && span.min_y == INT_MAX) {
         /* create atlas entry for white space glyph with zero dimensions */
-        ae = atlas->create(face->font_id, font_size, glyph, 0, 0, 0, 0);
+        ae = atlas->create(face, font_size, glyph, font_size, 0, 0, 0, 0);
     } else {
         /* create atlas entry for glyph using dimensions from span */
-        ae = atlas->create(face->font_id, font_size, glyph, ox, oy, w, h);
+        ae = atlas->create(face, font_size, glyph, font_size, ox, oy, w, h);
         /* copy pixels from span to atlas */
         if(ae) {
             for (int i = 0; i < span.h; i++) {
@@ -467,13 +495,10 @@ void text_renderer_ft::render(draw_list &batch,
     /* lookup glyphs in font atlas, creating them if they don't exist */
     float dx = 0, dy = 0;
     for (auto shape : shapes) {
-        atlas_entry *ae = atlas->lookup(face->font_id, font_size, shape.glyph);
-        if (!ae) {
-            /* render glyph and create entry in atlas */
-            if (!(ae = renderer->render(face, font_size, shape.glyph))) {
-                continue;
-            }
-        }
+        font_atlas *atlas = manager->getFontAtlas(face);
+        atlas_entry *ae = atlas->lookup(face, font_size, shape.glyph,
+            renderer.get());
+        if (!ae) continue;
         /* create polygons in vertex array */
         int x1 = segment->x + ae->ox + (int)roundf(dx + shape.x_offset/64.0f);
         int x2 = x1 + ae->w;

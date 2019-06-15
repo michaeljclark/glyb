@@ -30,14 +30,13 @@ size_t iterations = 100000;
 int main()
 {
     font_manager_ft manager;
-    font_atlas atlas;
     auto face = manager.findFontByPath("fonts/Roboto-Regular.ttf");
 
     std::vector<glyph_shape> shapes;
     draw_list batch;
 
     text_shaper_hb shaper;
-    text_renderer_ft renderer(&manager, &atlas);
+    text_renderer_ft renderer(&manager);
     text_segment segment(test_str_1, text_lang, face,
         48 * 64, 0, 0, 0xffffffff);
 

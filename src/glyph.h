@@ -80,18 +80,19 @@ inline int atlas_key::glyph() const { return opaque & ((1 << 20)-1); }
 
 struct atlas_entry
 {
-    int bin_id;
+    int bin_id, font_size;
     short x, y, ox, oy, w, h;
     float uv[4];
 
     atlas_entry() = default;
-    atlas_entry(int bin_id, int x, int y, int ox, int oy, int w, int h,
-        float uv[4]);
+    atlas_entry(int bin_id, int font_size, int x, int y, int ox, int oy,
+        int w, int h, float uv[4]);
 };
 
-inline atlas_entry::atlas_entry(int bin_id, int x, int y,
-    int ox, int oy, int w, int h, float uv[4]) : bin_id(bin_id),
-    x(x), y(y), ox(ox), oy(oy), w(w), h(h), uv{uv[0], uv[1], uv[2], uv[3]} {}
+inline atlas_entry::atlas_entry(int bin_id, int font_size, int x, int y,
+    int ox, int oy, int w, int h, float uv[4]) :
+    bin_id(bin_id), font_size(font_size), x(x), y(y), ox(ox), oy(oy),
+    w(w), h(h), uv{uv[0], uv[1], uv[2], uv[3]} {}
 
 
 /*
@@ -101,6 +102,8 @@ inline atlas_entry::atlas_entry(int bin_id, int x, int y,
  * The Font Atlas is graphics API agnostic. It is necessary for client
  * code to update an atlas texture after text has been rendered.
  */
+
+struct glyph_renderer;
 
 struct font_atlas
 {
@@ -112,9 +115,10 @@ struct font_atlas
     bin_rect delta;
 
     static const int PADDING = 1;
-    static const int DEFAULT_WIDTH = 2048;
-    static const int DEFAULT_HEIGHT = 2048;
+    static const int DEFAULT_WIDTH = 1024;
+    static const int DEFAULT_HEIGHT = 1024;
     static const int DEFAULT_DEPTH = 1;
+    static const int MSDF_DEPTH = 4;
 
     font_atlas();
     font_atlas(size_t width, size_t height, size_t depth);
@@ -122,19 +126,22 @@ struct font_atlas
     void init();
     void reset(size_t width, size_t height, size_t depth);
 
-    atlas_entry* lookup(int font_id, int font_size, int glyph);
-    atlas_entry* create(int font_id, int font_size, int glyph,
-        int ox, int oy, int w, int h);
+    atlas_entry* resize(font_face *face, int font_size, int glyph,
+        atlas_entry *tmpl);
+    atlas_entry* lookup(font_face *face, int font_size, int glyph,
+        glyph_renderer *renderer);
+    atlas_entry* create(font_face *face, int font_size, int glyph,
+        int entry_font_size, int ox, int oy, int w, int h);
 
     /* tracking minimum required update rectangle */
     bin_rect get_delta();
     void expand_delta(bin_rect b);
 
     /* persistance */
-    void save_map(FILE *out);
-    void load_map(FILE *in);
-    void save(std::string basename);
-    void load(std::string basename);
+    void save_map(font_manager *manager, FILE *out);
+    void load_map(font_manager *manager, FILE *in);
+    void save(font_manager *manager, std::string basename);
+    void load(font_manager *manager, std::string basename);
 };
 
 
@@ -234,24 +241,20 @@ struct glyph_renderer
 {
     virtual ~glyph_renderer() = default;
 
-    virtual atlas_entry* render(font_face_ft *face,
+    virtual atlas_entry* render(font_atlas* atlas, font_face_ft *face,
         int font_size, int glyph) = 0;
 };
 
 struct glyph_renderer_ft : glyph_renderer
 {
-    font_manager_ft* manager;
-    font_atlas* atlas;
     span_vector span;
 
-    glyph_renderer_ft(font_manager_ft* manager, font_atlas* atlas);
+    glyph_renderer_ft() = default;
     virtual ~glyph_renderer_ft() = default;
 
-    atlas_entry* render(font_face_ft *face, int font_size, int glyph);
+    atlas_entry* render(font_atlas* atlas, font_face_ft *face,
+        int font_size, int glyph);
 };
-
-inline glyph_renderer_ft::glyph_renderer_ft(font_manager_ft* manager,
-    font_atlas* atlas) : manager(manager), atlas(atlas) {}
 
 
 /*
@@ -274,12 +277,11 @@ struct text_renderer
 
 struct text_renderer_ft : text_renderer
 {
-    font_manager_ft* manager;
-    font_atlas* atlas;
+    font_manager* manager;
     std::unique_ptr<glyph_renderer> renderer;
 
-    text_renderer_ft(font_manager_ft* manager, font_atlas* atlas);
-    text_renderer_ft(font_manager_ft* manager, font_atlas* atlas,
+    text_renderer_ft(font_manager* manager);
+    text_renderer_ft(font_manager* manager,
         glyph_renderer* renderer);
     virtual ~text_renderer_ft() = default;
 
@@ -288,11 +290,8 @@ struct text_renderer_ft : text_renderer
         text_segment *segment);
 };
 
-inline text_renderer_ft::text_renderer_ft(font_manager_ft* manager,
-    font_atlas* atlas) :
-    manager(manager), atlas(atlas),
-    renderer(new glyph_renderer_ft(manager, atlas)) {}
+inline text_renderer_ft::text_renderer_ft(font_manager* manager) :
+    manager(manager), renderer(new glyph_renderer_ft()) {}
 
-inline text_renderer_ft::text_renderer_ft(font_manager_ft* manager,
-    font_atlas* atlas, glyph_renderer *renderer) :
-    manager(manager), atlas(atlas), renderer(renderer) {}
+inline text_renderer_ft::text_renderer_ft(font_manager* manager,
+    glyph_renderer *renderer) : manager(manager), renderer(renderer) {}

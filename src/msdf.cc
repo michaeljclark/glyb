@@ -95,8 +95,8 @@ static int ftCubicTo(const FT_Vector *control1, const FT_Vector *control2,
  * glyph_renderer_msdf
  */
 
-atlas_entry* glyph_renderer_msdf::render(font_face_ft *face, int font_size,
-    int glyph)
+atlas_entry* glyph_renderer_msdf::render(font_atlas *atlas, font_face_ft *face,
+	int font_size, int glyph)
 {
     msdfgen::Shape shape;
     atlas_entry *ae;
@@ -158,7 +158,14 @@ atlas_entry* glyph_renderer_msdf::render(font_face_ft *face, int font_size,
         msdfgen::msdfErrorCorrection(msdf, edgeThreshold/(scale*range));
     }
 
-    ae = atlas->create(0, 0, glyph, ox, oy, w, h);
+    /*
+     * note: we create a template font atlas entry with font size 0,
+     * which indicates the atlas entry for for a variable size entry,
+     * which is the main reason we use signed distance fields. the
+     * atlas contains special logic to create font size specific
+     * entries from the template entry.
+	 */
+    ae = atlas->create(face, 0, glyph, char_height, ox, oy, w, h);
     if (ae) {
         for (int x = 0; x < w; x++) {
             for (int y = 0; y < h; y++) {
@@ -175,21 +182,9 @@ atlas_entry* glyph_renderer_msdf::render(font_face_ft *face, int font_size,
     /* clients expect font metrics for the font size to be loaded */
     face->get_metrics(font_size);
 
-    /* normal renderer returns the atlas entry, however, given MSDF
-     * atlas entries are not font size specific, we need to create
-     * an atlas entry for our font size. This logic is currently
-     * duplicated in the atlas lookup routines, however, the atlas
-     * lookup has failed, and the text renderer is calling the
-     * glyph renderer to render this glyph, so the logic to create
-     * the sized atlas entry is also here. This needs to be fixed. */
-
-    atlas_entry ae_dup = *ae;
-    float glyph_scale = (float)font_size / (128.0f * 64.0f);
-    ae_dup.ox = (int)roundf((float)ae->ox * glyph_scale);
-    ae_dup.oy = (int)roundf((float)ae->oy * glyph_scale);
-    ae_dup.w = (int)roundf((float)ae->w * glyph_scale);
-    ae_dup.h = (int)roundf((float)ae->h * glyph_scale);
-    auto gj = atlas->glyph_map.insert(atlas->glyph_map.end(),
-        std::pair<atlas_key,atlas_entry>({face->font_id, font_size, glyph}, ae_dup));
-    return &gj->second;
+    /*
+     * note: we recurse into the font atlas lookup code to trigger
+     * generation of an atlas entry for the requested font size.
+     */
+    return ae;
 }

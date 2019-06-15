@@ -74,7 +74,6 @@ struct text_container
 struct text_layout
 {
     font_manager_ft* manager;
-    font_atlas* atlas;
     text_shaper* shaper;
     text_renderer_ft* renderer;
 
@@ -83,7 +82,7 @@ struct text_layout
     const int baseline_shift_default = 0;
     const int tracking_default = 0;
 
-    text_layout(font_manager_ft* manager, font_atlas* atlas,
+    text_layout(font_manager_ft* manager,
         text_shaper* shaper, text_renderer_ft* renderer);
 
     void style(text_segment *segment, text_part *part);
@@ -91,6 +90,6 @@ struct text_layout
         text_container *container, int x, int y, int width, int height);
 };
 
-inline text_layout::text_layout(font_manager_ft* manager, font_atlas* atlas,
-        text_shaper* shaper, text_renderer_ft* renderer) :
-        manager(manager), atlas(atlas), shaper(shaper), renderer(renderer) {}
+inline text_layout::text_layout(font_manager_ft* manager, text_shaper* shaper,
+    text_renderer_ft* renderer) :
+    manager(manager), shaper(shaper), renderer(renderer) {}

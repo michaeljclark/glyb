@@ -17,7 +17,7 @@ void main()
     vec3 sample = texture2D(u_tex0, v_uv0).rgb;
 
     ivec2 sz = textureSize( u_tex0, 0 );
-    //vec2 sz = vec2(2048,2048);
+    //vec2 sz = vec2(1024,1024);
 
     float dx = dFdx( v_uv0.x ) * sz.x;
     float dy = dFdy( v_uv0.y ) * sz.y;

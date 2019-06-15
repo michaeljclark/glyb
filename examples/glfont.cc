@@ -29,6 +29,7 @@
 #include "binpack.h"
 #include "font.h"
 #include "glyph.h"
+#include "msdf.h"
 
 
 /* globals */
@@ -49,11 +50,9 @@ static int font_size_max = 32;
 static bool help_text = false;
 static bool show_atlas = false;
 static bool show_lines = false;
-static bool use_msdf = false;
 static bool debug = false;
 static int width = 1024, height = 768;
 static font_manager_ft manager;
-static font_atlas atlas;
 
 
 /* display  */
@@ -69,7 +68,7 @@ static void display()
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glUseProgram(use_msdf ? msdf.pid : simple.pid);
+    glUseProgram(manager.msdf_enabled ? msdf.pid : simple.pid);
     glBindVertexArray(vao);
     glDrawElements(GL_TRIANGLES, (GLsizei)batch.indices.size(), GL_UNSIGNED_INT, (void*)0);
 
@@ -90,11 +89,11 @@ static void reshape(int width, int height)
 
 /* geometry */
 
-static void rect(draw_list &batch, float x1, float y1, float x2, float y2,
-    float z, uint color)
+static void rect(draw_list &batch, font_atlas *atlas,
+    float x1, float y1, float x2, float y2, float z, uint color)
 {
     uint o = static_cast<uint>(batch.vertices.size());
-    float uv1 = 0.0f, uv2 = atlas.uv1x1;
+    float uv1 = 0.0f, uv2 = atlas->uv1x1;
     uint o0 = draw_list_vertex(batch, {{x1, y1, z}, {uv1, uv1}, color});
     uint o1 = draw_list_vertex(batch, {{x2, y1, z}, {uv2, uv1}, color});
     uint o2 = draw_list_vertex(batch, {{x2, y2, z}, {uv2, uv2}, color});
@@ -107,13 +106,12 @@ static void update_geometry()
 {
     const uint32_t black = 0xff000000, light_gray = 0xffcccccc;
 
-    if (use_msdf && atlas.glyph_map.size() == 0) {
-        atlas.load(font_path);
-    }
-
     text_shaper_hb shaper;
-    text_renderer_ft renderer(&manager, &atlas);
+    text_renderer_ft renderer(&manager, manager.msdf_enabled ?
+        (glyph_renderer*)new glyph_renderer_msdf() :
+        (glyph_renderer*)new glyph_renderer_ft());
     font_face *face = manager.findFontByPath(font_path);
+    font_atlas *atlas = manager.getFontAtlas(face);
     std::vector<glyph_shape> shapes;
 
     int x = 100, y = 100;
@@ -145,9 +143,9 @@ static void update_geometry()
             float y3 = (float)y - (float)height / 2.0f - 1.0f, y4 = y3 + 2.0f;
             float y5 = (float)y - (float)height - 1.0f, y6 = y5 + 2.0f;
             float fwidth = (float)width, fheight = (float)height;
-            rect(batch, x1, y1, x2, y2, 0, light_gray);
-            rect(batch, x1, y3, x2, y4, 0, light_gray);
-            rect(batch, x1, y5, x2, y6, 0, light_gray);
+            rect(batch, atlas, x1, y1, x2, y2, 0, light_gray);
+            rect(batch, atlas, x1, y3, x2, y4, 0, light_gray);
+            rect(batch, atlas, x1, y5, x2, y6, 0, light_gray);
         }
         renderer.render(batch, shapes, &render_segment);
     }
@@ -178,18 +176,21 @@ static void vertex_array_config(program *prog)
 
 static void update_buffers()
 {
+    auto face = manager.findFontByPath(font_path);
+    auto atlas = manager.getFontAtlas(face);
+
     /* create vertex and index arrays */
     update_geometry();
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
     vertex_buffer_create("vbo", &vbo, GL_ARRAY_BUFFER, batch.vertices);
     vertex_buffer_create("ibo", &ibo, GL_ELEMENT_ARRAY_BUFFER, batch.indices);
-    vertex_array_config(use_msdf ? &msdf : &simple);
+    vertex_array_config(manager.msdf_enabled ? &msdf : &simple);
     glBindVertexArray(0);
 
     /* create font atlas texture */
-    image_create_texture(&tex, atlas.width, atlas.height, atlas.depth,
-        &atlas.pixels[0], atlas.depth == 4 ? GL_LINEAR : GL_NEAREST);
+    image_create_texture(&tex, atlas->width, atlas->height, atlas->depth,
+        &atlas->pixels[0], atlas->depth == 4 ? GL_LINEAR : GL_NEAREST);
 }
 
 /* keyboard callback */
@@ -216,6 +217,15 @@ static void initialize()
     glDeleteShader(vsh);
     glDeleteShader(simple_fsh);
     glDeleteShader(msdf_fsh);
+
+    /*
+     * we need to scan font directory for caching to work, as it uses
+     * font ids assigned during scanning. this also means that if the
+     * font directory has changed, then cached font ids will be wrong
+     */
+    if (manager.msdf_enabled) {
+        manager.scanFontDir("fonts");
+    }
 
     /* create vertex buffers and font atlas texture */
     update_buffers();
@@ -279,6 +289,7 @@ void print_help(int argc, char **argv)
         "  -a, --show-atlas           show the atlas instead of the text\n"
         "  -l, --show-lines           show baseline, half-height and height\n"
         "  -m, --use-msdf             use multi-channel signed distance field\n"
+        "  -M, --autoload-msdf        autoload MSDF font atlas textures\n"
         "  -d, --debug                print debugging information\n"
         "  -h, --help                 command line help\n",
         argv[0], font_path, font_size_min, font_size_max, render_text);
@@ -328,7 +339,11 @@ void parse_options(int argc, char **argv)
             show_lines = true;
             i++;
         } else if (match_opt(argv[i], "-m", "--use-msdf")) {
-            use_msdf = true;
+            manager.msdf_enabled = true;
+            i++;
+        } else if (match_opt(argv[i], "-M", "--autoload-msdf")) {
+            manager.msdf_enabled = true;
+            manager.msdf_autoload = true;
             i++;
         } else if (match_opt(argv[i], "-h", "--help")) {
             help_text = true;

@@ -14,6 +14,7 @@ struct font_face;
 struct font_manager;
 struct font_data;
 struct font_spec;
+struct font_atlas;
 
 struct font_face_ft;
 struct font_manager_ft;
@@ -223,6 +224,7 @@ struct font_manager
     static font_data createFontRecord(std::string psName,
         std::string familyName, std::string styleName);
 
+    std::shared_ptr<font_atlas> atlas;
     std::vector<font_face*> allFonts;
     std::map<std::string,size_t> fontPathMap;
     std::map<std::string,size_t> fontNameMap;
@@ -242,6 +244,7 @@ struct font_manager
         font_style fontStyle);
     virtual font_face* findFontByData(font_data fontRec);
     virtual font_face* findFontBySpec(font_spec fontSpec);
+    virtual font_atlas* getFontAtlas(font_face *face);
 };
 
 
@@ -264,8 +267,11 @@ struct font_face_ft : font_face
 struct font_manager_ft : font_manager
 {
     FT_Library ftlib;
+    bool msdf_enabled;
+    bool msdf_autoload;
 
     std::vector<font_face_ft> faces;
+    std::vector<std::shared_ptr<font_atlas>> atlasList;
 
     font_manager_ft(std::string fontDir = "");
     virtual ~font_manager_ft();
@@ -275,6 +281,7 @@ struct font_manager_ft : font_manager
     virtual size_t fontCount();
     virtual font_face* findFontById(size_t font_id);
     virtual font_face* findFontByPath(std::string path);
+    virtual font_atlas* getFontAtlas(font_face *face);
 
     const std::vector<font_face_ft>& getFontList() { return faces; }
 };

@@ -44,7 +44,6 @@ static GLFWwindow* window;
 
 static int width = 1024, height = 768;
 static font_manager_ft manager;
-static font_atlas atlas;
 
 
 /* display  */
@@ -84,8 +83,8 @@ static void update_geometry()
     std::vector<glyph_shape> shapes;
 
     text_shaper_hb shaper;
-    text_renderer_ft renderer(&manager, &atlas);
-    text_layout layout(&manager, &atlas, &shaper, &renderer);
+    text_renderer_ft renderer(&manager);
+    text_layout layout(&manager, &shaper, &renderer);
     text_container c;
 
     c.append(text_part("Γειά ",
@@ -130,7 +129,7 @@ static void vertex_array_config(program *prog)
 
 static void update_buffers()
 {
-    static const GLint swizzleMask[] = {GL_ONE, GL_ONE, GL_ONE, GL_RED};
+    auto atlas = manager.getFontAtlas(nullptr); /* not compatible with cached atlases */
 
     /* create vertex and index arrays */
     update_geometry();
@@ -142,8 +141,8 @@ static void update_buffers()
     glBindVertexArray(0);
 
     /* create font atlas texture */
-    image_create_texture(&tex, atlas.width, atlas.height, atlas.depth,
-        &atlas.pixels[0], atlas.depth == 4 ? GL_LINEAR : GL_NEAREST);
+    image_create_texture(&tex, atlas->width, atlas->height, atlas->depth,
+        &atlas->pixels[0], atlas->depth == 4 ? GL_LINEAR : GL_NEAREST);
 }
 
 /* OpenGL initialization */

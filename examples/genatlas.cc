@@ -65,6 +65,7 @@ static bool verbose = false;
 static bool batch_render = true;
 static bool display_ansi = false;
 static bool clear_ansi = false;
+static font_manager_ft manager;
 
 static const char* shades[4][4] = {
     { " ", "▗", "▖", "▄" },
@@ -170,12 +171,13 @@ static int ftCubicTo(const FT_Vector *control1, const FT_Vector *control2,
     return 0;
 }
 
-static atlas_entry* generateMSDF(FT_Face ftface, font_atlas *atlas,
+static atlas_entry* generateMSDF(font_face *face, font_atlas *atlas,
     int size, int dpi, int glyph)
 {
     msdfgen::Shape shape;
     atlas_entry *ae;
     msdfgen::Vector2 translate, scale = { 1, 1 };
+    FT_Face ftface;
     FT_GlyphSlot ftglyph;
     FT_Error error;
     FT_Outline_Funcs ftFunctions;
@@ -191,6 +193,7 @@ static atlas_entry* generateMSDF(FT_Face ftface, font_atlas *atlas,
     uint long long coloringSeed = 0;
     msdfgen::FillRule fillRule = msdfgen::FILL_NONZERO;
 
+    ftface = static_cast<font_face_ft*>(face)->ftface;
     error = FT_Set_Char_Size(ftface, 0, char_height, horz_resolution,
         horz_resolution);
     if (error) {
@@ -237,7 +240,7 @@ static atlas_entry* generateMSDF(FT_Face ftface, font_atlas *atlas,
         render_block(msdf);
     }
 
-    ae = atlas->create(0, 0, glyph, ox, oy, w, h);
+    ae = atlas->create(face, 0, glyph, char_height, ox, oy, w, h);
     if (ae) {
         for (int x = 0; x < w; x++) {
             for (int y = 0; y < h; y++) {
@@ -390,7 +393,8 @@ static std::vector<std::pair<uint,uint>> allCodepointGlyphPairs(FT_Face ftface)
 
 uint64_t process_one_file(const char *font_path, const char *output_path)
 {
-    font_atlas atlas(2048, 2048, 4);
+    font_atlas atlas(font_atlas::DEFAULT_WIDTH, font_atlas::DEFAULT_HEIGHT,
+        font_atlas::MSDF_DEPTH);
 
     const auto t1 = high_resolution_clock::now();
 
@@ -398,20 +402,8 @@ uint64_t process_one_file(const char *font_path, const char *output_path)
      * load font
      */
 
-    FT_Error fterr;
-    FT_Library ftlib;
-    FT_Face ftface;
-
-    if ((fterr = FT_Init_FreeType(&ftlib))) {
-        fprintf(stderr, "error: FT_Init_FreeType failed: fterr=%d\n", fterr);
-        exit(1);
-    }
-
-    if ((fterr = FT_New_Face(ftlib, font_path, 0, &ftface))) {
-        fprintf(stderr, "error: FT_New_Face failed: fterr=%d, path=%s\n",
-            fterr, font_path);
-        exit(1);
-    }
+    font_face *face = manager.findFontByPath(font_path);
+    FT_Face ftface = static_cast<font_face_ft*>(face)->ftface;
 
     /*
      * select single or multiple glyphs
@@ -433,7 +425,7 @@ uint64_t process_one_file(const char *font_path, const char *output_path)
 
         if (codepoint >= glyph_limit) continue;
 
-        if (!(ae = generateMSDF(ftface, &atlas, font_size * 64, dpi, glyph))) {
+        if (!(ae = generateMSDF(face, &atlas, font_size * 64, dpi, glyph))) {
             if (verbose) {
                 printf("ATLAS FULL (codepoint: %u, glyph: %u)\n",
                     codepoint, glyph);
@@ -452,7 +444,7 @@ uint64_t process_one_file(const char *font_path, const char *output_path)
     }
 
     if (batch_render) {
-        atlas.save(output_path);
+        atlas.save(&manager, output_path);
     }
 
     /*
@@ -467,9 +459,6 @@ uint64_t process_one_file(const char *font_path, const char *output_path)
         printf("utilization      : %5.3f%%\n",
             100.0f*(float)area / (float)(atlas.width * atlas.height));
     }
-
-    FT_Done_Face(ftface);
-    FT_Done_Library(ftlib);
 
     const auto t2 = high_resolution_clock::now();
 

@@ -419,10 +419,19 @@ std::string font_spec::toString() const
     return s;
 }
 
+font_atlas* font_manager::getFontAtlas(font_face *face)
+{
+    if (!atlas) {
+        atlas = std::shared_ptr<font_atlas>(new font_atlas());
+    }
+    return atlas.get();
+}
+
 
 /* Font Manager (FreeType) */
 
-font_manager_ft::font_manager_ft(std::string fontDir) : font_manager()
+font_manager_ft::font_manager_ft(std::string fontDir) : font_manager(),
+    msdf_enabled(false), msdf_autoload(false)
 {
     FT_Error fterr;
     if ((fterr = FT_Init_FreeType(&ftlib))) {
@@ -486,6 +495,27 @@ font_face* font_manager_ft::findFontByPath(std::string path)
         face = font_manager::findFontByPath(path);
     }
     return face;
+}
+
+font_atlas* font_manager_ft::getFontAtlas(font_face *face)
+{
+    if (face != nullptr && msdf_enabled) {
+        if (atlasList.size() <= face->font_id) {
+            atlasList.resize(face->font_id + 1);
+        }
+        if (!atlasList[face->font_id]) {
+            auto atlas = std::shared_ptr<font_atlas>(
+                new font_atlas(font_atlas::DEFAULT_WIDTH,
+                    font_atlas::DEFAULT_HEIGHT, font_atlas::MSDF_DEPTH));
+            if (msdf_autoload) {
+                atlas->load(this, face->path);
+            }
+            return (atlasList[face->font_id] = atlas).get();
+        } else {
+            return atlasList[face->font_id].get();
+        }
+    }
+    return font_manager::getFontAtlas(face);
 }
 
 
