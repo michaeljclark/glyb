@@ -473,14 +473,12 @@ void text_renderer_ft::render(draw_list &batch,
             if (!(ae = renderer->render(face, font_size, shape.glyph))) {
                 continue;
             }
-            /* apply harfbuzz offsets to the newly created entry */
-            ae->ox += shape.x_offset/64;
-            ae->oy += shape.y_offset/64;
         }
         /* create polygons in vertex array */
-        int x1 = segment->x + ae->ox + (int)roundf(dx);
+        int x1 = segment->x + ae->ox + (int)roundf(dx + shape.x_offset/64.0f);
         int x2 = x1 + ae->w;
-        int y1 = segment->y - ae->oy + (int)roundf(dy) - ae->h - baseline_shift;
+        int y1 = segment->y - ae->oy + (int)roundf(dy + shape.y_offset/64.0f) -
+            ae->h - baseline_shift;
         int y2 = y1 + ae->h;
         if (ae->w > 0 && ae->h > 0) {
             float x1p = 0.5f + x1, x2p = 0.5f + x2;
