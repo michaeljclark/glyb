@@ -10,6 +10,8 @@
 #include <memory>
 #include <string>
 #include <algorithm>
+#include <atomic>
+#include <mutex>
 
 #include "binpack.h"
 #include "utf8.h"

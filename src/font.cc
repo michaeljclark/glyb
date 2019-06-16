@@ -15,6 +15,8 @@
 #include <map>
 #include <tuple>
 #include <algorithm>
+#include <atomic>
+#include <mutex>
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -476,7 +478,7 @@ void font_manager_ft::scanFontPath(std::string path)
     }
 
     size_t font_id = faces.size();
-    faces.emplace_back(font_face_ft((int)faces.size(), ftface, path));
+    faces.emplace_back(font_face_ft(this, ftface, (int)faces.size(), path));
     indexFace(&faces[font_id]);
 }
 
@@ -521,12 +523,19 @@ font_atlas* font_manager_ft::getFontAtlas(font_face *face)
 
 /* Font Face (FreeType) */
 
-font_face_ft::font_face_ft(int font_id, FT_Face ftface, std::string path) :
-    font_face(font_id, path, FT_Get_Postscript_Name(ftface)), ftface(ftface)
+font_face_ft::font_face_ft(font_manager_ft* manager, FT_Face ftface, int font_id, std::string path) :
+    font_face(font_id, path, FT_Get_Postscript_Name(ftface)), manager(manager), ftface(ftface)
 {
     fontData = font_manager::createFontRecord(name,
         ftface->family_name, ftface->style_name);
 }
+
+#if 0
+font_face_ft::~font_face_ft()
+{
+    FT_Done_Face(ftface);
+}
+#endif
 
 FT_Size_Metrics* font_face_ft::get_metrics(int font_size)
 {
@@ -543,4 +552,27 @@ FT_Size_Metrics* font_face_ft::get_metrics(int font_size)
 int font_face_ft::get_height(int font_size)
 {
     return get_metrics(font_size)->height;
+}
+
+font_face_ft* font_face_ft::dup_thread()
+{
+    FT_Error fterr;
+    FT_Face ftface;
+
+    if ((fterr = FT_New_Face(manager->ftlib, path.c_str(), 0, &ftface))) {
+        fprintf(stderr, "error: FT_New_Face failed: fterr=%d, path=%s\n",
+            fterr, path.c_str());
+        return nullptr;
+    }
+
+    for (int i = 0; i < ftface->num_charmaps; i++)
+        if (((ftface->charmaps[i]->platform_id == 0) &&
+            (ftface->charmaps[i]->encoding_id == 3))
+         || ((ftface->charmaps[i]->platform_id == 3) &&
+            (ftface->charmaps[i]->encoding_id == 1))) {
+        FT_Set_Charmap(ftface, ftface->charmaps[i]);
+        break;
+    }
+
+    return new font_face_ft(manager, ftface, font_id, path);
 }

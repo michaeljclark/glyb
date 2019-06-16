@@ -16,6 +16,8 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <atomic>
+#include <mutex>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>

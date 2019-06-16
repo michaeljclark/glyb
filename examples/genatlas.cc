@@ -10,6 +10,8 @@
 #include <memory>
 #include <string>
 #include <algorithm>
+#include <atomic>
+#include <mutex>
 #include <chrono>
 
 #include "binpack.h"
@@ -171,17 +173,17 @@ static int ftCubicTo(const FT_Vector *control1, const FT_Vector *control2,
     return 0;
 }
 
-static atlas_entry* generateMSDF(font_face *face, font_atlas *atlas,
+static atlas_entry generateMSDF(font_face *face, font_atlas *atlas,
     int size, int dpi, int glyph)
 {
     msdfgen::Shape shape;
-    atlas_entry *ae;
     msdfgen::Vector2 translate, scale = { 1, 1 };
     FT_Face ftface;
     FT_GlyphSlot ftglyph;
     FT_Error error;
     FT_Outline_Funcs ftFunctions;
     FtContext context = { &shape };
+    atlas_entry ae;
 
     int char_height = size;
     int horz_resolution = dpi;
@@ -197,11 +199,13 @@ static atlas_entry* generateMSDF(font_face *face, font_atlas *atlas,
     error = FT_Set_Char_Size(ftface, 0, char_height, horz_resolution,
         horz_resolution);
     if (error) {
-        return nullptr;
+        memset(&ae, 0, sizeof(ae));
+        return ae;
     }
     error = FT_Load_Glyph(ftface, glyph, 0);
     if (error) {
-        return nullptr;
+        memset(&ae, 0, sizeof(ae));
+        return ae;
     }
 
     ftFunctions.move_to = ftMoveTo;
@@ -213,7 +217,8 @@ static atlas_entry* generateMSDF(font_face *face, font_atlas *atlas,
 
     error = FT_Outline_Decompose(&ftface->glyph->outline, &ftFunctions, &context);
     if (error) {
-        return nullptr;
+        memset(&ae, 0, sizeof(ae));
+        return ae;
     }
 
     /* font dimensions */
@@ -241,13 +246,13 @@ static atlas_entry* generateMSDF(font_face *face, font_atlas *atlas,
     }
 
     ae = atlas->create(face, 0, glyph, char_height, ox, oy, w, h);
-    if (ae) {
+    if (ae.w == w && ae.h == h) {
         for (int x = 0; x < w; x++) {
             for (int y = 0; y < h; y++) {
                 int r = msdfgen::pixelFloatToByte(msdf(x,y)[0]);
                 int g = msdfgen::pixelFloatToByte(msdf(x,y)[1]);
                 int b = msdfgen::pixelFloatToByte(msdf(x,y)[2]);
-                size_t dst = ((ae->y + y) * atlas->width + ae->x + x) * 4;
+                size_t dst = ((ae.y + y) * atlas->width + ae.x + x) * 4;
                 uint32_t color = r | g << 8 | b << 16 | 0xff000000;
                 *(uint32_t*)&atlas->pixels[dst] = color;
             }
@@ -421,11 +426,12 @@ uint64_t process_one_file(const char *font_path, const char *output_path)
     size_t area = 0, count = 0;
     for (auto pair : allGlyphs) {
         uint codepoint = pair.first, glyph = pair.second;
-        atlas_entry *ae;
+        atlas_entry ae;
 
         if (codepoint >= glyph_limit) continue;
 
-        if (!(ae = generateMSDF(face, &atlas, font_size * 64, dpi, glyph))) {
+        ae = generateMSDF(face, &atlas, font_size * 64, dpi, glyph);
+        if (ae.bin_id < 0) {
             if (verbose) {
                 printf("ATLAS FULL (codepoint: %u, glyph: %u)\n",
                     codepoint, glyph);
@@ -435,11 +441,11 @@ uint64_t process_one_file(const char *font_path, const char *output_path)
 
         if (verbose) {
             printf("[%zu/%zu] %20s (codepoint: %u, glyph: %u)\n",
-                count, allGlyphs.size(), ae_dim_str(ae).c_str(),
+                count, allGlyphs.size(), ae_dim_str(&ae).c_str(),
                 codepoint, glyph);
         }
 
-        area += ae->w * ae->h;
+        area += ae.w * ae.h;
         count++;
     }
 

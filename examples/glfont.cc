@@ -16,6 +16,10 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <thread>
+#include <atomic>
+#include <mutex>
+#include <condition_variable>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -30,6 +34,7 @@
 #include "font.h"
 #include "glyph.h"
 #include "msdf.h"
+#include "multi.h"
 
 
 /* globals */
@@ -51,6 +56,7 @@ static bool help_text = false;
 static bool show_atlas = false;
 static bool show_lines = false;
 static bool debug = false;
+static bool use_multithread = false;
 static int width = 1024, height = 768;
 static font_manager_ft manager;
 
@@ -118,23 +124,26 @@ static void update_geometry()
 
     draw_list_clear(batch);
 
+    struct render_item {
+        std::unique_ptr<text_segment> segment;
+        std::unique_ptr<std::vector<glyph_shape>> shapes;
+    };
+    std::vector<render_item> items;
+
     for (int sz = font_size_min; sz <= font_size_max; sz++)
     {
         y += sz;
         std::string size_text = std::to_string(sz);
-        text_segment size_segment(size_text, text_lang, face,
-            12 * 64, x - 50, y, black);
-        text_segment render_segment(render_text, text_lang, face,
-            sz * 64, x, y, black);
-        shapes.clear();
-        shaper.shape(shapes, &size_segment);
-        renderer.render(batch, shapes, &size_segment);
-        shapes.clear();
-        shaper.shape(shapes, &render_segment);
+        auto size_segment = std::make_unique<text_segment>
+            (size_text, text_lang, face, 12 * 64, x - 50, y, black);
+        auto render_segment = std::make_unique<text_segment>
+            (render_text, text_lang, face, sz * 64, x, y, black);
+        auto size_shapes = std::make_unique<std::vector<glyph_shape>>();
+        auto render_shapes = std::make_unique<std::vector<glyph_shape>>();
         if (show_lines) {
             int width = 0;
             int height = static_cast<font_face_ft*>
-                (face)->get_height(render_segment.font_size) >> 6;
+                (face)->get_height(render_segment->font_size) >> 6;
             for (auto &s : shapes) {
                 width += s.x_advance/64;
             }
@@ -147,7 +156,33 @@ static void update_geometry()
             rect(batch, atlas, x1, y3, x2, y4, 0, light_gray);
             rect(batch, atlas, x1, y5, x2, y6, 0, light_gray);
         }
-        renderer.render(batch, shapes, &render_segment);
+        items.push_back({std::move(size_segment),std::move(size_shapes)});
+        items.push_back({std::move(render_segment),std::move(render_shapes)});
+    }
+
+    /*
+     * perform distinct stages for shaping and rendering. we do this so
+     * that we can accumulate all glyphs used for multithreaded rendering.
+     * submitting all glyphs together is more efficient becuase we need to
+     * wait for the glyph render results before starting text rendering.
+     */
+
+    for (auto &item : items) {
+        shaper.shape(*item.shapes, item.segment.get());
+    }
+
+    if (use_multithread && manager.msdf_enabled) {
+        glyph_renderer_factory_impl<glyph_renderer_msdf> renderer_factory;
+        glyph_renderer_multi multithreaded_renderer(&manager,
+            renderer_factory, std::thread::hardware_concurrency());
+        for (auto &item : items) {
+            multithreaded_renderer.add(*item.shapes, item.segment.get());
+        }
+        multithreaded_renderer.run();
+    }
+
+    for (auto &item : items) {
+        renderer.render(batch, *item.shapes, item.segment.get());
     }
 
     if (show_atlas) {
@@ -290,6 +325,7 @@ void print_help(int argc, char **argv)
         "  -l, --show-lines           show baseline, half-height and height\n"
         "  -m, --use-msdf             use multi-channel signed distance field\n"
         "  -M, --autoload-msdf        autoload MSDF font atlas textures\n"
+        "  -T, --multi-thread         multithreaded font atlas generation\n"
         "  -d, --debug                print debugging information\n"
         "  -h, --help                 command line help\n",
         argv[0], font_path, font_size_min, font_size_max, render_text);
@@ -344,6 +380,9 @@ void parse_options(int argc, char **argv)
         } else if (match_opt(argv[i], "-M", "--autoload-msdf")) {
             manager.msdf_enabled = true;
             manager.msdf_autoload = true;
+            i++;
+        } else if (match_opt(argv[i], "-T", "--multi-thread")) {
+            use_multithread = true;
             i++;
         } else if (match_opt(argv[i], "-h", "--help")) {
             help_text = true;

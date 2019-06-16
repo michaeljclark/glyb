@@ -7,6 +7,6 @@ struct glyph_renderer_msdf : glyph_renderer
     glyph_renderer_msdf() = default;
     virtual ~glyph_renderer_msdf() = default;
 
-    atlas_entry* render(font_atlas* atlas, font_face_ft *face,
+    atlas_entry render(font_atlas* atlas, font_face_ft *face,
     	int font_size, int glyph);
 };

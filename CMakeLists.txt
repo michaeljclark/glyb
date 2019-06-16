@@ -33,6 +33,9 @@ if(WIN32)
   set(USE_BUNDLED_LIBS true)
 endif()
 
+find_package(Threads REQUIRED)
+list(APPEND LIBS Threads::Threads)
+
 add_subdirectory(third_party/glad)
 
 add_subdirectory(third_party/msdfgen)
@@ -87,6 +90,8 @@ set(GLYPHIC_SOURCES
   src/logger.h
   src/msdf.cc
   src/msdf.h
+  src/multi.cc
+  src/multi.h
   src/text.cc
   src/text.h
   src/utf8.cc

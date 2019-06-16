@@ -12,6 +12,8 @@
 #include <map>
 #include <memory>
 #include <tuple>
+#include <atomic>
+#include <mutex>
 #include <chrono>
 
 #include "binpack.h"

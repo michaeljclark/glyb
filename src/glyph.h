@@ -85,9 +85,14 @@ struct atlas_entry
     float uv[4];
 
     atlas_entry() = default;
+    atlas_entry(int bin_id);
     atlas_entry(int bin_id, int font_size, int x, int y, int ox, int oy,
         int w, int h, float uv[4]);
 };
+
+inline atlas_entry::atlas_entry(int bin_id) :
+    bin_id(bin_id), font_size(0), x(0), y(0), ox(0), oy(0),
+    w(0), h(0), uv{0} {}
 
 inline atlas_entry::atlas_entry(int bin_id, int font_size, int x, int y,
     int ox, int oy, int w, int h, float uv[4]) :
@@ -113,6 +118,8 @@ struct font_atlas
     float uv1x1;
     bin_packer bp;
     bin_rect delta;
+    std::atomic<bool> multithreading;
+    std::mutex mutex;
 
     static const int PADDING = 1;
     static const int DEFAULT_WIDTH = 1024;
@@ -126,11 +133,11 @@ struct font_atlas
     void init();
     void reset(size_t width, size_t height, size_t depth);
 
-    atlas_entry* resize(font_face *face, int font_size, int glyph,
+    atlas_entry resize(font_face *face, int font_size, int glyph,
         atlas_entry *tmpl);
-    atlas_entry* lookup(font_face *face, int font_size, int glyph,
+    atlas_entry lookup(font_face *face, int font_size, int glyph,
         glyph_renderer *renderer);
-    atlas_entry* create(font_face *face, int font_size, int glyph,
+    atlas_entry create(font_face *face, int font_size, int glyph,
         int entry_font_size, int ox, int oy, int w, int h);
 
     /* tracking minimum required update rectangle */
@@ -241,7 +248,7 @@ struct glyph_renderer
 {
     virtual ~glyph_renderer() = default;
 
-    virtual atlas_entry* render(font_atlas* atlas, font_face_ft *face,
+    virtual atlas_entry render(font_atlas* atlas, font_face_ft *face,
         int font_size, int glyph) = 0;
 };
 
@@ -252,7 +259,7 @@ struct glyph_renderer_ft : glyph_renderer
     glyph_renderer_ft() = default;
     virtual ~glyph_renderer_ft() = default;
 
-    atlas_entry* render(font_atlas* atlas, font_face_ft *face,
+    atlas_entry render(font_atlas* atlas, font_face_ft *face,
         int font_size, int glyph);
 };
 

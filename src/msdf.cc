@@ -13,6 +13,8 @@
 #include <map>
 #include <tuple>
 #include <algorithm>
+#include <atomic>
+#include <mutex>
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -95,16 +97,16 @@ static int ftCubicTo(const FT_Vector *control1, const FT_Vector *control2,
  * glyph_renderer_msdf
  */
 
-atlas_entry* glyph_renderer_msdf::render(font_atlas *atlas, font_face_ft *face,
+atlas_entry glyph_renderer_msdf::render(font_atlas *atlas, font_face_ft *face,
 	int font_size, int glyph)
 {
     msdfgen::Shape shape;
-    atlas_entry *ae;
     msdfgen::Vector2 translate, scale = { 1, 1 };
     FT_GlyphSlot ftglyph;
     FT_Error error;
     FT_Outline_Funcs ftFunctions;
     FtContext context = { &shape };
+    atlas_entry ae;
 
     int char_height = 128 * 64; /* magic - shader uses textureSize() */
     int horz_resolution = font_manager::dpi;
@@ -119,11 +121,11 @@ atlas_entry* glyph_renderer_msdf::render(font_atlas *atlas, font_face_ft *face,
     error = FT_Set_Char_Size(face->ftface, 0, char_height, horz_resolution,
         horz_resolution);
     if (error) {
-        return nullptr;
+        return atlas_entry(-1);
     }
     error = FT_Load_Glyph(face->ftface, glyph, 0);
     if (error) {
-        return nullptr;
+        return atlas_entry(-1);
     }
 
     ftFunctions.move_to = ftMoveTo;
@@ -136,7 +138,7 @@ atlas_entry* glyph_renderer_msdf::render(font_atlas *atlas, font_face_ft *face,
     error = FT_Outline_Decompose(&face->ftface->glyph->outline, &ftFunctions,
     	&context);
     if (error) {
-        return nullptr;
+        return atlas_entry(-1);
     }
 
     /* font dimensions */
@@ -164,15 +166,17 @@ atlas_entry* glyph_renderer_msdf::render(font_atlas *atlas, font_face_ft *face,
      * which is the main reason we use signed distance fields. the
      * atlas contains special logic to create font size specific
      * entries from the template entry.
+     *
+     * note: we use the multithreaded interface
 	 */
     ae = atlas->create(face, 0, glyph, char_height, ox, oy, w, h);
-    if (ae) {
+    if (ae.bin_id >= 0) {
         for (int x = 0; x < w; x++) {
             for (int y = 0; y < h; y++) {
                 int r = msdfgen::pixelFloatToByte(msdf(x,y)[0]);
                 int g = msdfgen::pixelFloatToByte(msdf(x,y)[1]);
                 int b = msdfgen::pixelFloatToByte(msdf(x,y)[2]);
-                size_t dst = ((ae->y + y) * atlas->width + ae->x + x) * 4;
+                size_t dst = ((ae.y + y) * atlas->width + ae.x + x) * 4;
                 uint32_t color = r | g << 8 | b << 16 | 0xff000000;
                 *(uint32_t*)&atlas->pixels[dst] = color;
             }

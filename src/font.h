@@ -253,13 +253,15 @@ struct font_manager
 struct font_face_ft : font_face
 {
     FT_Face ftface;
+    font_manager_ft* manager;
 
     font_face_ft() = default;
-    font_face_ft(int font_id, FT_Face ftface, std::string path);
+    font_face_ft(font_manager_ft* manager, FT_Face ftface, int font_id, std::string path);
     virtual ~font_face_ft() = default;
 
     FT_Size_Metrics* get_metrics(int font_size);
     int get_height(int font_size);
+    font_face_ft* dup_thread();
 };
 
 /* Font Manager (FreeType) */

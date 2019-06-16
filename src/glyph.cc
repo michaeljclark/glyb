@@ -13,6 +13,8 @@
 #include <map>
 #include <tuple>
 #include <algorithm>
+#include <atomic>
+#include <mutex>
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -84,7 +86,8 @@ font_atlas::font_atlas(size_t width, size_t height, size_t depth) :
     width(width), height(height), depth(depth),
     glyph_map(), pixels(), uv1x1(1.0f / (float)width),
     bp(bin_point((int)width, (int)height)),
-    delta(bin_point(width,height),bin_point(0,0))
+    delta(bin_point(width,height),bin_point(0,0)),
+    multithreading(false), mutex()
 {
     init();
 }
@@ -125,15 +128,27 @@ void font_atlas::reset(size_t width, size_t height, size_t depth)
     init();
 }
 
-atlas_entry* font_atlas::create(font_face *face, int font_size, int glyph,
+atlas_entry font_atlas::create(font_face *face, int font_size, int glyph,
     int entry_font_size, int ox, int oy, int w, int h)
 {
+    atlas_entry ae;
+
+    if (multithreading) {
+        mutex.lock();
+    }
+
     int bin_id = (int)glyph_map.size();
     auto r = bp.find_region(bin_id, bin_point(w + PADDING , h + PADDING));
     if (!r.first) {
-        return nullptr; /* atlas full */
+        if (multithreading) {
+            mutex.unlock();
+        }
+        memset(&ae, 0, sizeof(ae));
+        return ae; /* atlas full */
     }
-    expand_delta(r.second); /* track minimum update rectangle */
+
+    /* track minimum update rectangle */
+    expand_delta(r.second);
 
     /* create uv coordinates */
     float x1 = 0.5f + r.second.a.x,     y1 = 0.5f + r.second.a.y;
@@ -146,7 +161,13 @@ atlas_entry* font_atlas::create(font_face *face, int font_size, int glyph,
         std::pair<atlas_key,atlas_entry>({face->font_id, font_size, glyph},
             {bin_id, entry_font_size, a.x, a.y, ox, oy, w, h, uv}));
 
-    return &gi->second;
+    ae = gi->second;
+
+    if (multithreading) {
+        mutex.unlock();
+    }
+
+    return ae;
 }
 
 bin_rect font_atlas::get_delta()
@@ -176,11 +197,9 @@ void font_atlas::expand_delta(bin_rect b)
     delta.b.y = (std::max)(delta.b.y,b.b.y);
 }
 
-atlas_entry* font_atlas::resize(font_face *face, int font_size, int glyph,
+atlas_entry font_atlas::resize(font_face *face, int font_size, int glyph,
     atlas_entry *tmpl)
 {
-    //atlas_entry(int bin_id, int font_size, int x, int y, int ox, int oy,
-    //    int w, int h, float uv[4]);
     float scale = (float)font_size / tmpl->font_size;
     auto gi = glyph_map.insert(glyph_map.end(),
         std::pair<atlas_key,atlas_entry>(
@@ -191,20 +210,20 @@ atlas_entry* font_atlas::resize(font_face *face, int font_size, int glyph,
               (short)roundf((float)tmpl->w * scale),
               (short)roundf((float)tmpl->h * scale),
               tmpl->uv }));
-    return &gi->second;
+    return gi->second;
 }
 
-atlas_entry* font_atlas::lookup(font_face *face, int font_size, int glyph,
+atlas_entry font_atlas::lookup(font_face *face, int font_size, int glyph,
     glyph_renderer *renderer)
 {
-    atlas_entry *ae = nullptr;
+    atlas_entry ae;
 
     /*
      * lookup atlas to see if the glyph is in the atlas
      */
     auto gi = glyph_map.find({face->font_id, font_size, glyph});
     if (gi != glyph_map.end()) {
-        return &gi->second;
+        return gi->second;
     }
 
     /*
@@ -222,8 +241,8 @@ atlas_entry* font_atlas::lookup(font_face *face, int font_size, int glyph,
      */
     ae = renderer->render(this, static_cast<font_face_ft*>(face),
         font_size, glyph);
-    if (ae->font_size != font_size) {
-        return resize(face, font_size, glyph, ae);
+    if (ae.font_size != font_size) {
+        return resize(face, font_size, glyph, &ae);
     } else {
         return ae;
     }
@@ -400,7 +419,7 @@ void text_shaper_hb::shape(std::vector<glyph_shape> &shapes, text_segment *segme
  * glyph renderer
  */
 
-atlas_entry* glyph_renderer_ft::render(font_atlas *atlas, font_face_ft *face,
+atlas_entry glyph_renderer_ft::render(font_atlas *atlas, font_face_ft *face,
     int font_size, int glyph)
 {
     FT_Library ftlib;
@@ -409,22 +428,25 @@ atlas_entry* glyph_renderer_ft::render(font_atlas *atlas, font_face_ft *face,
     FT_GlyphSlot ftglyph;
     FT_Raster_Params rp;
     int ox, oy, w, h;
-    atlas_entry *ae;
+    atlas_entry ae;
 
     /* freetype library and glyph pointers */
     ftface = face->ftface;
     ftglyph = ftface->glyph;
     ftlib = ftglyph->library;
 
+    /* we need to set up our font metrics */
+    face->get_metrics(font_size);
+
     /* load glyph */
     if ((fterr = FT_Load_Glyph(ftface, glyph, 0))) {
         fprintf(stderr, "error: FT_Load_Glyph failed: glyph=%d fterr=%d\n",
             glyph, fterr);
-        return nullptr;
+        return atlas_entry(-1);
     }
     if (ftface->glyph->format != FT_GLYPH_FORMAT_OUTLINE) {
         fprintf(stderr, "error: FT_Load_Glyph format is not outline\n");
-        return nullptr;
+        return atlas_entry(-1);
     }
 
     /* set up render parameters */
@@ -457,7 +479,7 @@ atlas_entry* glyph_renderer_ft::render(font_atlas *atlas, font_face_ft *face,
     /* rasterize glyph */
     if ((fterr = FT_Outline_Render(ftlib, &ftface->glyph->outline, &rp))) {
         printf("error: FT_Outline_Render failed: fterr=%d\n", fterr);
-        return nullptr;
+        return atlas_entry(-1);
     }
 
     if (span.min_x == INT_MAX && span.min_y == INT_MAX) {
@@ -467,10 +489,10 @@ atlas_entry* glyph_renderer_ft::render(font_atlas *atlas, font_face_ft *face,
         /* create atlas entry for glyph using dimensions from span */
         ae = atlas->create(face, font_size, glyph, font_size, ox, oy, w, h);
         /* copy pixels from span to atlas */
-        if(ae) {
+        if (ae.bin_id >= 0) {
             for (int i = 0; i < span.h; i++) {
                 size_t src = i * span.w;
-                size_t dst = (ae->y + i) * atlas->width + ae->x;
+                size_t dst = (ae.y + i) * atlas->width + ae.x;
                 memcpy(&atlas->pixels[dst], &span.pixels[src], span.w);
             }
         }
@@ -491,25 +513,25 @@ void text_renderer_ft::render(draw_list &batch,
     int font_size = segment->font_size;
     int baseline_shift = segment->baseline_shift;
     int tracking = segment->tracking;
+    font_atlas *atlas = manager->getFontAtlas(face);
 
     /* lookup glyphs in font atlas, creating them if they don't exist */
     float dx = 0, dy = 0;
     for (auto shape : shapes) {
-        font_atlas *atlas = manager->getFontAtlas(face);
-        atlas_entry *ae = atlas->lookup(face, font_size, shape.glyph,
+        atlas_entry ae = atlas->lookup(face, font_size, shape.glyph,
             renderer.get());
-        if (!ae) continue;
+        if (ae.bin_id < 0) continue;
         /* create polygons in vertex array */
-        int x1 = segment->x + ae->ox + (int)roundf(dx + shape.x_offset/64.0f);
-        int x2 = x1 + ae->w;
-        int y1 = segment->y - ae->oy + (int)roundf(dy + shape.y_offset/64.0f) -
-            ae->h - baseline_shift;
-        int y2 = y1 + ae->h;
-        if (ae->w > 0 && ae->h > 0) {
+        int x1 = segment->x + ae.ox + (int)roundf(dx + shape.x_offset/64.0f);
+        int x2 = x1 + ae.w;
+        int y1 = segment->y - ae.oy + (int)roundf(dy + shape.y_offset/64.0f) -
+            ae.h - baseline_shift;
+        int y2 = y1 + ae.h;
+        if (ae.w > 0 && ae.h > 0) {
             float x1p = 0.5f + x1, x2p = 0.5f + x2;
             float y1p = 0.5f + y1, y2p = 0.5f + y2;
-            float u1 = ae->uv[0], v1 = ae->uv[1];
-            float u2 = ae->uv[2], v2 = ae->uv[3];
+            float u1 = ae.uv[0], v1 = ae.uv[1];
+            float u2 = ae.uv[2], v2 = ae.uv[3];
             uint o = (int)batch.vertices.size();
             uint c = segment->color;
             uint o0 = draw_list_vertex(batch, {{x1p, y1p, 0}, {u1, v1}, c});

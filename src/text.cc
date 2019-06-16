@@ -13,6 +13,8 @@
 #include <map>
 #include <tuple>
 #include <algorithm>
+#include <atomic>
+#include <mutex>
 
 #include "utf8.h"
 #include "color.h"
