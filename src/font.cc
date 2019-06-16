@@ -510,7 +510,7 @@ font_atlas* font_manager_ft::getFontAtlas(font_face *face)
                 new font_atlas(font_atlas::DEFAULT_WIDTH,
                     font_atlas::DEFAULT_HEIGHT, font_atlas::MSDF_DEPTH));
             if (msdf_autoload) {
-                atlas->load(this, face->path);
+                atlas->load(this, face);
             }
             return (atlasList[face->font_id] = atlas).get();
         } else {

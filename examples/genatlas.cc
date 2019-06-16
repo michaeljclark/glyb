@@ -450,7 +450,7 @@ uint64_t process_one_file(const char *font_path, const char *output_path)
     }
 
     if (batch_render) {
-        atlas.save(&manager, output_path);
+        atlas.save(&manager, face);
     }
 
     /*

@@ -31,6 +31,7 @@
 #include "font.h"
 #include "glyph.h"
 #include "image.h"
+#include "file.h"
 
 
 /*
@@ -248,6 +249,16 @@ atlas_entry font_atlas::lookup(font_face *face, int font_size, int glyph,
     }
 }
 
+std::string font_atlas::get_path(font_face *face, file_type type)
+{
+    switch (type) {
+    case csv_file: return face->path + ".atlas.csv";
+    case png_file: return face->path + ".atlas.png";
+    case ttf_file:
+    default: return face->path;
+    }
+}
+
 #define FLOAT32 "%.9g"
 
 void font_atlas::save_map(font_manager *manager, FILE *out)
@@ -285,36 +296,39 @@ void font_atlas::load_map(font_manager *manager, FILE *in)
     } while (ret == num_fields);
 }
 
-void font_atlas::save(font_manager *manager, std::string basename)
+void font_atlas::save(font_manager *manager, font_face *face)
 {
-    std::string img_filename = basename + ".atlas.png";
-    std::string csv_filename = basename + ".atlas.csv";
-    FILE *fcsv = fopen(csv_filename.c_str(), "w");
+    std::string img_path = get_path(face, png_file);
+    std::string csv_path = get_path(face, csv_file);
+    FILE *fcsv = fopen(csv_path.c_str(), "w");
     if (fcsv == nullptr) {
         fprintf(stderr, "error: fopen: %s: %s\n",
-            csv_filename.c_str(), strerror(errno));
+            csv_path.c_str(), strerror(errno));
         exit(1);
     }
     save_map(manager, fcsv);
     fclose(fcsv);
     image_ptr img = image::createBitmap(width, height,
         depth == 4 ? pixel_format_rgba : pixel_format_alpha, &pixels[0]);
-    image::saveToFile(img_filename, img);
+    image::saveToFile(img_path, img);
 }
 
-void font_atlas::load(font_manager *manager, std::string basename)
+void font_atlas::load(font_manager *manager, font_face *face)
 {
-    std::string img_filename = basename + ".atlas.png";
-    std::string csv_filename = basename + ".atlas.csv";
-    FILE *fcsv = fopen(csv_filename.c_str(), "r");
+    std::string img_path = get_path(face, png_file);
+    std::string csv_path = get_path(face, csv_file);
+    if (!file::fileExists(img_path) || !file::fileExists(csv_path)) {
+        return;
+    }
+    FILE *fcsv = fopen(csv_path.c_str(), "r");
     if (fcsv == nullptr) {
         fprintf(stderr, "error: fopen: %s: %s\n",
-            csv_filename.c_str(), strerror(errno));
+            csv_path.c_str(), strerror(errno));
         exit(1);
     }
     load_map(manager, fcsv);
     fclose(fcsv);
-    image_ptr img = image::createFromFile(img_filename);
+    image_ptr img = image::createFromFile(img_path);
     reset(img->getWidth(), img->getHeight(), img->getBytesPerPixel());
     for (size_t y = 0; y < width; y++) {
         uint8_t *src = img->getData() + y * width * depth;

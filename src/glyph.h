@@ -145,10 +145,16 @@ struct font_atlas
     void expand_delta(bin_rect b);
 
     /* persistance */
+    enum file_type {
+        ttf_file,
+        csv_file,
+        png_file,
+    };
+    std::string get_path(font_face *face, file_type type);
     void save_map(font_manager *manager, FILE *out);
     void load_map(font_manager *manager, FILE *in);
-    void save(font_manager *manager, std::string basename);
-    void load(font_manager *manager, std::string basename);
+    void save(font_manager *manager, font_face *face);
+    void load(font_manager *manager, font_face *face);
 };
 
 
