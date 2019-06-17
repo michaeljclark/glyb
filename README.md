@@ -129,17 +129,6 @@ The following code snippet shows glyphic's high level text layout interface:
 }
 ```
 
-Text Vertex Array struct:
-
-```
-struct text_vertex
-{
-    float pos[3];
-    float uv[2];
-    uint32_t rgba;
-};
-```
-
 Simple GLSL vertex shader:
 
 ```
