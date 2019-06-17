@@ -199,6 +199,8 @@ inline font_face::font_face(int font_id, std::string path, std::string name) :
 
 /* Font Manager */
 
+struct glyph_renderer;
+
 struct font_manager
 {
     static bool debug;
@@ -224,7 +226,6 @@ struct font_manager
     static font_data createFontRecord(std::string psName,
         std::string familyName, std::string styleName);
 
-    std::shared_ptr<font_atlas> atlas;
     std::vector<font_face*> allFonts;
     std::map<std::string,size_t> fontPathMap;
     std::map<std::string,size_t> fontNameMap;
@@ -244,7 +245,8 @@ struct font_manager
         font_style fontStyle);
     virtual font_face* findFontByData(font_data fontRec);
     virtual font_face* findFontBySpec(font_spec fontSpec);
-    virtual font_atlas* getFontAtlas(font_face *face);
+    virtual font_atlas* getFontAtlas(font_face *face) = 0;
+    virtual glyph_renderer* getGlyphRenderer(font_face *face) = 0;
 };
 
 
@@ -273,6 +275,7 @@ struct font_manager_ft : font_manager
     bool msdf_autoload;
 
     std::vector<font_face_ft> faces;
+    std::unique_ptr<font_atlas> atlas;
     std::vector<std::shared_ptr<font_atlas>> atlasList;
 
     font_manager_ft(std::string fontDir = "");
@@ -284,6 +287,7 @@ struct font_manager_ft : font_manager
     virtual font_face* findFontById(size_t font_id);
     virtual font_face* findFontByPath(std::string path);
     virtual font_atlas* getFontAtlas(font_face *face);
+    virtual glyph_renderer* getGlyphRenderer(font_face *face);
 
     const std::vector<font_face_ft>& getFontList() { return faces; }
 };

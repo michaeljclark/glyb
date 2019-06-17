@@ -528,12 +528,12 @@ void text_renderer_ft::render(draw_list &batch,
     int baseline_shift = segment->baseline_shift;
     int tracking = segment->tracking;
     font_atlas *atlas = manager->getFontAtlas(face);
+    glyph_renderer *renderer = manager->getGlyphRenderer(face);
 
     /* lookup glyphs in font atlas, creating them if they don't exist */
     float dx = 0, dy = 0;
     for (auto shape : shapes) {
-        atlas_entry ae = atlas->lookup(face, font_size, shape.glyph,
-            renderer.get());
+        atlas_entry ae = atlas->lookup(face, font_size, shape.glyph, renderer);
         if (ae.bin_id < 0) continue;
         /* create polygons in vertex array */
         int x1 = segment->x + ae.ox + (int)roundf(dx + shape.x_offset/64.0f);

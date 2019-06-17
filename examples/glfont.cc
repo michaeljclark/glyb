@@ -113,9 +113,7 @@ static void update_geometry()
     const uint32_t black = 0xff000000, light_gray = 0xffcccccc;
 
     text_shaper_hb shaper;
-    text_renderer_ft renderer(&manager, manager.msdf_enabled ?
-        (glyph_renderer*)new glyph_renderer_msdf() :
-        (glyph_renderer*)new glyph_renderer_ft());
+    text_renderer_ft renderer(&manager);
     font_face *face = manager.findFontByPath(font_path);
     font_atlas *atlas = manager.getFontAtlas(face);
     std::vector<glyph_shape> shapes;

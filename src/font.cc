@@ -28,6 +28,7 @@
 #include "draw.h"
 #include "font.h"
 #include "glyph.h"
+#include "msdf.h"
 #include "util.h"
 
 #ifdef _WIN32
@@ -421,14 +422,6 @@ std::string font_spec::toString() const
     return s;
 }
 
-font_atlas* font_manager::getFontAtlas(font_face *face)
-{
-    if (!atlas) {
-        atlas = std::shared_ptr<font_atlas>(new font_atlas());
-    }
-    return atlas.get();
-}
-
 
 /* Font Manager (FreeType) */
 
@@ -517,7 +510,20 @@ font_atlas* font_manager_ft::getFontAtlas(font_face *face)
             return atlasList[face->font_id].get();
         }
     }
-    return font_manager::getFontAtlas(face);
+    if (!atlas) {
+        atlas = std::unique_ptr<font_atlas>(new font_atlas());
+    }
+    return atlas.get();
+}
+
+glyph_renderer* font_manager_ft::getGlyphRenderer(font_face *face)
+{
+    static glyph_renderer_ft ft;
+    static glyph_renderer_msdf msdf;
+
+    return msdf_enabled ?
+        static_cast<glyph_renderer*>(&msdf) :
+        static_cast<glyph_renderer*>(&ft);
 }
 
 

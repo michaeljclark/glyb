@@ -294,8 +294,6 @@ struct text_renderer_ft : text_renderer
     std::unique_ptr<glyph_renderer> renderer;
 
     text_renderer_ft(font_manager* manager);
-    text_renderer_ft(font_manager* manager,
-        glyph_renderer* renderer);
     virtual ~text_renderer_ft() = default;
 
     void render(draw_list &batch,
@@ -304,7 +302,4 @@ struct text_renderer_ft : text_renderer
 };
 
 inline text_renderer_ft::text_renderer_ft(font_manager* manager) :
-    manager(manager), renderer(new glyph_renderer_ft()) {}
-
-inline text_renderer_ft::text_renderer_ft(font_manager* manager,
-    glyph_renderer *renderer) : manager(manager), renderer(renderer) {}
+    manager(manager) {}
