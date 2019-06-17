@@ -180,10 +180,13 @@ static void uniform_matrix_4fv(program *prog, const char *uniform, const GLfloat
     }
 }
 
-static void image_create_texture(GLuint *tex, GLsizei width, GLsizei height,
-    int depth, uint8_t *pixels, GLenum filter)
+static void image_create_texture(GLuint *tex, image *img, GLenum filter)
 {
     static const GLint swizzleMask[] = {GL_ONE, GL_ONE, GL_ONE, GL_RED};
+
+    GLsizei width = (GLsizei)img->getHeight();
+    GLsizei height = (GLsizei)img->getWidth();
+    GLsizei depth = (GLsizei)img->getBytesPerPixel();
 
     glGenTextures(1, tex);
     glBindTexture(GL_TEXTURE_2D, *tex);
@@ -191,14 +194,21 @@ static void image_create_texture(GLuint *tex, GLsizei width, GLsizei height,
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
     switch (depth) {
     case 1:
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, (GLsizei)width, (GLsizei)height,
-            0, GL_RED, GL_UNSIGNED_BYTE, (GLvoid*)pixels);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height,
+            0, GL_RED, GL_UNSIGNED_BYTE, (GLvoid*)img->getData());
         glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
         break;
     case 4:
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)width, (GLsizei)height,
-            0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)pixels);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height,
+            0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)img->getData());
         break;
     }
     glActiveTexture(GL_TEXTURE0);
+
+    printf("image %u = %u x %u x %u\n", *tex, width, height, depth);
+}
+
+inline GLenum atlas_filter(int depth)
+{
+    return depth == 4 ? GL_LINEAR : GL_NEAREST;
 }

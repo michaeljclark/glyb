@@ -27,10 +27,11 @@
 
 #include "linmath.h"
 #include "draw.h"
-#include "glcommon.h"
 #include "binpack.h"
 #include "font.h"
+#include "image.h"
 #include "glyph.h"
+#include "glcommon.h"
 
 
 /* globals */
@@ -116,8 +117,7 @@ static void update_buffers()
     glBindVertexArray(0);
 
     /* create font atlas texture */
-    image_create_texture(&tex, atlas->width, atlas->height, atlas->depth,
-        &atlas->pixels[0], atlas->depth == 4 ? GL_LINEAR : GL_NEAREST);
+    image_create_texture(&tex, atlas->get_image(), atlas_filter(atlas->depth));
 }
 
 /* OpenGL initialization */

@@ -27,6 +27,7 @@
 #include "binpack.h"
 #include "draw.h"
 #include "font.h"
+#include "image.h"
 #include "glyph.h"
 #include "msdf.h"
 #include "util.h"
@@ -499,11 +500,16 @@ font_atlas* font_manager_ft::getFontAtlas(font_face *face)
             atlasList.resize(face->font_id + 1);
         }
         if (!atlasList[face->font_id]) {
-            auto atlas = std::shared_ptr<font_atlas>(
-                new font_atlas(font_atlas::DEFAULT_WIDTH,
-                    font_atlas::DEFAULT_HEIGHT, font_atlas::MSDF_DEPTH));
+            /* create empty atlas too avoid allocating twice */
+            auto atlas = std::shared_ptr<font_atlas>(new font_atlas(0, 0, 0));
+            /* load atlas, which if successful, calls reset and allocates */
             if (msdf_autoload) {
                 atlas->load(this, face);
+            }
+            /* if load atlas failed, we allocate default size */
+            if (!atlas->pixels) {
+                atlas->reset(font_atlas::DEFAULT_WIDTH,
+                    font_atlas::DEFAULT_HEIGHT, font_atlas::MSDF_DEPTH);
             }
             return (atlasList[face->font_id] = atlas).get();
         } else {

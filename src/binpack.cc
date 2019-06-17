@@ -547,6 +547,17 @@ std::pair<bool,bin_rect> bin_packer::find_region(int idx, bin_point sz)
     return std::pair<bool,bin_rect>(true,r.second);
 }
 
+void bin_packer::create_explicit(int idx, bin_rect rect)
+{
+    /*
+     * explicitly create node with predefined dimensions
+     * this is useful for recreating state
+     */
+    alloc_map[idx] = rect;
+    split_intersecting_nodes(rect);
+    remove_containing_nodes();
+}
+
 void bin_packer::dump()
 {
     for (size_t i = 0; i < free_list.size(); i++) {

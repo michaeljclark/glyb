@@ -19,6 +19,8 @@
 
 static char class_name[] = "image";
 
+int image::iid_seq = 0;
+
 image_io_png  image::PNG;
 
 const char* image::formatname[] = {
@@ -127,11 +129,11 @@ void image::saveToFile(std::string filename,
 }
 
 image_ptr image::createBitmap(uint width, uint height, pixel_format format,
-    uint8_t *data)
+    uint8_t *pixels)
 {
     image_ptr img;
-    if (data) {
-        img = image_ptr(new image(file_ptr(), width, height, format, data));
+    if (pixels) {
+        img = image_ptr(new image(file_ptr(), width, height, format, pixels));
     } else {
         img = image_ptr(new image(file_ptr(), width, height, format));
     }
@@ -169,7 +171,7 @@ image_ptr image::createFromResouce(file_ptr rsrc, image_io *imageio,
         return image;
     }
     
-    Debug("%s loading %s\n", __func__, rsrcName.c_str());
+    Debug("%s rsrc=%s\n", __func__, rsrcName.c_str());
     if (!imageio) {
         imageio = getImageIOFromExt(rsrcName);
     }
@@ -191,9 +193,9 @@ image_ptr image::createFromResouce(file_ptr rsrc, image_io *imageio,
 
 image::~image()
 {
-    if (ownData && data) {
-        delete [] data;
-        data = nullptr;
+    if (ownData && pixels) {
+        delete [] pixels;
+        pixels = nullptr;
     }
 }
 
@@ -204,8 +206,8 @@ void image::create(pixel_format format, uint width, uint height)
     this->format = format;
 
     size_t size = (size_t)width * height * getBytesPerPixel();
-    data = new uint8_t[size];
-    memset(data, 0, size);
+    pixels = new uint8_t[size];
+    memset(pixels, 0, size);
     ownData = true;
 }
 
@@ -215,8 +217,8 @@ void image::convertFormat(pixel_format newformat)
     Debug("%s converting from %s to %s\n", __func__,
         formatname[format], formatname[newformat]);
     size_t size = (size_t)width * height * getBytesPerPixel(newformat);
-    uint8_t *newdata = new uint8_t[size];
-    uint8_t *src = data, *dest = newdata;
+    uint8_t *newpixels = new uint8_t[size];
+    uint8_t *src = pixels, *dest = newpixels;
     uint8_t c[4] = {};
     for (uint i=0; i < width * height; i++) {
         // load source pixel
@@ -303,18 +305,18 @@ void image::convertFormat(pixel_format newformat)
                 break;
         }
     }
-    delete [] data;
+    delete [] pixels;
     format = newformat;
-    data = newdata;
+    pixels = newpixels;
 }
 
-static void image_io_png_png_read_data(png_structp png_ptr, png_bytep data,
+static void image_io_png_png_read_pixels(png_structp png_ptr, png_bytep pixels,
     png_size_t length)
 {
     file *rsrc = (file*)png_get_io_ptr(png_ptr);
     if (!rsrc) {
         png_error(png_ptr, "read from NULL file");
-    } else if (rsrc->read(data, length) < 0) {
+    } else if (rsrc->read(pixels, length) < 0) {
         Debug("%s: error %s: %s\n", __func__,
             rsrc->getErrorMessage().c_str(), rsrc->getPath().c_str());
         png_error(png_ptr, rsrc->getErrorMessage().c_str());
@@ -332,7 +334,7 @@ image* image_io_png::load(file_ptr rsrc, pixel_format optformat)
     
     uint width, height;
     pixel_format format;
-    uint8_t *data = NULL;
+    uint8_t *pixels = NULL;
     
     png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (png_ptr == NULL) {
@@ -351,14 +353,14 @@ image* image_io_png::load(file_ptr rsrc, pixel_format optformat)
         Debug("%s: error decompressing png\n", __func__);
         png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
         free(row_arr);
-        free(data);
+        free(pixels);
         return NULL;
     }
 
-    png_set_read_fn(png_ptr, rsrc.get(), image_io_png_png_read_data);
+    png_set_read_fn(png_ptr, rsrc.get(), image_io_png_png_read_pixels);
     png_set_sig_bytes(png_ptr, 0);
 
-    /* read all the info up to the image data  */
+    /* read all the info up to the image pixels  */
     png_read_info(png_ptr, info_ptr);
 
     png_uint_32 pwidth, pheight;
@@ -390,8 +392,8 @@ image* image_io_png::load(file_ptr rsrc, pixel_format optformat)
     /* Rowsize in bytes. */
     row_stride = png_get_rowbytes(png_ptr, info_ptr);
 
-    /* Allocate the image_data buffer. */
-    if ((data = new uint8_t[row_stride * height]) == NULL) {
+    /* Allocate the image_pixels buffer. */
+    if ((pixels = new uint8_t[row_stride * height]) == NULL) {
         Debug("%s: error allocating memory\n", __func__);
         png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
         return NULL;
@@ -401,13 +403,13 @@ image* image_io_png::load(file_ptr rsrc, pixel_format optformat)
     if ((row_arr = (png_bytepp) malloc(height * sizeof(png_bytep))) == NULL) {
         Debug("%s: error allocating memory\n", __func__);
         png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
-        free(data);
+        free(pixels);
         return NULL;
     }
 
     /* set the individual row_arr to point at the correct offsets */
     for (i = 0; i < (int) height; ++i) {
-        row_arr[i] = data + i * row_stride;
+        row_arr[i] = pixels + i * row_stride;
     }
 
     /* now we can go ahead and just read the whole image */
@@ -421,7 +423,7 @@ image* image_io_png::load(file_ptr rsrc, pixel_format optformat)
     png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
     rsrc->close();
     
-    return new image(rsrc, width, height, format, data);
+    return new image(rsrc, width, height, format, pixels);
 }
 
 void image_io_png::save(image* image, std::string filename)
@@ -478,11 +480,11 @@ void image_io_png::save(image* image, std::string filename)
 
     png_write_info(png_ptr, info_ptr);
 
-    uint8_t *data = image->getData();
+    uint8_t *pixels = image->getData();
     row_arr = (uint8_t**) malloc(sizeof(uint8_t*) * image->getHeight());
     for (uint y = 0; y < image->getHeight(); y++) {
-        row_arr[y] = data;
-        data += image->getWidth() * image->getBytesPerPixel();
+        row_arr[y] = pixels;
+        pixels += image->getWidth() * image->getBytesPerPixel();
     }
     png_write_image(png_ptr, row_arr);
     png_write_end(png_ptr, NULL);

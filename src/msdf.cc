@@ -45,9 +45,9 @@
 #include "utf8.h"
 #include "draw.h"
 #include "font.h"
+#include "image.h"
 #include "glyph.h"
 #include "msdf.h"
-#include "image.h"
 
 
 struct FtContext {

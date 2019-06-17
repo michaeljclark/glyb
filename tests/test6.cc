@@ -18,6 +18,7 @@
 #include "binpack.h"
 #include "draw.h"
 #include "font.h"
+#include "image.h"
 #include "glyph.h"
 #include "util.h"
 #include "text.h"

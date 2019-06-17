@@ -29,8 +29,8 @@
 #include "utf8.h"
 #include "draw.h"
 #include "font.h"
-#include "glyph.h"
 #include "image.h"
+#include "glyph.h"
 #include "file.h"
 
 
@@ -85,53 +85,112 @@ font_atlas::font_atlas() :
 
 font_atlas::font_atlas(size_t width, size_t height, size_t depth) :
     width(width), height(height), depth(depth),
-    glyph_map(), pixels(), uv1x1(1.0f / (float)width),
+    glyph_map(), pixels(nullptr), uv1x1(1.0f / (float)width),
     bp(bin_point((int)width, (int)height)),
     delta(bin_point(width,height),bin_point(0,0)),
     multithreading(false), mutex()
 {
-    init();
+    if (width && height && depth) {
+        create_pixels();
+        clear_pixels();
+        uv_pixel();
+    }
 }
 
-void font_atlas::init()
+font_atlas::~font_atlas()
+{
+    if (pixels) {
+        delete [] pixels;
+        pixels = nullptr;
+    }
+}
+
+image* font_atlas::get_image()
+{
+    return img.get();
+}
+
+void font_atlas::create_pixels()
 {
     /* reserve 0x0 - 1x1 with padding */
     bp.find_region(0, bin_point(2,2));
 
     /* clear bitmap */
-    pixels.clear();
-    pixels.resize(width * height * depth);
-    switch (depth) {
-        case 1:
-            pixels[0] = 0xff;
-            break;
-        case 4:
-            for (int x = 0; x < width; x++) {
-                for (int y = 0; y < height; y++) {
-                    *(uint32_t*)&pixels[(y * width + x) * depth] = 0xff000000;
-                }
-            }
-            *static_cast<uint32_t*>(static_cast<void*>(&pixels[0])) = 0xffffffff;
-            break;
+    if (pixels) {
+        delete [] pixels;
     }
+    pixels = new uint8_t[width * height * depth];
+
+    /* create image handle */
+    switch (depth) {
+    case 1: img = std::shared_ptr<image>(new image(file_ptr(), width, height,
+        pixel_format_alpha, pixels)); break;
+    case 4: img = std::shared_ptr<image>(new image(file_ptr(), width, height,
+        pixel_format_rgba, pixels)); break;
+    }
+}
+
+void font_atlas::clear_pixels()
+{
+    switch (depth) {
+    case 4:
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                *(uint32_t*)&pixels[(y * width + x) * depth] = 0xff000000;
+            }
+        }
+        break;
+    default:
+        memset(pixels, 0, width * height * depth);
+    }
+}
+
+void font_atlas::uv_pixel()
+{
+    uv1x1 = 1.0f / (float)width;
+
+    switch (depth) {
+    case 1:
+        pixels[0] = 0xff;
+        break;
+    case 4:
+        pixels[0] = 0xff;
+        pixels[1] = 0xff;
+        pixels[2] = 0xff;
+        pixels[3] = 0xff;
+        break;
+    }
+}
+
+void font_atlas::reset_bins()
+{
+    bp.set_bin_size(bin_point(width, height));
+    delta = bin_rect(bin_point(width,height),bin_point(0,0));
+    glyph_map.clear();
 }
 
 void font_atlas::reset(size_t width, size_t height, size_t depth)
 {
+    if (this->width == width &&
+        this->height == height &&
+        this->depth == depth) {
+        return;
+    }
+
     this->width = width;
     this->height = height;
     this->depth = depth;
 
-    uv1x1 = 1.0f / (float)width;
-    bp.set_bin_size(bin_point(width, height));
-    delta = bin_rect(bin_point(width,height),bin_point(0,0));
-
-    init();
+    reset_bins();
+    create_pixels();
+    clear_pixels();
+    uv_pixel();
 }
 
 atlas_entry font_atlas::create(font_face *face, int font_size, int glyph,
     int entry_font_size, int ox, int oy, int w, int h)
 {
+    float uv[4];
     atlas_entry ae;
 
     if (multithreading) {
@@ -152,9 +211,7 @@ atlas_entry font_atlas::create(font_face *face, int font_size, int glyph,
     expand_delta(r.second);
 
     /* create uv coordinates */
-    float x1 = 0.5f + r.second.a.x,     y1 = 0.5f + r.second.a.y;
-    float x2 = 0.5f + r.second.b.x - 1, y2 = 0.5f + r.second.b.y - 1;
-    float uv[4] = { x1/width, y2/width, x2/width, y1/width };
+    create_uvs(uv, r.second);
 
     /* insert into glyph_map */
     auto a = r.second.a;
@@ -169,6 +226,17 @@ atlas_entry font_atlas::create(font_face *face, int font_size, int glyph,
     }
 
     return ae;
+}
+
+void font_atlas::create_uvs(float uv[4], bin_rect r)
+{
+    float x1 = 0.5f + r.a.x,     y1 = 0.5f + r.a.y;
+    float x2 = 0.5f + r.b.x - 1, y2 = 0.5f + r.b.y - 1;
+
+    uv[0] = x1/width;
+    uv[1] = y2/width;
+    uv[2] = x2/width;
+    uv[3] = y1/width;
 }
 
 bin_rect font_atlas::get_delta()
@@ -284,14 +352,19 @@ void font_atlas::load_map(font_manager *manager, FILE *in)
     const int num_fields = 10;
     int ret;
     do {
-        int bin_id, font_id, glyph;
+        int font_id, glyph;
         atlas_entry ent;
         ret = fscanf(in, "%d,%d,%d,%d,%hd,%hd,%hd,%hd,%hd,%hd\n",
-            &bin_id, &font_id, &glyph, &ent.font_size,
+            &ent.bin_id, &font_id, &glyph, &ent.font_size,
             &ent.x, &ent.y, &ent.ox, &ent.oy, &ent.w, &ent.h);
         if (ret == num_fields) {
             font_face *face = manager->findFontById(font_id);
-            create(face, /*size*/0, glyph, ent.font_size, ent.ox, ent.oy, ent.w, ent.h);
+            bin_rect r(bin_point(ent.x,ent.y),
+                bin_point(ent.x+ent.w+1,ent.y+ent.h+1));
+            create_uvs(ent.uv, r);
+            bp.create_explicit(ent.bin_id, r);
+            auto gi = glyph_map.insert(glyph_map.end(),
+                std::pair<atlas_key,atlas_entry>({face->font_id, 0, glyph}, ent));
         }
     } while (ret == num_fields);
 }
@@ -308,8 +381,6 @@ void font_atlas::save(font_manager *manager, font_face *face)
     }
     save_map(manager, fcsv);
     fclose(fcsv);
-    image_ptr img = image::createBitmap(width, height,
-        depth == 4 ? pixel_format_rgba : pixel_format_alpha, &pixels[0]);
     image::saveToFile(img_path, img);
 }
 
@@ -326,15 +397,19 @@ void font_atlas::load(font_manager *manager, font_face *face)
             csv_path.c_str(), strerror(errno));
         exit(1);
     }
+    image_ptr load_img = image::createFromFile(img_path);
+    if (!load_img) {
+        return;
+    }
+    img = load_img;
+    pixels = img->move();
+    width = img->getWidth();
+    height = img->getHeight();
+    depth = img->getBytesPerPixel();
+    reset_bins();
+    uv_pixel();
     load_map(manager, fcsv);
     fclose(fcsv);
-    image_ptr img = image::createFromFile(img_path);
-    reset(img->getWidth(), img->getHeight(), img->getBytesPerPixel());
-    for (size_t y = 0; y < width; y++) {
-        uint8_t *src = img->getData() + y * width * depth;
-        uint8_t *dest = pixels.data() + y * width * depth;
-        memcpy(dest, src, width * depth);
-    }
 }
 
 

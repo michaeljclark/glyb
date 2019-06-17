@@ -17,9 +17,9 @@
 #include "utf8.h"
 #include "draw.h"
 #include "font.h"
+#include "image.h"
 #include "glyph.h"
 #include "logger.h"
-#include "image.h"
 #include "file.h"
 
 #include "core/arithmetics.hpp"

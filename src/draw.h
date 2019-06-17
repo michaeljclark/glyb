@@ -48,6 +48,7 @@ typedef struct {
 } draw_cmd;
 
 typedef struct {
+    std::vector<draw_image> images;
     std::vector<draw_cmd> cmds;
     std::vector<draw_vertex> vertices;
     std::vector<uint> indices;

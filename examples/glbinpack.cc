@@ -12,6 +12,7 @@
 #include <cmath>
 #include <ctime>
 
+#include <memory>
 #include <vector>
 #include <map>
 #include <string>
@@ -23,10 +24,12 @@
 #define CTX_OPENGL_MINOR 2
 
 #include "linmath.h"
+#include "file.h"
+#include "image.h"
 #include "draw.h"
-#include "glcommon.h"
 #include "binpack.h"
 #include "util.h"
+#include "glcommon.h"
 
 
 /* OpenGL objects and buffers */

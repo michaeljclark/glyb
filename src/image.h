@@ -35,16 +35,19 @@ public:
 
     static image_io_png PNG;
 
+    static int iid_seq;
+
+    int iid;
     file_ptr rsrc;
     uint width, height;
     pixel_format format;
-    uint8_t *data;
+    uint8_t *pixels;
     bool ownData;
     
     image();
     image(const image &image);
     image(file_ptr rsrc, uint width, uint height,
-        pixel_format format = pixel_format_rgba, uint8_t *data = nullptr);
+        pixel_format format = pixel_format_rgba, uint8_t *pixels = nullptr);
 
     virtual ~image();
     
@@ -67,8 +70,9 @@ public:
     uint getBytesPerPixel() { return getBytesPerPixel(format); }
     uint getWidth() { return width; }
     uint getHeight() { return height; }
-    uint8_t* getData() { return data; }
+    uint8_t* getData() { return pixels; }
     pixel_format getpixel_format() { return format; }
+    uint8_t* move() { ownData = false; return pixels; }
         
     void create(pixel_format format, uint width, uint height);
     void convertFormat(pixel_format newformat);
@@ -80,7 +84,7 @@ public:
     static void saveToFile(std::string filename,
         const image_ptr &image, image_io *imageio = NULL);
     static image_ptr createBitmap(uint width, uint height,
-        pixel_format format, uint8_t *data = NULL);
+        pixel_format format, uint8_t *pixels = NULL);
     static image_ptr createFromFile(std::string filename,
         image_io *imageio = NULL, pixel_format optformat = pixel_format_none);
     static image_ptr createFromResouce(std::string rsrcName,
@@ -90,22 +94,22 @@ public:
 };
 
 inline image::image() :
-    rsrc(), width(0), height(0), format(pixel_format_none),
-    data(nullptr), ownData(false) {}
+    iid(++iid_seq), rsrc(), width(0), height(0), format(pixel_format_none),
+    pixels(nullptr), ownData(false) {}
 
 inline image::image(const image &image) :
-    rsrc(image.rsrc), width(image.width), height(image.height),
+    iid(++iid_seq), rsrc(image.rsrc), width(image.width), height(image.height),
     format(image.format), ownData(false)
 {
     create(format, width, height);
-    memcpy(data, image.data, (size_t)width * height * getBytesPerPixel());
+    memcpy(pixels, image.pixels, (size_t)width * height * getBytesPerPixel());
 }
 
 inline image::image(file_ptr rsrc, uint width, uint height,
-    pixel_format format, uint8_t *data) : rsrc(rsrc),
-    width(width), height(height), format(format), data(data), ownData(false)
+    pixel_format format, uint8_t *pixels) : iid(++iid_seq), rsrc(rsrc),
+    width(width), height(height), format(format), pixels(pixels), ownData(false)
 {
-    if (!data) {
+    if (!pixels) {
         create(format, width, height);
     }
 }

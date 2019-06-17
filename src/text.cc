@@ -21,6 +21,7 @@
 #include "binpack.h"
 #include "font.h"
 #include "draw.h"
+#include "image.h"
 #include "glyph.h"
 #include "text.h"
 

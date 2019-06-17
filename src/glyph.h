@@ -114,12 +114,13 @@ struct font_atlas
 {
     size_t width, height, depth;
     std::map<atlas_key,atlas_entry> glyph_map;
-    std::vector<uint8_t> pixels;
+    uint8_t *pixels;
     float uv1x1;
     bin_packer bp;
     bin_rect delta;
     std::atomic<bool> multithreading;
     std::mutex mutex;
+    std::shared_ptr<image> img;
 
     static const int PADDING = 1;
     static const int DEFAULT_WIDTH = 1024;
@@ -129,16 +130,29 @@ struct font_atlas
 
     font_atlas();
     font_atlas(size_t width, size_t height, size_t depth);
+    ~font_atlas();
 
+    /* returns backing image */
+    image* get_image();
+
+    /* internal interfaces */
     void init();
+    void create_pixels();
+    void clear_pixels();
+    void uv_pixel();
+    void reset_bins();
     void reset(size_t width, size_t height, size_t depth);
 
+    /* interface used by text_renderer and glyph_renderer */
     atlas_entry resize(font_face *face, int font_size, int glyph,
         atlas_entry *tmpl);
     atlas_entry lookup(font_face *face, int font_size, int glyph,
         glyph_renderer *renderer);
     atlas_entry create(font_face *face, int font_size, int glyph,
         int entry_font_size, int ox, int oy, int w, int h);
+
+    /* create entry uvs */
+    void create_uvs(float uv[4], bin_rect r);
 
     /* tracking minimum required update rectangle */
     bin_rect get_delta();

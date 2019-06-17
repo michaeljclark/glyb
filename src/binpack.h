@@ -43,10 +43,10 @@ struct bin_rect
     inline bin_rect(bin_point a, bin_point b) : a(a), b(b) { if (a > b) std::swap(a, b); }
     inline bin_rect(const bin_rect &o) : a(o.a), b(o.b) {}
 
-    inline int width() { return b.x - a.x; }
-    inline int height() { return b.y - a.y; }
-    inline int area() { return (b.x - a.x) * (b.y - a.y); }
-    inline bin_point size() { return bin_point(b.x - a.x, b.y - a.y); }
+    inline int width() const { return b.x - a.x; }
+    inline int height() const { return b.y - a.y; }
+    inline int area() const { return (b.x - a.x) * (b.y - a.y); }
+    inline bin_point size() const { return bin_point(b.x - a.x, b.y - a.y); }
 
     inline bool operator==(const bin_rect &o) { return a == o.a && b == o.b; }
     inline bool operator!=(const bin_rect &o) { return !(*this == o); }
@@ -81,6 +81,7 @@ struct bin_packer
     void remove_containing_nodes();
     std::pair<size_t,bin_rect>  scan_bins(bin_point sz);
     std::pair<bool,bin_rect> find_region(int idx, bin_point sz);
+    void create_explicit(int idx, bin_rect rect);
     size_t verify();
     void dump();
 };
