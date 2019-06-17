@@ -31,8 +31,10 @@ The project also contains several OpenGL examples using the library.
 
 - `src`
   - `binpack` - _bin packing algorithm_
+  - `file` - _simple filesystem abstraction_
   - `font` - _font manager, font face and font attributes_
   - `glyph` - _font atlas, text shaper and text renderer_
+  - `image` - _image with support for PNG loading and saving_
   - `text` - _text container, text layout and text part_
   - `utf8` - _UTF-8 <-> UTF-32 conversion_
   - `util` - _directory listing for POSIX and Win32_
