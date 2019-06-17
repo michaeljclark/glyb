@@ -38,10 +38,6 @@ list(APPEND LIBS Threads::Threads)
 
 add_subdirectory(third_party/glad)
 
-add_subdirectory(third_party/msdfgen)
-include_directories(third_party/msdfgen)
-list(APPEND LIBS lib_msdfgen)
-
 if(USE_BUNDLED_LIBS)
   add_subdirectory(third_party/glfw)
   include_directories(third_party/glfw/include)
@@ -52,6 +48,11 @@ if(USE_BUNDLED_LIBS)
   include_directories(third_party/freetype2/include)
   include_directories(third_party/freetype2/include/freetype/config)
 
+  add_subdirectory(third_party/zlib)
+  include_directories(third_party/zlib)
+
+  set(ZLIB_LIBRARY zlib)
+  set(ZLIB_INCLUDE_DIR third_party/zlib)
   add_subdirectory(third_party/libpng)
   include_directories(third_party/libpng)
 
@@ -72,6 +73,10 @@ else()
   add_definitions(${PNG_CFLAGS})
   list(INSERT LIBS 0 ${HARFBUZZ_LDFLAGS} ${FREETYPE2_LDFLAGS} ${GLFW3_LDFLAGS} ${PNG_LDFLAGS})
 endif()
+
+add_subdirectory(third_party/msdfgen)
+include_directories(third_party/msdfgen)
+list(APPEND LIBS lib_msdfgen)
 
 include_directories(src)
 

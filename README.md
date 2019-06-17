@@ -45,6 +45,7 @@ The project also contains several OpenGL examples using the library.
   - `freetype` - _font rendering engine_
   - `harfbuzz` - _text shaping engine_
   - `msdfgen` - _multi-channel signed distance field generator_
+  - `zlib` - _massively spiffy yet delicately unobtrusive compression library_
   - `glad` - _OpenGL extension loader used by examples_
   - `glfw` - _OpenGL window library used by examples_
 
@@ -57,6 +58,8 @@ glyphic links to:
 [†](https://www.freedesktop.org/wiki/Software/HarfBuzz/),
 [msdfgen](https://github.com/Chlumsky/msdfgen)
 [†](https://github.com/Chlumsky/msdfgen/files/3050967/thesis.pdf),
+[zlib](https://github.com/madler/zlib.git)
+[†](http://zlib.net/),
 [libpng](https://github.com/glennrp/libpng)
 [†](http://www.libpng.org/pub/png/libpng.html),
 and the examples link to:
