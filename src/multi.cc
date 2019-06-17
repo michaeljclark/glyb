@@ -41,37 +41,37 @@ static const char log_name[] = "glyph_renderer_worker";
 void glyph_renderer_worker::mainloop()
 {
     std::unique_ptr<glyph_renderer> renderer = renderer_factory.create();
-    std::unique_lock<std::mutex> lock(master->mutex);
 
     while (master->running) {
-        size_t workitem, completed;
+        size_t total, processing, workitem, processed;
 
-        if (master->processing.load() != master->total) {
+        total = master->total.load(std::memory_order_acquire);
+        processing = master->processing.load(std::memory_order_acquire);
 
-            workitem = master->processing.fetch_add(1);
-            glyph_render_request r = master->queue[workitem];
-
-            lock.unlock();
-            r.atlas->multithreading.store(true, std::memory_order_release);
-            renderer->render(r.atlas, get_face(r.face), r.font_size, r.glyph);
-            lock.lock();
-
-            if (debug) {
-                printf("%s-%02zu workitem=%zu\t[font=%s, size=%d, glyph=%d]\n",
-                    log_name, worker_num, workitem, r.face->name.c_str(),
-                    r.font_size, r.glyph);
-            }
-
-            /* notify master if complete */
-            completed = master->processed.fetch_add(1);
-            if (completed == master->total - 1) {
-                if (debug) {
-                    printf("%s-%02zu notify-master\n", log_name, worker_num);
-                }
-                master->response.notify_one();
-            }
-        } else {
+        if (processing >= total) {
+            std::unique_lock<std::mutex> lock(master->mutex);
             master->request.wait(lock);
+            continue;
+        }
+
+        workitem = master->processing.fetch_add(1, std::memory_order_seq_cst);
+        glyph_render_request r = master->queue[workitem];
+        r.atlas->multithreading.store(true, std::memory_order_release);
+        renderer->render(r.atlas, get_face(r.face), 0, r.glyph);
+        processed = master->processed.fetch_add(1, std::memory_order_seq_cst);
+
+        if (debug) {
+            printf("%s-%02zu workitem=%zu\t[font=%s, glyph=%d]\n",
+                log_name, worker_num, workitem, r.face->name.c_str(),
+                r.glyph);
+        }
+
+        total = master->total.load(std::memory_order_acquire);
+        if (processed == total - 1) {
+            if (debug) {
+                printf("%s-%02zu notify-master\n", log_name, worker_num);
+            }
+            master->response.notify_one();
         }
     }
 }
@@ -95,14 +95,15 @@ font_face_ft* glyph_renderer_worker::get_face(font_face_ft *face)
 glyph_renderer_multi::glyph_renderer_multi(font_manager* manager,
     glyph_renderer_factory& renderer_factory, size_t num_threads) :
     variable_size(true), manager(manager),
-    workers(), running(true), queue(),
-    total(0), processing(0), processed(0),
+    workers(), running(true), dedup(), queue(),
+    capacity(1024), total(0), processing(0), processed(0),
     mutex(), request(), response()
 {
     for (size_t i = 0; i < num_threads; i++) {
         workers.push_back(std::make_unique<glyph_renderer_worker>
             (this, i, renderer_factory));
     }
+    queue.resize(1024);
 }
 
 glyph_renderer_multi::~glyph_renderer_multi()
@@ -118,27 +119,32 @@ void glyph_renderer_multi::add(std::vector<glyph_shape> &shapes,
     font_atlas *atlas = manager->getFontAtlas(face);
 
     for (auto shape : shapes) {
-        add(atlas, face, font_size, shape.glyph);
+        auto gi = atlas->glyph_map.find({face->font_id, 0, shape.glyph});
+        if (gi != atlas->glyph_map.end()) continue;
+
+        glyph_render_request r{atlas, face, shape.glyph};
+        auto i = std::lower_bound(dedup.begin(), dedup.end(), r,
+            [](const glyph_render_request &l,
+               const glyph_render_request &r) { return l < r; });
+
+        if (i == dedup.end() || *i != r) {
+            dedup.insert(i, r);
+            enqueue(r);
+        }
     }
 }
 
-void glyph_renderer_multi::add(font_atlas *atlas, font_face_ft *face,
-    int font_size, int glyph)
+void glyph_renderer_multi::enqueue(glyph_render_request &r)
 {
-    int requested_size = variable_size ? 0 : font_size;
+    size_t workitem;
+    do {
+        size_t workitem = total.load(std::memory_order_relaxed);
+        if (workitem == capacity) return;
+        queue[workitem] = r;
+    } while (!total.compare_exchange_strong(workitem, workitem + 1,
+        std::memory_order_seq_cst));
 
-    auto gi = atlas->glyph_map.find({face->font_id, requested_size, glyph});
-    if (gi != atlas->glyph_map.end()) return;
-
-    glyph_render_request r{atlas, face, requested_size, glyph};
-    auto i = std::lower_bound(queue.begin(), queue.end(), r,
-        [](const glyph_render_request &l, const glyph_render_request &r) {
-            return l < r; });
-
-    if (i == queue.end() || *i != r) {
-        i = queue.insert(i, r);
-        total.store(queue.size(), std::memory_order_release);
-    }
+    request.notify_one();
 }
 
 void glyph_renderer_multi::run()
@@ -162,6 +168,7 @@ void glyph_renderer_multi::run()
     total.store(0, std::memory_order_release);
     processing.store(0, std::memory_order_release);
     processed.store(0, std::memory_order_release);
+    dedup.clear();
     queue.clear();
     mutex.unlock();
 }

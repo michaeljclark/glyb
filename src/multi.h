@@ -8,16 +8,19 @@ struct glyph_render_request
 {
     font_atlas* atlas;
     font_face_ft *face;
-    int font_size;
-    int glyph;
+    unsigned glyph;
 
+    const bool operator==(const glyph_render_request &o) const {
+        return std::tie(atlas, face, glyph) ==
+            std::tie(o.atlas, o.face, o.glyph);
+    }
     const bool operator!=(const glyph_render_request &o) const {
-        return std::tie(atlas, face, font_size, glyph) !=
-            std::tie(o.atlas, o.face, o.font_size, o.glyph);
+        return std::tie(atlas, face, glyph) !=
+            std::tie(o.atlas, o.face, o.glyph);
     }
     const bool operator<(const glyph_render_request &o) const {
-        return std::tie(atlas, face, font_size, glyph) <
-            std::tie(o.atlas, o.face, o.font_size, o.glyph);
+        return std::tie(atlas, face, glyph) <
+            std::tie(o.atlas, o.face, o.glyph);
     }
 };
 
@@ -94,6 +97,7 @@ struct glyph_renderer_multi
      * workers    - worker threads to process work queue
      * running    - boolean variable that is cleared to shutdown workers
      * queue      - storage for work items
+     * capacity   - work item queue capacity
      * total      - upper bound of items to process, write to start work
      * processing - upper bound of items processing, written to dequeue work
      * processed  - lower bound of items processing, written to finish work
@@ -103,7 +107,9 @@ struct glyph_renderer_multi
      */
     std::vector<std::unique_ptr<glyph_renderer_worker>> workers;
     std::atomic<bool>                 running;
+    std::vector<glyph_render_request> dedup;
     std::vector<glyph_render_request> queue;
+    std::atomic<size_t>               capacity;
     std::atomic<size_t>               total;
     std::atomic<size_t>               processing;
     std::atomic<size_t>               processed;
@@ -116,7 +122,7 @@ struct glyph_renderer_multi
     virtual ~glyph_renderer_multi();
 
     void add(std::vector<glyph_shape> &shapes, text_segment *segment);
-    void add(font_atlas* atlas, font_face_ft *face, int font_size, int glyph);
+    void enqueue(glyph_render_request &r);
     void run();
     void shutdown();
 };
