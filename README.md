@@ -103,8 +103,8 @@ The following code snippet shows glyphic's high level text layout interface:
     std::vector<uint32_t> indices;
 
     text_shaper shaper;
-    text_renderer renderer(&manager, &atlas);
-    text_layout layout(&manager, &atlas, &shaper, &renderer);
+    text_renderer renderer(&manager);
+    text_layout layout(&manager, &shaper, &renderer);
     text_container c;
 
     c.append(text_part(
