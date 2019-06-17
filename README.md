@@ -44,8 +44,24 @@ The project also contains several OpenGL examples using the library.
 - `third_party`
   - `freetype` - _font rendering engine_
   - `harfbuzz` - _text shaping engine_
+  - `msdfgen` - _multi-channel signed distance field generator_
   - `glad` - _OpenGL extension loader used by examples_
   - `glfw` - _OpenGL window library used by examples_
+
+### Dependencies
+
+glyphic links to: 
+[FreeType](https://github.com/aseprite/freetype2)
+[†](https://www.freetype.org/),
+[HarfBuzz](https://github.com/harfbuzz/harfbuzz)
+[†](https://www.freedesktop.org/wiki/Software/HarfBuzz/),
+[msdfgen](https://github.com/Chlumsky/msdfgen)
+[†](https://github.com/Chlumsky/msdfgen/files/3050967/thesis.pdf),
+[libpng](https://github.com/glennrp/libpng)
+[†](http://www.libpng.org/pub/png/libpng.html),
+and the examples link to:
+[GLAD](https://github.com/Dav1dde/glad) [†](https://glad.dav1d.de/),
+[GLFW](https://github.com/glfw/glfw) [†](https://www.glfw.org/).
 
 ## Building
 
