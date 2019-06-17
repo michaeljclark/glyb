@@ -36,6 +36,8 @@ endif()
 find_package(Threads REQUIRED)
 list(APPEND LIBS Threads::Threads)
 
+include_directories(third_party/include)
+
 add_subdirectory(third_party/glad)
 
 if(USE_BUNDLED_LIBS)
@@ -51,17 +53,32 @@ if(USE_BUNDLED_LIBS)
   add_subdirectory(third_party/zlib)
   include_directories(third_party/zlib)
 
-  set(ZLIB_LIBRARY zlib)
+  # fixme: PNG_BUILD_ZLIB appears to not work so we copy headers
+  set(PNG_BUILD_ZLIB third_party/zlib CACHE PATH "Enable custom Zlib" FORCE)
+  set(ZLIB_LIBRARY zlibstatic)
   set(ZLIB_INCLUDE_DIR third_party/zlib)
   add_subdirectory(third_party/libpng)
   include_directories(third_party/libpng)
+  target_include_directories(png PRIVATE third_party/zlib)
+
+  # this glorius hack is required so that libpng finds the included zlib
+  # problem is due to generated files not seeing include_directories()
+  add_custom_target(png_zconf_h
+    COMMAND ${CMAKE_COMMAND} -E copy
+    ${PROJECT_BINARY_DIR}/third_party/zlib/zconf.h
+    ${PROJECT_BINARY_DIR}/third_party/libpng/.)
+  add_custom_target(png_zlib_h
+    COMMAND ${CMAKE_COMMAND} -E copy
+    ${CMAKE_SOURCE_DIR}/third_party/zlib/zlib.h
+    ${PROJECT_BINARY_DIR}/third_party/libpng/.)
+  add_dependencies(genfiles png_zlib_h png_zconf_h)
 
   set(HB_HAVE_FREETYPE ON CACHE BOOL "Enable FreeType Integration" FORCE)
   set(FREETYPE_INCLUDE_DIRS third_party/freetype2/include)
   set(FREETYPE_LIBRARY freetype)
   add_subdirectory(third_party/harfbuzz)
   include_directories(third_party/harfbuzz/src)
-  list(INSERT LIBS 0 harfbuzz freetype glfw)
+  list(INSERT LIBS 0 png_static zlibstatic harfbuzz freetype glfw)
 else()
   pkg_check_modules(GLFW3 REQUIRED glfw3)
   pkg_check_modules(HARFBUZZ REQUIRED harfbuzz)

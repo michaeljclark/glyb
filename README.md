@@ -46,6 +46,7 @@ The project also contains several OpenGL examples using the library.
   - `harfbuzz` - _text shaping engine_
   - `msdfgen` - _multi-channel signed distance field generator_
   - `zlib` - _massively spiffy yet delicately unobtrusive compression library_
+  - `libpng` - _the official PNG reference library_
   - `glad` - _OpenGL extension loader used by examples_
   - `glfw` - _OpenGL window library used by examples_
 
