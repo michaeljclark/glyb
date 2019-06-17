@@ -56,7 +56,7 @@ static bool help_text = false;
 static bool show_atlas = false;
 static bool show_lines = false;
 static bool debug = false;
-static bool use_multithread = false;
+static bool use_multithread = true;
 static int width = 1024, height = 768;
 static font_manager_ft manager;
 
@@ -316,18 +316,18 @@ void print_help(int argc, char **argv)
         "Usage: %s [options]\n"
         "\n"
         "Options:\n"
-        "  -f, --font <ttf-file>      font file (default %s)\n"
-        "  -min, --min-size <points>  font size minimum (default %d)\n"
-        "  -max, --max-size <points>  font size maximum (default %d)\n"
-        "  -s, --size <points>        font size (both minimum and maximum)\n"
-        "  -t, --text <string>        text to render (default \"%s\")\n"
-        "  -a, --show-atlas           show the atlas instead of the text\n"
-        "  -l, --show-lines           show baseline, half-height and height\n"
-        "  -m, --use-msdf             use multi-channel signed distance field\n"
-        "  -M, --autoload-msdf        autoload MSDF font atlas textures\n"
-        "  -T, --multi-thread         multithreaded font atlas generation\n"
-        "  -d, --debug                print debugging information\n"
-        "  -h, --help                 command line help\n",
+        "  -f, --font <ttf-file>     font file (default %s)\n"
+        "  -min, --min-size <points> font size minimum (default %d)\n"
+        "  -max, --max-size <points> font size maximum (default %d)\n"
+        "  -s, --size <points>       font size (both minimum and maximum)\n"
+        "  -t, --text <string>       text to render (default \"%s\")\n"
+        "  -a, --show-atlas          show the atlas instead of the text\n"
+        "  -l, --show-lines          show baseline, half-height and height\n"
+        "  -m, --disable-msdf        disable MSDF font rendering\n"
+        "  -M, --disable-autoload    disable MSDF atlas autoloading\n"
+        "  -T, --disable-multithread disable multithreaded atlas generation\n"
+        "  -d, --debug               print debugging information\n"
+        "  -h, --help                command line help\n",
         argv[0], font_path, font_size_min, font_size_max, render_text);
 }
 
@@ -374,15 +374,14 @@ void parse_options(int argc, char **argv)
         } else if (match_opt(argv[i], "-l", "--show-lines")) {
             show_lines = true;
             i++;
-        } else if (match_opt(argv[i], "-m", "--use-msdf")) {
-            manager.msdf_enabled = true;
+        } else if (match_opt(argv[i], "-m", "--disable-msdf")) {
+            manager.msdf_enabled = false;
             i++;
-        } else if (match_opt(argv[i], "-M", "--autoload-msdf")) {
-            manager.msdf_enabled = true;
-            manager.msdf_autoload = true;
+        } else if (match_opt(argv[i], "-M", "--disable-autoload")) {
+            manager.msdf_autoload = false;
             i++;
-        } else if (match_opt(argv[i], "-T", "--multi-thread")) {
-            use_multithread = true;
+        } else if (match_opt(argv[i], "-T", "--disable-multithread")) {
+            use_multithread = false;
             i++;
         } else if (match_opt(argv[i], "-h", "--help")) {
             help_text = true;
@@ -404,6 +403,13 @@ void parse_options(int argc, char **argv)
 
 int main(int argc, char **argv)
 {
+    /*
+     * enable MSDF font atlases. note: this requires that client
+     * code configures MSDF shaders, so it is disabled by default.
+     */
+    manager.msdf_enabled = true;
+    manager.msdf_autoload = true;
+
     parse_options(argc, argv);
     glfont(argc, argv);
     return 0;
