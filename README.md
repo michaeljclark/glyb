@@ -11,6 +11,20 @@ glyphic contains a 2D bin packer implementing the _**MAXRECTS-BSSF**_
 algorithm as outlined in _"A Thousand Ways to Pack the Bin - A Practical
 Approach to Two-Dimensional Rectangle Bin Packing, Jukka Jylänki_.
 
+glyphic includes an MSDF (multi-channel signed distance field) glyph
+renderer that uses the [msdfgen](https://github.com/Chlumsky/msdfgen)
+library to create _variable-size_ MSDF font atlases. MSDF font atlases
+are CPU-intensive to produce so an offline tool `genatlas` is included
+to pregenerate MSDF font atlases. The advantage of MSDF font atlases is
+that glyphs only need to be rendered for one size, and after the atlas
+has been generated, text renderering becomes extremely fast. 
+
+glyphic includes an online multi-threaded MSDF renderer. This allows
+online MSDF atlas generation with any truetrype font. Rendering signed
+distance field font atlases from truetype contours online is typically
+prohibitive due to CPU requirements, however, when spread over 8 to 16
+cores, the latency becomes acceptable for real-time use.
+
 The project also contains several OpenGL examples using the library.
 
 ## Project Structure
