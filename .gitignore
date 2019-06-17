@@ -1,2 +1,4 @@
 build/
 gmon.out
+fonts/*.csv
+fonts/*.png
