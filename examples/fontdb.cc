@@ -119,7 +119,7 @@ int main(int argc, char **argv)
 
     if (print_list) {
         for (auto &font : manager.getFontList()) {
-            printf("%s\n", font.getFontData().toString().c_str());
+            printf("%s\n", font->getFontData().toString().c_str());
         }
     }
 }

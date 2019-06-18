@@ -259,7 +259,7 @@ struct font_face_ft : font_face
 
     font_face_ft() = default;
     font_face_ft(font_manager_ft* manager, FT_Face ftface, int font_id, std::string path);
-    virtual ~font_face_ft() = default;
+    virtual ~font_face_ft();
 
     FT_Size_Metrics* get_metrics(int font_size);
     int get_height(int font_size);
@@ -274,7 +274,7 @@ struct font_manager_ft : font_manager
     bool msdf_enabled;
     bool msdf_autoload;
 
-    std::vector<font_face_ft> faces;
+    std::vector<std::unique_ptr<font_face_ft>> faces;
     std::unique_ptr<font_atlas> atlas;
     std::vector<std::shared_ptr<font_atlas>> atlasList;
 
@@ -289,7 +289,7 @@ struct font_manager_ft : font_manager
     virtual font_atlas* getFontAtlas(font_face *face);
     virtual glyph_renderer* getGlyphRenderer(font_face *face);
 
-    const std::vector<font_face_ft>& getFontList() { return faces; }
+    const std::vector<std::unique_ptr<font_face_ft>>& getFontList() { return faces; }
 };
 
 /* Todo: fix me to not use the std namespace */

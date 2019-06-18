@@ -441,6 +441,7 @@ font_manager_ft::font_manager_ft(std::string fontDir) : font_manager(),
 
 font_manager_ft::~font_manager_ft()
 {
+    faces.clear();
     FT_Done_Library(ftlib);
 }
 
@@ -472,15 +473,16 @@ void font_manager_ft::scanFontPath(std::string path)
     }
 
     size_t font_id = faces.size();
-    faces.emplace_back(font_face_ft(this, ftface, (int)faces.size(), path));
-    indexFace(&faces[font_id]);
+    faces.push_back(std::unique_ptr<font_face_ft>
+        (new font_face_ft(this, ftface, (int)faces.size(), path)));
+    indexFace(faces[font_id].get());
 }
 
 size_t font_manager_ft::fontCount() { return faces.size(); }
 
 font_face* font_manager_ft::findFontById(size_t font_id)
 {
-    return &faces[font_id];
+    return faces[font_id].get();
 }
 
 font_face* font_manager_ft::findFontByPath(std::string path)
@@ -542,12 +544,10 @@ font_face_ft::font_face_ft(font_manager_ft* manager, FT_Face ftface, int font_id
         ftface->family_name, ftface->style_name);
 }
 
-#if 0
 font_face_ft::~font_face_ft()
 {
     FT_Done_Face(ftface);
 }
-#endif
 
 FT_Size_Metrics* font_face_ft::get_metrics(int font_size)
 {
