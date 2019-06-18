@@ -25,6 +25,8 @@ distance field font atlases from truetype contours online is typically
 prohibitive due to CPU requirements, however, when spread over 8 to 16
 cores, the latency becomes acceptable for real-time use.
 
+![glyphic](/images/glyphic.png)
+
 The project also contains several OpenGL examples using the library.
 
 ## Project Structure
