@@ -427,7 +427,6 @@ void text_layout::layout(std::vector<text_segment> &segments,
 
     /* layout the text in the container into styled text segments */
     int dx = x, dy = y;
-    float line_height;
     for (size_t i = 0; i < container->parts.size(); i++)
     {
         text_part *part = &container->parts[i];
