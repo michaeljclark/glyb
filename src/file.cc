@@ -537,6 +537,7 @@ bool file::makeDir(std::string dname)
         return false;
     }
 #endif
+    return true;
 }
 
 file_ptr file::getFile(std::string filename)
