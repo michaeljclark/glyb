@@ -6,18 +6,21 @@
 #include <cstdlib>
 #include <climits>
 
-#include <string>
-#include <memory>
-#include <vector>
 #include <map>
-#include <tuple>
+#include <vector>
+#include <memory>
+#include <string>
 #include <algorithm>
+#include <atomic>
+#include <mutex>
 
 #include <sys/types.h>
 #include <dirent.h>
 
 #include "binpack.h"
+#include "draw.h"
 #include "font.h"
+#include "image.h"
 #include "glyph.h"
 
 #ifdef _WIN32

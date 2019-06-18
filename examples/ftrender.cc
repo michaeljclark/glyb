@@ -1,15 +1,18 @@
 #include <cstdio>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include <cerrno>
-#include <cctype>
 #include <climits>
-#include <cmath>
-#include <ctime>
+#include <cstdlib>
+#include <climits>
 
-#include <vector>
 #include <map>
+#include <vector>
 #include <memory>
+#include <string>
+#include <algorithm>
+#include <atomic>
+#include <mutex>
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -21,8 +24,9 @@
 #include <hb-ft.h>
 
 #include "binpack.h"
-#include "utf8.h"
+#include "draw.h"
 #include "font.h"
+#include "image.h"
 #include "glyph.h"
 
 static const char* ascii_palette = " .:-=+*#%@";
