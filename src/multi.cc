@@ -138,7 +138,7 @@ void glyph_renderer_multi::enqueue(glyph_render_request &r)
 {
     size_t workitem;
     do {
-        size_t workitem = total.load(std::memory_order_relaxed);
+        workitem = total.load(std::memory_order_relaxed);
         if (workitem == capacity) return;
         queue[workitem] = r;
     } while (!total.compare_exchange_strong(workitem, workitem + 1,
