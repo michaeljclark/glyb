@@ -16,6 +16,7 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <algorithm>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -121,11 +122,11 @@ static void rect(op_type op, draw_list &batch, float x1, float y1,
     uint o3 = draw_list_vertex(batch, {{x1, y2, z}, {0, 0}, color});
     switch (op) {
     case op_fill:
-        draw_list_add(batch, image_none, mode_triangles, shader_simple,
+        draw_list_indices(batch, image_none, mode_triangles, shader_simple,
             {o0, o1, o3, o1, o2, o3});
         break;
     case op_stroke:
-        draw_list_add(batch, image_none, mode_lines, shader_simple,
+        draw_list_indices(batch, image_none, mode_lines, shader_simple,
             {o0, o1, o1, o2, o2, o3, o3, o0});
         break;
     }

@@ -180,27 +180,35 @@ static void uniform_matrix_4fv(program *prog, const char *uniform, const GLfloat
     }
 }
 
-static void image_create_texture(GLuint *tex, image *img, GLenum filter)
+static void image_create_texture(GLuint *tex, draw_image img)
 {
     static const GLint swizzleMask[] = {GL_ONE, GL_ONE, GL_ONE, GL_RED};
 
-    GLsizei width = (GLsizei)img->getHeight();
-    GLsizei height = (GLsizei)img->getWidth();
-    GLsizei depth = (GLsizei)img->getBytesPerPixel();
+    GLsizei width = (GLsizei)img.size[0];
+    GLsizei height = (GLsizei)img.size[1];
+    GLsizei depth = (GLsizei)img.size[2];
 
     glGenTextures(1, tex);
     glBindTexture(GL_TEXTURE_2D, *tex);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
+
+    if (img.flags & filter_nearest) {
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    }
+    if (img.flags & filter_linear) {
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    }
+
     switch (depth) {
     case 1:
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height,
-            0, GL_RED, GL_UNSIGNED_BYTE, (GLvoid*)img->getData());
+            0, GL_RED, GL_UNSIGNED_BYTE, (GLvoid*)img.pixels);
         glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
         break;
     case 4:
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height,
-            0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)img->getData());
+            0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)img.pixels);
         break;
     }
     glActiveTexture(GL_TEXTURE0);
@@ -208,7 +216,11 @@ static void image_create_texture(GLuint *tex, image *img, GLenum filter)
     printf("image %u = %u x %u x %u\n", *tex, width, height, depth);
 }
 
-inline GLenum atlas_filter(int depth)
+static GLenum cmd_mode_gl(int cmd_mode)
 {
-    return depth == 4 ? GL_LINEAR : GL_NEAREST;
+    switch (cmd_mode) {
+    case mode_lines:     return GL_LINES;
+    case mode_triangles: return GL_TRIANGLES;
+    default: return GL_NONE;
+    }
 }

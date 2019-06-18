@@ -16,6 +16,7 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <algorithm>
 #include <atomic>
 #include <mutex>
 
@@ -26,10 +27,10 @@
 #define CTX_OPENGL_MINOR 2
 
 #include "linmath.h"
+#include "image.h"
 #include "draw.h"
 #include "binpack.h"
 #include "font.h"
-#include "image.h"
 #include "glyph.h"
 #include "glcommon.h"
 
@@ -37,9 +38,9 @@
 /* globals */
 
 static program simple;
-static GLuint tex;
 static GLuint vao, vbo, ibo;
 static draw_list batch;
+static std::map<int,GLuint> tex_map;
 
 static mat4x4 mvp;
 static GLFWwindow* window;
@@ -60,9 +61,21 @@ static void display()
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glUseProgram(simple.pid);
+    for (auto img : batch.images) {
+        auto ti = tex_map.find(img.iid);
+        if (ti == tex_map.end()) {
+            GLuint tex;
+            image_create_texture(&tex, img);
+            tex_map[img.iid] = tex;
+        }
+    }
     glBindVertexArray(vao);
-    glDrawElements(GL_TRIANGLES, (GLsizei)batch.indices.size(), GL_UNSIGNED_INT, (void*)0);
+    for (auto cmd : batch.cmds) {
+        glUseProgram(simple.pid);
+        glBindTexture(GL_TEXTURE_2D, tex_map[cmd.iid]);
+        glDrawElements(cmd_mode_gl(cmd.mode), cmd.count, GL_UNSIGNED_INT,
+            (void*)(cmd.offset * sizeof(uint)));
+    }
 
     glfwSwapBuffers(window);
 }
@@ -115,9 +128,6 @@ static void update_buffers()
     vertex_buffer_create("ibo", &ibo, GL_ELEMENT_ARRAY_BUFFER, batch.indices);
     vertex_array_config(&simple);
     glBindVertexArray(0);
-
-    /* create font atlas texture */
-    image_create_texture(&tex, atlas->get_image(), atlas_filter(atlas->depth));
 }
 
 /* OpenGL initialization */

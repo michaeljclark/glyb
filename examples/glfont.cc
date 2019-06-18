@@ -16,6 +16,7 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <algorithm>
 #include <thread>
 #include <atomic>
 #include <mutex>
@@ -28,10 +29,10 @@
 #define CTX_OPENGL_MINOR 2
 
 #include "linmath.h"
+#include "image.h"
 #include "draw.h"
 #include "binpack.h"
 #include "font.h"
-#include "image.h"
 #include "glyph.h"
 #include "msdf.h"
 #include "multi.h"
@@ -40,10 +41,10 @@
 
 /* globals */
 
-static GLuint tex;
 static GLuint vao, vbo, ibo;
 static program simple, msdf;
 static draw_list batch;
+static std::map<int,GLuint> tex_map;
 
 static mat4x4 mvp;
 static GLFWwindow* window;
@@ -70,14 +71,35 @@ static void update_uniforms(program *prog)
     uniform_1i(prog, "u_tex0", 0);
 }
 
+static program* cmd_shader_gl(int cmd_shader)
+{
+    switch (cmd_shader) {
+    case shader_simple:  return &simple;
+    case shader_msdf:    return &msdf;
+    default: return nullptr;
+    }
+}
+
 static void display()
 {
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glUseProgram(manager.msdf_enabled ? msdf.pid : simple.pid);
+    for (auto img : batch.images) {
+        auto ti = tex_map.find(img.iid);
+        if (ti == tex_map.end()) {
+            GLuint tex;
+            image_create_texture(&tex, img);
+            tex_map[img.iid] = tex;
+        }
+    }
     glBindVertexArray(vao);
-    glDrawElements(GL_TRIANGLES, (GLsizei)batch.indices.size(), GL_UNSIGNED_INT, (void*)0);
+    for (auto cmd : batch.cmds) {
+        glUseProgram(cmd_shader_gl(cmd.shader)->pid);
+        glBindTexture(GL_TEXTURE_2D, tex_map[cmd.iid]);
+        glDrawElements(cmd_mode_gl(cmd.mode), cmd.count, GL_UNSIGNED_INT,
+            (void*)(cmd.offset * sizeof(uint)));
+    }
 
     glfwSwapBuffers(window);
 }
@@ -99,13 +121,20 @@ static void reshape(int width, int height)
 static void rect(draw_list &batch, font_atlas *atlas,
     float x1, float y1, float x2, float y2, float z, uint color)
 {
+    int atlas_iid = atlas->get_image()->iid;
+    int atlas_shader = atlas->depth == 4 ? shader_msdf : shader_simple;
+    int atlas_flags = st_clamp | atlas_image_filter(atlas);
+
+    draw_list_image(batch, atlas->get_image(), atlas_flags);
+
     uint o = static_cast<uint>(batch.vertices.size());
     float uv1 = 0.0f, uv2 = atlas->uv1x1;
     uint o0 = draw_list_vertex(batch, {{x1, y1, z}, {uv1, uv1}, color});
     uint o1 = draw_list_vertex(batch, {{x2, y1, z}, {uv2, uv1}, color});
     uint o2 = draw_list_vertex(batch, {{x2, y2, z}, {uv2, uv2}, color});
     uint o3 = draw_list_vertex(batch, {{x1, y2, z}, {uv1, uv2}, color});
-    draw_list_add(batch, image_none, mode_triangles, shader_simple,
+
+    draw_list_indices(batch, atlas_iid, mode_triangles, atlas_shader,
         {o0, o3, o1, o1, o3, o2});
 }
 
@@ -117,7 +146,6 @@ static void update_geometry()
     text_renderer_ft renderer(&manager);
     font_face *face = manager.findFontByPath(font_path);
     font_atlas *atlas = manager.getFontAtlas(face);
-    std::vector<glyph_shape> shapes;
 
     int x = 100, y = 100;
 
@@ -143,6 +171,8 @@ static void update_geometry()
             int width = 0;
             int height = static_cast<font_face_ft*>
                 (face)->get_height(render_segment->font_size) >> 6;
+            std::vector<glyph_shape> shapes;
+            shaper.shape(shapes, render_segment.get());
             for (auto &s : shapes) {
                 width += s.x_advance/64;
             }
@@ -221,9 +251,6 @@ static void update_buffers()
     vertex_buffer_create("ibo", &ibo, GL_ELEMENT_ARRAY_BUFFER, batch.indices);
     vertex_array_config(manager.msdf_enabled ? &msdf : &simple);
     glBindVertexArray(0);
-
-    /* create font atlas texture */
-    image_create_texture(&tex, atlas->get_image(), atlas_filter(atlas->depth));
 }
 
 /* keyboard callback */

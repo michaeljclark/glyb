@@ -25,9 +25,9 @@
 #include FT_OUTLINE_H
 
 #include "binpack.h"
+#include "image.h"
 #include "draw.h"
 #include "font.h"
-#include "image.h"
 #include "glyph.h"
 #include "msdf.h"
 #include "util.h"

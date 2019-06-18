@@ -10,33 +10,34 @@ typedef struct {
     uint color;
 } draw_vertex;
 
+enum {
+    st_clamp       = (1 << 1),
+    st_wrap        = (1 << 2),
+    filter_nearest = (1 << 3),
+    filter_linear  = (1 << 4),
+};
+
 typedef struct {
-    uint iid;     /* image id */
-    uint size[3];     /* image dimensions: width,height,depth */
-    uint modrect[4];  /* modified rectangle */
-    uint flags;
-    enum {
-        st_clamp       = (1 << 1),
-        st_wrap        = (1 << 2),
-        filter_nearest = (1 << 3),
-        filter_linear  = (1 << 4),
-    };
+    int iid;
+    uint size[3];
+    uint modrect[4];
+    int flags;
     uint8_t *pixels;
 } draw_image;
 
-typedef enum {
+enum {
     image_none = 0
-} _image;
+};
 
-typedef enum {
+enum {
     mode_triangles = 1,
     mode_lines     = 2,
-} _mode;
+};
 
-typedef enum {
+enum {
     shader_simple   = 1,
     shader_msdf     = 2,
-} _shader;
+};
 
 typedef struct {
     uint viewport[4];
@@ -88,7 +89,8 @@ inline uint draw_list_vertex(draw_list &batch, draw_vertex v)
     return (uint)(i - batch.vertices.begin());
 }
 
-inline void draw_list_add(draw_list &batch, uint iid, uint mode, uint shader, std::initializer_list<uint> l)
+inline void draw_list_indices(draw_list &batch, uint iid, uint mode, uint shader,
+    std::initializer_list<uint> l)
 {
     bool empty = batch.cmds.size() == 0;
     draw_cmd &last = batch.cmds.back();
@@ -112,5 +114,17 @@ inline void draw_list_add(draw_list &batch, uint iid, uint mode, uint shader, st
         }, iid, mode, shader, start, end - start });
     } else {
         last.count += (end - start);
+    }
+}
+
+inline void draw_list_image(draw_list &batch, image *img, int flags)
+{
+    uint w = img->getWidth(), h = img->getHeight(), d = img->getBytesPerPixel();
+    draw_image drim{img->iid, {w,h,d}, {0,0,w,h}, flags, img->getData()};
+    auto i = std::lower_bound(batch.images.begin(), batch.images.end(), drim,
+        [](const draw_image &l, const draw_image &r) { return l.iid < r.iid; });
+
+    if (i == batch.images.end() || i->iid != drim.iid) {
+        batch.images.insert(i, drim);
     }
 }

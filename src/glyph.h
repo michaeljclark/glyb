@@ -171,6 +171,11 @@ struct font_atlas
     void load(font_manager *manager, font_face *face);
 };
 
+inline int atlas_image_filter(font_atlas *atlas)
+{
+    /* todo fixme - we currently use depth as an indicator of type */
+    return (atlas->depth == 4 ? filter_linear : filter_nearest);
+}
 
 /*
  * Text Segment

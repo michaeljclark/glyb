@@ -27,9 +27,9 @@
 
 #include "binpack.h"
 #include "utf8.h"
+#include "image.h"
 #include "draw.h"
 #include "font.h"
-#include "image.h"
 #include "glyph.h"
 #include "file.h"
 
@@ -604,6 +604,11 @@ void text_renderer_ft::render(draw_list &batch,
     int tracking = segment->tracking;
     font_atlas *atlas = manager->getFontAtlas(face);
     glyph_renderer *renderer = manager->getGlyphRenderer(face);
+    int atlas_iid = atlas->get_image()->iid;
+    int atlas_shader = atlas->depth == 4 ? shader_msdf : shader_simple;
+    int atlas_flags = st_clamp | atlas_image_filter(atlas);
+
+    draw_list_image(batch, atlas->get_image(), atlas_flags);
 
     /* lookup glyphs in font atlas, creating them if they don't exist */
     float dx = 0, dy = 0;
@@ -627,7 +632,7 @@ void text_renderer_ft::render(draw_list &batch,
             uint o1 = draw_list_vertex(batch, {{x2p, y1p, 0}, {u2, v1}, c});
             uint o2 = draw_list_vertex(batch, {{x2p, y2p, 0}, {u2, v2}, c});
             uint o3 = draw_list_vertex(batch, {{x1p, y2p, 0}, {u1, v2}, c});
-            draw_list_add(batch, image_none, mode_triangles, shader_simple,
+            draw_list_indices(batch, atlas_iid, mode_triangles, atlas_shader,
                 {o0, o3, o1, o1, o3, o2});
         }
         /* advance */

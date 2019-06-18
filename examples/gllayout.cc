@@ -16,6 +16,7 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <algorithm>
 #include <atomic>
 #include <mutex>
 
@@ -26,10 +27,10 @@
 #define CTX_OPENGL_MINOR 2
 
 #include "linmath.h"
+#include "image.h"
 #include "draw.h"
 #include "binpack.h"
 #include "font.h"
-#include "image.h"
 #include "glyph.h"
 #include "text.h"
 #include "glcommon.h"
@@ -37,10 +38,10 @@
 
 /* globals */
 
-static GLuint tex;
 static GLuint vao, vbo, ibo;
-static program simple;
+static program simple, msdf;
 static draw_list batch;
+static std::map<int,GLuint> tex_map;
 
 static mat4x4 mvp;
 static GLFWwindow* window;
@@ -57,14 +58,35 @@ static void update_uniforms(program *prog)
     uniform_1i(prog, "u_tex0", 0);
 }
 
+static program* cmd_shader_gl(int cmd_shader)
+{
+    switch (cmd_shader) {
+    case shader_simple:  return &simple;
+    case shader_msdf:    return &msdf;
+    default: return nullptr;
+    }
+}
+
 static void display()
 {
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glUseProgram(simple.pid);
+    for (auto img : batch.images) {
+        auto ti = tex_map.find(img.iid);
+        if (ti == tex_map.end()) {
+            GLuint tex;
+            image_create_texture(&tex, img);
+            tex_map[img.iid] = tex;
+        }
+    }
     glBindVertexArray(vao);
-    glDrawElements(GL_TRIANGLES, (GLsizei)batch.indices.size(), GL_UNSIGNED_INT, (void*)0);
+    for (auto cmd : batch.cmds) {
+        glUseProgram(cmd_shader_gl(cmd.shader)->pid);
+        glBindTexture(GL_TEXTURE_2D, tex_map[cmd.iid]);
+        glDrawElements(cmd_mode_gl(cmd.mode), cmd.count, GL_UNSIGNED_INT,
+            (void*)(cmd.offset * sizeof(uint)));
+    }
 
     glfwSwapBuffers(window);
 }
@@ -142,23 +164,23 @@ static void update_buffers()
     vertex_buffer_create("ibo", &ibo, GL_ELEMENT_ARRAY_BUFFER, batch.indices);
     vertex_array_config(&simple);
     glBindVertexArray(0);
-
-    /* create font atlas texture */
-    image_create_texture(&tex, atlas->get_image(), atlas_filter(atlas->depth));
 }
 
 /* OpenGL initialization */
 
 static void initialize()
 {
-    GLuint fsh, vsh;
+    GLuint simple_fsh, msdf_fsh, vsh;
 
     /* shader program */
     vsh = compile_shader(GL_VERTEX_SHADER, "shaders/simple.vsh");
-    fsh = compile_shader(GL_FRAGMENT_SHADER, "shaders/simple.fsh");
-    link_program(&simple, vsh, fsh);
+    simple_fsh = compile_shader(GL_FRAGMENT_SHADER, "shaders/simple.fsh");
+    msdf_fsh = compile_shader(GL_FRAGMENT_SHADER, "shaders/msdf.fsh");
+    link_program(&simple, vsh, simple_fsh);
+    link_program(&msdf, vsh, msdf_fsh);
     glDeleteShader(vsh);
-    glDeleteShader(fsh);
+    glDeleteShader(simple_fsh);
+    glDeleteShader(msdf_fsh);
 
     /* load font metadata */
     manager.scanFontDir("fonts");
