@@ -1,6 +1,4 @@
-/*
- * bin_packer - 2D bin packer implementing the MAXRECTS-BSSF algorithm
- */
+// See LICENSE for license details.
 
 #include <vector>
 #include <map>
@@ -8,6 +6,11 @@
 
 #include "binpack.h"
 
+/*
+ * bin_packer
+ *
+ * 2D bin packer implementing the MAXRECTS-BSSF algorithm
+ */
 
 /* helper, that adds non-empty rectangles */
 

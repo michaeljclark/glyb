@@ -1,3 +1,5 @@
+// See LICENSE for license details.
+
 #pragma once
 
 struct glyph_renderer_msdf : glyph_renderer

@@ -1,8 +1,12 @@
-/*
- * bin_packer - 2D bin packer implementing the MAXRECTS-BSSF algorithm
- */
+// See LICENSE for license details.
 
 #pragma once
+
+/*
+ * bin_packer
+ *
+ * 2D bin packer implementing the MAXRECTS-BSSF algorithm
+ */
 
 struct bin_point
 {

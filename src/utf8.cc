@@ -1,3 +1,5 @@
+// See LICENSE for license details.
+
 #include "utf8.h"
 
 size_t utf8_codelen(const char* s)
