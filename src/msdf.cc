@@ -49,6 +49,7 @@
 #include "glyph.h"
 #include "msdf.h"
 
+typedef unsigned uint;
 
 struct FtContext {
     msdfgen::Shape *shape;
@@ -115,7 +116,7 @@ atlas_entry glyph_renderer_msdf::render(font_atlas *atlas, font_face_ft *face,
     bool scanlinePass = true;
     double angleThreshold = 3;
     double edgeThreshold = 1.001;
-    uint long long coloringSeed = 0;
+    unsigned long long coloringSeed = 0;
     msdfgen::FillRule fillRule = msdfgen::FILL_NONZERO;
 
     error = FT_Set_Char_Size(face->ftface, 0, char_height, horz_resolution,

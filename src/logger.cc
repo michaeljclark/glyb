@@ -11,6 +11,10 @@
 
 #include "logger.h"
 
+#ifdef _WIN32
+#include <Windows.h>
+#endif
+
 bool logger::debug = true;
 
 void logger::log(const char* msgbuf)

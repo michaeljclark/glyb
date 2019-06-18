@@ -17,7 +17,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
-#if defined (_WIN32)
+#ifdef _WIN32
 #include <io.h>
 #include <Windows.h>
 #include <Shlobj.h>
@@ -37,14 +37,14 @@
 #endif
 
 #if !defined (DIR_SEPARATOR)
-#if defined (WIN32)
+#ifdef _WIN32
 #define DIR_SEPARATOR  "\\"
 #else
 #define DIR_SEPARATOR  "/"
 #endif
 #endif
 
-#if defined(_WIN32)
+#ifdef _WIN32
 
 /* file_win32_file */
 
@@ -374,7 +374,7 @@ std::string file::getPath()
 
 std::string file::getBasename()
 {
-#if defined (_WIN32)
+#ifdef _WIN32
     size_t slashoffset = path.find_last_of('\\');
 #else
     size_t slashoffset = path.find_last_of('/');
@@ -524,7 +524,7 @@ bool file::makeDir(std::string dname)
     if (dirExists(dname)) {
         return true;
     }
-#if defined (_WIN32)
+#ifdef _WIN32
     if (!CreateDirectoryA(dname.c_str(), NULL)) {
         Error("%s: *** Error: failed to make directory: %s\n", __func__,
             dname.c_str());
@@ -541,7 +541,7 @@ bool file::makeDir(std::string dname)
 
 file_ptr file::getFile(std::string filename)
 {
-#if defined (_WIN32)
+#ifdef _WIN32
     std::replace(filename.begin(), filename.end(), '/', '\\');
     return file_ptr(new file_win32_file(filename));
 #else

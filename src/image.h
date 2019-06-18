@@ -2,6 +2,9 @@
 
 #pragma once
 
+typedef unsigned int uint;
+typedef unsigned short ushort;
+
 struct image;
 typedef std::shared_ptr<image> image_ptr;
 

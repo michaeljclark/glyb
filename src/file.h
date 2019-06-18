@@ -2,6 +2,10 @@
 
 #pragma once
 
+#ifdef _WIN32
+typedef long long ssize_t;
+#endif
+
 struct file;
 typedef std::shared_ptr<file> file_ptr;
 
