@@ -87,7 +87,7 @@ font_atlas::font_atlas(size_t width, size_t height, size_t depth) :
     width(width), height(height), depth(depth),
     glyph_map(), pixels(nullptr), uv1x1(1.0f / (float)width),
     bp(bin_point((int)width, (int)height)),
-    delta(bin_point(width,height),bin_point(0,0)),
+    delta(bin_point((int)width,(int)height),bin_point(0,0)),
     multithreading(false), mutex()
 {
     if (width && height && depth) {
@@ -123,10 +123,10 @@ void font_atlas::create_pixels()
 
     /* create image handle */
     switch (depth) {
-    case 1: img = std::shared_ptr<image>(new image(file_ptr(), width, height,
-        pixel_format_alpha, pixels)); break;
-    case 4: img = std::shared_ptr<image>(new image(file_ptr(), width, height,
-        pixel_format_rgba, pixels)); break;
+    case 1: img = std::shared_ptr<image>(new image(file_ptr(),
+        (uint)width, (uint)height, pixel_format_alpha, pixels)); break;
+    case 4: img = std::shared_ptr<image>(new image(file_ptr(),
+        (uint)width, (uint)height, pixel_format_rgba, pixels)); break;
     }
 }
 
@@ -164,8 +164,8 @@ void font_atlas::uv_pixel()
 
 void font_atlas::reset_bins()
 {
-    bp.set_bin_size(bin_point(width, height));
-    delta = bin_rect(bin_point(width,height),bin_point(0,0));
+    bp.set_bin_size(bin_point((int)width,(int)height));
+    delta = bin_rect(bin_point((int)width,(int)height),bin_point(0,0));
     glyph_map.clear();
 }
 
@@ -248,7 +248,7 @@ bin_rect font_atlas::get_delta()
      * rectangle to use with APIs such as glTexSubImage2D.
      */
     bin_rect r = delta;
-    delta = bin_rect(bin_point(width,height),bin_point(0,0));
+    delta = bin_rect(bin_point((int)width,(int)height),bin_point(0,0));
     return r;
 }
 
