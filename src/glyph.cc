@@ -32,6 +32,7 @@
 #include "font.h"
 #include "glyph.h"
 #include "file.h"
+#include "logger.h"
 
 
 /*
@@ -375,8 +376,7 @@ void font_atlas::save(font_manager *manager, font_face *face)
     std::string csv_path = get_path(face, csv_file);
     FILE *fcsv = fopen(csv_path.c_str(), "w");
     if (fcsv == nullptr) {
-        fprintf(stderr, "error: fopen: %s: %s\n",
-            csv_path.c_str(), strerror(errno));
+        Error("error: fopen: %s: %s\n", csv_path.c_str(), strerror(errno));
         exit(1);
     }
     save_map(manager, fcsv);
@@ -393,8 +393,7 @@ void font_atlas::load(font_manager *manager, font_face *face)
     }
     FILE *fcsv = fopen(csv_path.c_str(), "r");
     if (fcsv == nullptr) {
-        fprintf(stderr, "error: fopen: %s: %s\n",
-            csv_path.c_str(), strerror(errno));
+        Error("error: fopen: %s: %s\n", csv_path.c_str(), strerror(errno));
         exit(1);
     }
     image_ptr load_img = image::createFromFile(img_path);
@@ -436,12 +435,13 @@ void text_shaper_ft::shape(std::vector<glyph_shape> &shapes, text_segment *segme
         uint32_t glyph = FT_Get_Char_Index(ftface, codepoint);
 
         if ((fterr = FT_Load_Glyph(ftface, glyph, 0))) {
-            fprintf(stderr, "error: FT_Load_Glyph failed: glyph=%d fterr=%d\n",
+            Error("error: FT_Load_Glyph failed: glyph=%d fterr=%d\n",
                 glyph, fterr);
             return;
         }
         if (ftface->glyph->format != FT_GLYPH_FORMAT_OUTLINE) {
-            fprintf(stderr, "error: FT_Load_Glyph format is not outline\n");
+            Error("error: FT_Load_Glyph format is not outline: format=\n",
+                ftface->glyph->format);
             return;
         }
 
@@ -529,12 +529,13 @@ atlas_entry glyph_renderer_ft::render(font_atlas *atlas, font_face_ft *face,
 
     /* load glyph */
     if ((fterr = FT_Load_Glyph(ftface, glyph, 0))) {
-        fprintf(stderr, "error: FT_Load_Glyph failed: glyph=%d fterr=%d\n",
+        Error("error: FT_Load_Glyph failed: glyph=%d fterr=%d\n",
             glyph, fterr);
         return atlas_entry(-1);
     }
     if (ftface->glyph->format != FT_GLYPH_FORMAT_OUTLINE) {
-        fprintf(stderr, "error: FT_Load_Glyph format is not outline\n");
+        Error("error: FT_Load_Glyph format is not outline: format=\n",
+            ftface->glyph->format);
         return atlas_entry(-1);
     }
 

@@ -33,6 +33,7 @@
 #include "font.h"
 #include "glyph.h"
 #include "text.h"
+#include "logger.h"
 #include "glcommon.h"
 
 

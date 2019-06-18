@@ -32,6 +32,7 @@
 #include "binpack.h"
 #include "font.h"
 #include "glyph.h"
+#include "logger.h"
 #include "glcommon.h"
 
 

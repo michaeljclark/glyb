@@ -6,7 +6,7 @@ struct logger
 {
     static bool debug;
     
-    static void log(const char* msg);
+    static void log(const char* fmt, va_list ap);
     static void logDebug(const char* fmt, ...);
     static void logError(const char* fmt, ...);
 };

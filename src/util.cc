@@ -12,6 +12,7 @@
 #include <algorithm>
 
 #include "util.h"
+#include "logger.h"
 
 #ifdef _WIN32
 std::vector<std::string> listFiles(std::string dirname)
@@ -25,8 +26,8 @@ std::vector<std::string> listFiles(std::string dirname)
     hFind = FindFirstFileA(findname.c_str(), &ffd);
     if (hFind == INVALID_HANDLE_VALUE)
     {
-        fprintf(stderr, "%s: FindFirstFileA error: %s: %d\n",
-            __func__, dirname.c_str(), GetLastError());
+        Error("%s: FindFirstFileA error: %s: %d\n", __func__,
+            dirname.c_str(), GetLastError());
         goto out;
     }
 
@@ -49,8 +50,8 @@ std::vector<std::string> listFiles(std::string dirname)
     std::vector<std::string> list;
 
     if (!(dirp = opendir(dirname.c_str()))) {
-        fprintf(stderr, "%s: opendir error: %s: %s",
-            __func__, dirname.c_str(), strerror(errno));
+        Error("%s: opendir error: %s: %s", __func__,
+            dirname.c_str(), strerror(errno));
         goto out;
     }
 

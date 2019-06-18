@@ -31,6 +31,7 @@
 #include "glyph.h"
 #include "msdf.h"
 #include "util.h"
+#include "logger.h"
 
 #ifdef _WIN32
 #define strncasecmp _strnicmp
@@ -316,9 +317,7 @@ void font_manager::indexFace(font_face *face)
     }
     (*ffi).second.push_back(face->font_id);
     allFonts.push_back(face);
-    if (debug) {
-        fprintf(stderr, "%s %s\n", __func__, face->fontData.toString().c_str());
-    }
+    Debug("%s %s\n", __func__, face->fontData.toString().c_str());
 }
 
 font_face* font_manager::findFontByPath(std::string path)
@@ -431,7 +430,7 @@ font_manager_ft::font_manager_ft(std::string fontDir) : font_manager(),
 {
     FT_Error fterr;
     if ((fterr = FT_Init_FreeType(&ftlib))) {
-        fprintf(stderr, "error: FT_Init_FreeType failed: fterr=%d\n", fterr);
+        Error("error: FT_Init_FreeType failed: fterr=%d\n", fterr);
         exit(1);
     }
     if (fontDir.size() > 0) {
@@ -458,7 +457,7 @@ void font_manager_ft::scanFontPath(std::string path)
     FT_Face ftface;
 
     if ((fterr = FT_New_Face(ftlib, path.c_str(), 0, &ftface))) {
-        fprintf(stderr, "error: FT_New_Face failed: fterr=%d, path=%s\n",
+        Error("error: FT_New_Face failed: fterr=%d, path=%s\n",
             fterr, path.c_str());
         return;
     }
@@ -572,7 +571,7 @@ font_face_ft* font_face_ft::dup_thread()
     FT_Face ftface;
 
     if ((fterr = FT_New_Face(manager->ftlib, path.c_str(), 0, &ftface))) {
-        fprintf(stderr, "error: FT_New_Face failed: fterr=%d, path=%s\n",
+        Error("error: FT_New_Face failed: fterr=%d, path=%s\n",
             fterr, path.c_str());
         return nullptr;
     }

@@ -36,6 +36,7 @@
 #include "glyph.h"
 #include "msdf.h"
 #include "multi.h"
+#include "logger.h"
 #include "glcommon.h"
 
 

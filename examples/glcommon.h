@@ -13,14 +13,14 @@ static std::vector<char> load_file(const char *filename)
     std::vector<char> buf;
     FILE *f = fopen(filename, "rb");
     if (f == NULL) { 
-        printf("unable to read file: %s: %s", filename, strerror(errno));
+        Error("unable to read file: %s: %s", filename, strerror(errno));
         return buf;
     } 
     fseek(f, 0, SEEK_END);
     buf.resize(ftell(f));
     fseek(f, 0, SEEK_SET);
     if (fread(buf.data(), sizeof(char), buf.size(), f) != buf.size()) { 
-        printf("unable to read file: %s: short read", filename);
+        Error("unable to read file: %s: short read", filename);
     } 
     fclose(f);
     return buf;
@@ -35,7 +35,7 @@ static GLuint compile_shader(GLenum type, const char *filename)
     buf = load_file(filename);
     length = (GLint)buf.size();
     if (!buf.size()) {
-        printf("failed to load shader: %s\n", filename);
+        Error("failed to load shader: %s\n", filename);
         exit(1);
     }
     shader = glCreateShader(type);
@@ -47,12 +47,12 @@ static GLuint compile_shader(GLenum type, const char *filename)
     if (length > 0) {
         buf.resize(length + 1);
         glGetShaderInfoLog(shader, (GLsizei)buf.size() - 1, &length, buf.data());
-        printf("shader compile log: %s\n", buf.data());
+        Debug("shader compile log: %s\n", buf.data());
     }
     
     glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
     if (status == GL_FALSE) {
-        printf("failed to compile shader: %s\n", filename);
+        Error("failed to compile shader: %s\n", filename);
         exit(1);
     }
     
@@ -71,7 +71,7 @@ static void link_program(program *prog, GLuint vsh, GLuint fsh)
     glLinkProgram(prog->pid);
     glGetProgramiv(prog->pid, GL_LINK_STATUS, &status);
     if (status == GL_FALSE) {
-        printf("failed to link shader program\n");
+        Error("failed to link shader program: prog=%d\n", prog->pid);
         exit(1);
     }
 
@@ -112,15 +112,15 @@ static void link_program(program *prog, GLuint vsh, GLuint fsh)
     glLinkProgram(prog->pid);
     glGetProgramiv(prog->pid, GL_LINK_STATUS, &status);
     if (status == GL_FALSE) {
-        printf("failed to relink shader program\n");
+        Error("failed to relink shader program: prog=%d\n", prog->pid);
         exit(1);
     }
 
     for (auto &ent : prog->attrs) {
-        printf("attr %s = %d\n", ent.first.c_str(), ent.second);
+        Debug("attr %s = %d\n", ent.first.c_str(), ent.second);
     }
     for (auto &ent : prog->uniforms) {
-        printf("uniform %s = %d\n", ent.first.c_str(), ent.second);
+        Debug("uniform %s = %d\n", ent.first.c_str(), ent.second);
     }
 }
 
@@ -139,7 +139,7 @@ static void vertex_buffer_create(const char* name, GLuint *obj,
 {
     if (!*obj) {
         glGenBuffers(1, obj);
-        printf("buffer %s = %u (%zu bytes)\n", name, *obj, v.size() * sizeof(T));
+        Debug("buffer %s = %u (%zu bytes)\n", name, *obj, v.size() * sizeof(T));
     }
     glBindBuffer(target, *obj);
     glBufferData(target, v.size() * sizeof(T), v.data(), GL_STATIC_DRAW);
@@ -213,7 +213,7 @@ static void image_create_texture(GLuint *tex, draw_image img)
     }
     glActiveTexture(GL_TEXTURE0);
 
-    printf("image %u = %u x %u x %u\n", *tex, width, height, depth);
+    Debug("image %u = %u x %u x %u\n", *tex, width, height, depth);
 }
 
 static GLenum cmd_mode_gl(int cmd_mode)
