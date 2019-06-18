@@ -1,31 +1,40 @@
 # glyphic
 
-glyphic is a high performance graphics API agnostic text rendering
-and layout library. glyphic contains high level interfaces for text
-rendering. glyphic outputs a font atlas bitmap, vertex arrays
-and index arrays which can be used with OpenGL, Vulkan and DirectX.
+glyphic is a simple high performance graphics API agnostic text layout
+and rendering library.
 
-glyphic includes a font-atlas based text renderer using HarfBuzz
-and FreeType. Render time is less than 1 microsecond per glyph.
-glyphic contains a 2D bin packer implementing the _**MAXRECTS-BSSF**_
-algorithm as outlined in _"A Thousand Ways to Pack the Bin - A Practical
-Approach to Two-Dimensional Rectangle Bin Packing, Jukka Jylänki_.
+- simple graphics library agnostic draw lists
+- embeddable font matching and text layout engine
+- offline and online multi-threaded font-atlas generation
+- resolution independent signed distance field font rendering
+
+![glyphic](/images/glyphic.png)
+
+## Introduction
+
+glyphic contains high level interfaces for text rendering. glyphic
+outputs font atlas bitmaps, vertex arrays and index arrays which can be
+used with OpenGL, Vulkan and DirectX.
+
+glyphic has online and offline font atlas glyph renderers using HarfBuzz
+and FreeType. Render time is less than one microsecond per glyph.
+glyphic's font atlas uses an online 2D _**MAXRECTS-BSSF**_ derived bin
+packing algorithm, as outlined in _"A Thousand Ways to Pack the Bin - A
+Practical Approach to Two-Dimensional Rectangle Bin Packing, Jukka Jylänki_.
 
 glyphic includes an MSDF (multi-channel signed distance field) glyph
 renderer that uses the [msdfgen](https://github.com/Chlumsky/msdfgen)
 library to create _variable-size_ MSDF font atlases. MSDF font atlases
 are CPU-intensive to produce so an offline tool `genatlas` is included
 to pregenerate MSDF font atlases. The advantage of MSDF font atlases is
-that glyphs only need to be rendered for one size, and after the atlas
-has been generated, text renderering becomes extremely fast. 
+that glyphs only need to be rendered for one size. After the atlas has
+been generated, text renderering becomes extremely fast. 
 
 glyphic includes an online multi-threaded MSDF renderer. This allows
 online MSDF atlas generation with any truetrype font. Rendering signed
 distance field font atlases from truetype contours online is typically
 prohibitive due to CPU requirements, however, when spread over 8 to 16
 cores, the latency becomes acceptable for real-time use.
-
-![glyphic](/images/glyphic.png)
 
 The project also contains several OpenGL examples using the library.
 
@@ -107,7 +116,7 @@ The following code snippet shows glyphic's high level text layout interface:
 {
     std::vector<text_segment> segments;
     std::vector<glyph_shape> shapes;
-    std::vector<text_vertex> vertices;
+    std::vector<draw_vertex> vertices;
     std::vector<uint32_t> indices;
 
     text_shaper shaper;
@@ -174,7 +183,53 @@ void main() {
 }
 ```
 
-_Note: graphics API specific code is necessary to update the atlas texture._
+## Draw Lists
+
+The render interface is abstracted using a graphics API agnostic draw list.
+The draw list includes information to create all necessary textures. A single
+batch can use several fonts, access multiple font atlas bitmaps and include
+other 2D geometry such as line and rectangles. The batch draw commands
+add vertices and indicies to a pair of vertex array and index array. Client
+code can accumulate into one large draw batch or alternatively create many
+if they are invalidated at different frequencies. The following diagram shows
+the draw list model relationships.
+
+![model](/images/model.png)
+_**Figure 1: Draw List Model Diagram**_
+
+The follow examples shows OpenGL code to render a draw list. glyphic does
+not call any graphic APIs directly making it easy to integrate with any
+graphics API. There is _**zero**_ graphics library API code in glyphic, as
+the interface is exclusively via the draw list. This makes it trivial to
+integrate with Vulkan for example.  Note: in this example, `cmd_shader_gl`
+and `cmd_mode_gl` functions map the draw list shader and primitive types
+defined in `draw.h` to graphics library shader program and batch types.
+
+```
+static void display()
+{
+    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    for (auto img : batch.images) {
+        auto ti = tex_map.find(img.iid);
+        if (ti == tex_map.end()) {
+            GLuint tex;
+            image_create_texture(&tex, img);
+            tex_map[img.iid] = tex;
+        }
+    }
+    glBindVertexArray(vao);
+    for (auto cmd : batch.cmds) {
+        glUseProgram(cmd_shader_gl(cmd.shader)->pid);
+        glBindTexture(GL_TEXTURE_2D, tex_map[cmd.iid]);
+        glDrawElements(cmd_mode_gl(cmd.mode), cmd.count, GL_UNSIGNED_INT,
+            (void*)(cmd.offset * sizeof(uint)));
+    }
+
+    glfwSwapBuffers(window);
+}
+```
 
 ## Text Attributes
 
