@@ -49,6 +49,9 @@ The project also contains several OpenGL examples using the library.
   - `text` - _text container, text layout and text part_
   - `utf8` - _UTF-8 <-> UTF-32 conversion_
 - `examples`
+  - `fontdb` - _example demonstrates scanning font metadata_
+  - `ftrender` - _example renders glyphs to the console_
+  - `genatlas` - _example MSDF font atlas batch generator_
   - `gllayout` - _example showing text layout with line breaks_
   - `glfont` - _example that displays sample text at multiple sizes_
   - `glsimple` - _simplest possible example for OpenGL_
