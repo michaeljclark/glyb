@@ -118,8 +118,6 @@ set(GLYPHIC_SOURCES
   src/text.h
   src/utf8.cc
   src/utf8.h
-  src/util.cc
-  src/util.h
 )
 add_library(glyphic STATIC ${GLYPHIC_SOURCES})
 

@@ -4,6 +4,8 @@
 #include <climits>
 #include <cassert>
 #include <cstring>
+#include <cctype>
+#include <cmath>
 
 #include <map>
 #include <vector>
@@ -22,7 +24,6 @@
 #include "logger.h"
 #include "file.h"
 #include "utf8.h"
-#include "util.h"
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -192,7 +193,7 @@ static atlas_entry generateMSDF(font_face *face, font_atlas *atlas,
     double angleThreshold = 3;
     double edgeThreshold = 1.001;
     double glyphAdvance = 0;
-    uint long long coloringSeed = 0;
+    long long coloringSeed = 0;
     msdfgen::FillRule fillRule = msdfgen::FILL_NONZERO;
 
     ftface = static_cast<font_face_ft*>(face)->ftface;
@@ -471,6 +472,25 @@ uint64_t process_one_file(const char *font_path, const char *output_path)
     return duration_cast<nanoseconds>(t2 - t1).count();
 }
 
+static std::vector<std::string> sortList(std::vector<std::string> l)
+{
+    std::sort(l.begin(), l.end());
+    return l;
+}
+
+static std::vector<std::string> endsWith(std::vector<std::string> l,
+    std::string ext)
+{
+    std::vector<std::string> list;
+    for (auto &p : l) {
+        size_t i = p.find(ext);
+        if (i == p.size() - ext.size()) {
+            list.push_back(p);
+        }
+    }
+    return list;
+}
+
 int main(int argc, char **argv)
 {
     parse_options(argc, argv);
@@ -478,7 +498,7 @@ int main(int argc, char **argv)
     /* gather files */
     std::vector<std::pair<std::string,std::string>> pathList;
     if (scan_path) {
-        for (auto &path : sortList(endsWith(listFiles(scan_path), ".ttf"))) {
+        for (auto &path : sortList(endsWith(file::list(scan_path), ".ttf"))) {
             pathList.push_back(std::pair<std::string,std::string>(path, path));
         }
     } else {

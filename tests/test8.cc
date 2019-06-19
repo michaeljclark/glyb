@@ -4,6 +4,7 @@
 #include <climits>
 #include <cstring>
 #include <cassert>
+#include <cctype>
 
 #include <map>
 #include <vector>

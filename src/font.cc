@@ -30,7 +30,7 @@
 #include "font.h"
 #include "glyph.h"
 #include "msdf.h"
-#include "util.h"
+#include "file.h"
 #include "logger.h"
 
 #ifdef _WIN32
@@ -444,9 +444,28 @@ font_manager_ft::~font_manager_ft()
     FT_Done_Library(ftlib);
 }
 
+static std::vector<std::string> sortList(std::vector<std::string> l)
+{
+    std::sort(l.begin(), l.end());
+    return l;
+}
+
+static std::vector<std::string> endsWith(std::vector<std::string> l,
+    std::string ext)
+{
+    std::vector<std::string> list;
+    for (auto &p : l) {
+        size_t i = p.find(ext);
+        if (i == p.size() - ext.size()) {
+            list.push_back(p);
+        }
+    }
+    return list;
+}
+
 void font_manager_ft::scanFontDir(std::string dir)
 {
-    for (auto &p : sortList(endsWith(listFiles(dir), ".ttf"))) {
+    for (auto &p : sortList(endsWith(file::list(dir), ".ttf"))) {
         scanFontPath(p);
     }
 }

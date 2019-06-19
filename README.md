@@ -48,7 +48,6 @@ The project also contains several OpenGL examples using the library.
   - `image` - _image with support for PNG loading and saving_
   - `text` - _text container, text layout and text part_
   - `utf8` - _UTF-8 <-> UTF-32 conversion_
-  - `util` - _directory listing for POSIX and Win32_
 - `examples`
   - `gllayout` - _example showing text layout with line breaks_
   - `glfont` - _example that displays sample text at multiple sizes_

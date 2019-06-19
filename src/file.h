@@ -4,6 +4,9 @@
 
 #ifdef _WIN32
 typedef long long ssize_t;
+#ifndef PATH_MAX
+#define PATH_MAX MAX_PATH
+#endif
 #endif
 
 struct file;
@@ -43,6 +46,7 @@ struct file
     static std::string dirName(std::string path);
     static std::string baseName(std::string path);
 
+    static std::vector<std::string> list(std::string dirname);
     static std::string getPath(std::string rsrc);
     static file_ptr getResource(std::string rsrc);
     static file_ptr getFile(std::string filename);

@@ -29,7 +29,6 @@
 #include "image.h"
 #include "draw.h"
 #include "binpack.h"
-#include "util.h"
 #include "logger.h"
 #include "glcommon.h"
 

@@ -22,7 +22,6 @@
 #include "draw.h"
 #include "font.h"
 #include "glyph.h"
-#include "util.h"
 #include "text.h"
 
 std::string font_family_default = font_family_any;
