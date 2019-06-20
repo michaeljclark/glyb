@@ -118,9 +118,6 @@ static void vertex_array_config(program *prog)
 
 static void update_buffers()
 {
-    auto face = manager.findFontByPath(font_path);
-    auto atlas = manager.getFontAtlas(face);
-
     /* create vertex and index arrays */
     update_geometry();
     glGenVertexArrays(1, &vao);
