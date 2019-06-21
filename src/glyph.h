@@ -47,34 +47,6 @@ inline span_vector::span_vector() :
 
 
 /*
- * Font Atlas Key
- *
- * Holds the details for a key in the Font Atlas glyph map.
- */
-
-struct atlas_key
-{
-    uint64_t opaque;
-
-    atlas_key() = default;
-    atlas_key(int64_t font_id, int64_t font_size, int64_t glyph);
-
-    bool operator<(const atlas_key &o) const { return opaque < o.opaque; }
-
-    int font_id() const;
-    int font_size() const;
-    int glyph() const;
-};
-
-inline atlas_key::atlas_key(int64_t font_id, int64_t font_size, int64_t glyph) :
-    opaque(glyph | (font_size << 20) | (font_id << 40)) {}
-
-inline int atlas_key::font_id() const { return (opaque >> 40) & ((1 << 20)-1); }
-inline int atlas_key::font_size() const { return (opaque >> 20) & ((1 << 20)-1); }
-inline int atlas_key::glyph() const { return opaque & ((1 << 20)-1); }
-
-
-/*
  * Font Atlas Entry
  *
  * Holds the details for an entry in the Font Atlas glyph map.
@@ -115,7 +87,7 @@ struct glyph_renderer;
 struct font_atlas
 {
     size_t width, height, depth;
-    std::map<atlas_key,atlas_entry> glyph_map;
+    std::map<glyph_key,atlas_entry> glyph_map;
     uint8_t *pixels;
     float uv1x1;
     bin_packer bp;
@@ -127,7 +99,7 @@ struct font_atlas
     static const int PADDING = 1;
     static const int DEFAULT_WIDTH = 1024;
     static const int DEFAULT_HEIGHT = 1024;
-    static const int DEFAULT_DEPTH = 1;
+    static const int GRAY_DEPTH = 1;
     static const int MSDF_DEPTH = 4;
 
     font_atlas();

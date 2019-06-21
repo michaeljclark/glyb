@@ -146,7 +146,7 @@ static void update_geometry()
     text_shaper_hb shaper;
     text_renderer_ft renderer(&manager);
     font_face *face = manager.findFontByPath(font_path);
-    font_atlas *atlas = manager.getFontAtlas(face);
+    font_atlas *atlas = manager.getCurrentAtlas(face);
 
     int x = 100, y = 100;
 
@@ -242,7 +242,7 @@ static void vertex_array_config(program *prog)
 static void update_buffers()
 {
     auto face = manager.findFontByPath(font_path);
-    auto atlas = manager.getFontAtlas(face);
+    auto atlas = manager.getCurrentAtlas(face);
 
     /* create vertex and index arrays */
     update_geometry();

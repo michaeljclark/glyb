@@ -118,7 +118,7 @@ void glyph_renderer_multi::add(std::vector<glyph_shape> &shapes,
 {
     font_face_ft *face = static_cast<font_face_ft*>(segment->face);
     int font_size = segment->font_size;
-    font_atlas *atlas = manager->getFontAtlas(face);
+    font_atlas *atlas = manager->getCurrentAtlas(face);
 
     for (auto shape : shapes) {
         auto gi = atlas->glyph_map.find({face->font_id, 0, shape.glyph});

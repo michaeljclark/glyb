@@ -84,7 +84,7 @@ void span_vector::fn(int y, int count, const FT_Span* spans, void *user)
 
 font_atlas::font_atlas() :
     font_atlas(font_atlas::DEFAULT_WIDTH, font_atlas::DEFAULT_HEIGHT,
-    font_atlas::DEFAULT_DEPTH) {}
+    font_atlas::GRAY_DEPTH) {}
 
 font_atlas::font_atlas(size_t width, size_t height, size_t depth) :
     width(width), height(height), depth(depth),
@@ -218,7 +218,7 @@ atlas_entry font_atlas::create(font_face *face, int font_size, int glyph,
     /* insert into glyph_map */
     auto a = r.second.a;
     auto gi = glyph_map.insert(glyph_map.end(),
-        std::pair<atlas_key,atlas_entry>({face->font_id, font_size, glyph},
+        std::pair<glyph_key,atlas_entry>({face->font_id, font_size, glyph},
             {bin_id, entry_font_size, a.x, a.y, ox, oy, w, h, uv}));
 
     ae = gi->second;
@@ -274,7 +274,7 @@ atlas_entry font_atlas::resize(font_face *face, int font_size, int glyph,
 {
     float scale = (float)font_size / tmpl->font_size;
     auto gi = glyph_map.insert(glyph_map.end(),
-        std::pair<atlas_key,atlas_entry>(
+        std::pair<glyph_key,atlas_entry>(
             { face->font_id, font_size, glyph},
             { tmpl->bin_id, font_size, tmpl->x, tmpl->y,
               (short)roundf((float)tmpl->ox * scale),
@@ -334,15 +334,15 @@ std::string font_atlas::get_path(font_face *face, file_type type)
 
 void font_atlas::save_map(font_manager *manager, FILE *out)
 {
-    std::vector<atlas_key> v;
+    std::vector<glyph_key> v;
     for(auto i = glyph_map.begin(); i != glyph_map.end(); i++) {
         v.push_back(i->first);
     }
-    sort(v.begin(), v.end(), [&](const atlas_key &a, const atlas_key &b)
+    sort(v.begin(), v.end(), [&](const glyph_key &a, const glyph_key &b)
         -> bool { return glyph_map[a].bin_id < glyph_map[b].bin_id; });
     for (auto &k : v) {
         auto i = glyph_map.find(k);
-        const atlas_key &key = i->first;
+        const glyph_key &key = i->first;
         const atlas_entry &ent = i->second;
         fprintf(out, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
             ent.bin_id, key.font_id(), key.glyph(),
@@ -367,7 +367,7 @@ void font_atlas::load_map(font_manager *manager, FILE *in)
             create_uvs(ent.uv, r);
             bp.create_explicit(ent.bin_id, r);
             auto gi = glyph_map.insert(glyph_map.end(),
-                std::pair<atlas_key,atlas_entry>({face->font_id, 0, glyph}, ent));
+                std::pair<glyph_key,atlas_entry>({face->font_id, 0, glyph}, ent));
         }
     } while (ret == num_fields);
 }
@@ -581,6 +581,7 @@ atlas_entry glyph_renderer_ft::render(font_atlas *atlas, font_face_ft *face,
     } else {
         /* create atlas entry for glyph using dimensions from span */
         ae = atlas->create(face, font_size, glyph, font_size, ox, oy, w, h);
+
         /* copy pixels from span to atlas */
         if (ae.bin_id >= 0) {
             for (int i = 0; i < span.h; i++) {
@@ -606,47 +607,42 @@ void text_renderer_ft::render(draw_list &batch,
     int font_size = segment->font_size;
     int baseline_shift = segment->baseline_shift;
     int tracking = segment->tracking;
-    font_atlas *atlas = manager->getFontAtlas(face);
-    glyph_renderer *renderer = manager->getGlyphRenderer(face);
-    int atlas_iid = atlas->get_image()->iid;
-    int atlas_shader = atlas->depth == 4 ? shader_msdf : shader_simple;
-    int atlas_flags = st_clamp | atlas_image_filter(atlas);
     bool round = false;
-
-    draw_list_image(batch, atlas->get_image(), atlas_flags);
 
     /* lookup glyphs in font atlas, creating them if they don't exist */
     float dx = 0, dy = 0;
     for (auto shape : shapes) {
-        atlas_entry ae = atlas->lookup(face, font_size, shape.glyph, renderer);
-        if (ae.bin_id < 0) continue;
+        glyph_entry *ge = manager->lookup(face, font_size, shape.glyph);
+        if (!ge) continue;
         /* create polygons in vertex array */
-        float x1 = segment->x + ae.ox + dx + shape.x_offset/64.0f;
-        float x2 = x1 + ae.w;
-        float y1 = segment->y - ae.oy + dy + shape.y_offset/64.0f -
-            ae.h - baseline_shift;
-        float y2 = y1 + ae.h;
+        float x1 = segment->x + ge->ox + dx + shape.x_offset/64.0f;
+        float x2 = x1 + ge->w;
+        float y1 = segment->y - ge->oy + dy + shape.y_offset/64.0f -
+            ge->h - baseline_shift;
+        float y2 = y1 + ge->h;
         if (round) {
             x1 = roundf(x1), x2 = roundf(x2);
             y1 = roundf(x1), y2 = roundf(x2);
         }
-        if (ae.w > 0 && ae.h > 0) {
+        if (ge->w > 0 && ge->h > 0) {
             float x1p = 0.5f + x1, x2p = 0.5f + x2;
             float y1p = 0.5f + y1, y2p = 0.5f + y2;
-            float u1 = ae.uv[0], v1 = ae.uv[1];
-            float u2 = ae.uv[2], v2 = ae.uv[3];
+            float u1 = ge->uv[0], v1 = ge->uv[1];
+            float u2 = ge->uv[2], v2 = ge->uv[3];
             uint o = (int)batch.vertices.size();
             uint c = segment->color;
             uint o0 = draw_list_vertex(batch, {{x1p, y1p, 0}, {u1, v1}, c});
             uint o1 = draw_list_vertex(batch, {{x2p, y1p, 0}, {u2, v1}, c});
             uint o2 = draw_list_vertex(batch, {{x2p, y2p, 0}, {u2, v2}, c});
             uint o3 = draw_list_vertex(batch, {{x1p, y2p, 0}, {u1, v2}, c});
-            draw_list_indices(batch, atlas_iid, mode_triangles, atlas_shader,
+            draw_list_indices(batch, ge->atlas->get_image()->iid, mode_triangles,
+                ge->atlas->depth == 4 ? shader_msdf : shader_simple,
                 {o0, o3, o1, o1, o3, o2});
+            draw_list_image_delta(batch, ge->atlas->get_image(), ge->atlas->get_delta(),
+                st_clamp | atlas_image_filter(ge->atlas));
         }
         /* advance */
         dx += shape.x_advance/64.0f + tracking;
         dy += shape.y_advance/64.0f;
     }
-    draw_list_image_delta(batch, atlas->get_image(), atlas->get_delta());
 }

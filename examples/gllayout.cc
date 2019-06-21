@@ -155,8 +155,6 @@ static void vertex_array_config(program *prog)
 
 static void update_buffers()
 {
-    auto atlas = manager.getFontAtlas(nullptr); /* not compatible with cached atlases */
-
     /* create vertex and index arrays */
     update_geometry();
     glGenVertexArrays(1, &vao);

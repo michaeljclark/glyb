@@ -119,32 +119,35 @@ set(GLYPHIC_SOURCES
   src/utf8.cc
   src/utf8.h
 )
-add_library(glyphic STATIC ${GLYPHIC_SOURCES})
+add_library(libglyphic STATIC ${GLYPHIC_SOURCES})
 
 add_executable(genatlas examples/genatlas.cc)
-target_link_libraries(genatlas glyphic ${LIBS} ${CMAKE_DL_LIBS})
+target_link_libraries(genatlas libglyphic ${LIBS} ${CMAKE_DL_LIBS})
 
 add_executable(fontdb examples/fontdb.cc)
-target_link_libraries(fontdb glyphic ${LIBS} ${CMAKE_DL_LIBS})
+target_link_libraries(fontdb libglyphic ${LIBS} ${CMAKE_DL_LIBS})
 
 add_executable(ftrender examples/ftrender.cc)
-target_link_libraries(ftrender glyphic ${LIBS} ${CMAKE_DL_LIBS})
+target_link_libraries(ftrender libglyphic ${LIBS} ${CMAKE_DL_LIBS})
 
 add_executable(glbinpack examples/glbinpack.cc)
-target_link_libraries(glbinpack glyphic ${LIBS} glad ${CMAKE_DL_LIBS})
+target_link_libraries(glbinpack libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})
 
 add_executable(glfont examples/glfont.cc)
-target_link_libraries(glfont glyphic ${LIBS} glad ${CMAKE_DL_LIBS})
+target_link_libraries(glfont libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})
 
 add_executable(gllayout examples/gllayout.cc)
-target_link_libraries(gllayout glyphic ${LIBS} glad ${CMAKE_DL_LIBS})
+target_link_libraries(gllayout libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})
 
 add_executable(glsimple examples/glsimple.cc)
-target_link_libraries(glsimple glyphic ${LIBS} glad ${CMAKE_DL_LIBS})
+target_link_libraries(glsimple libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})
+
+add_executable(glyphic examples/glyphic.cc)
+target_link_libraries(glyphic libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})
 
 file(GLOB BINPACK_TESTS tests/*.cc)
 foreach(src ${BINPACK_TESTS})
   get_filename_component(name ${src} NAME_WE)
   add_executable(${name} ${src})
-  target_link_libraries(${name} glyphic ${LIBS})
+  target_link_libraries(${name} libglyphic ${LIBS})
 endforeach(src)

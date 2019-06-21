@@ -15,6 +15,7 @@ struct font_manager;
 struct font_data;
 struct font_spec;
 struct font_atlas;
+struct glyph_renderer;
 
 struct font_face_ft;
 struct font_manager_ft;
@@ -197,9 +198,59 @@ inline font_face::font_face(int font_id, std::string path, std::string name) :
     font_id(font_id), path(path), name(name) {}
 
 
-/* Font Manager */
+/*
+ * Glyph Map Key
+ *
+ * Holds the details for a key in the Font Atlas glyph map.
+ */
 
-struct glyph_renderer;
+struct glyph_key
+{
+    uint64_t opaque;
+
+    glyph_key() = default;
+    glyph_key(int64_t font_id, int64_t font_size, int64_t glyph);
+
+    bool operator<(const glyph_key &o) const { return opaque < o.opaque; }
+
+    int font_id() const;
+    int font_size() const;
+    int glyph() const;
+};
+
+inline glyph_key::glyph_key(int64_t font_id, int64_t font_size, int64_t glyph) :
+    opaque(glyph | (font_size << 20) | (font_id << 40)) {}
+
+inline int glyph_key::font_id() const { return (opaque >> 40) & ((1 << 20)-1); }
+inline int glyph_key::font_size() const { return (opaque >> 20) & ((1 << 20)-1); }
+inline int glyph_key::glyph() const { return opaque & ((1 << 20)-1); }
+
+
+/*
+ * Glyph Map Entry
+ *
+ * Holds the details for an entry in the Font Atlas glyph map.
+ */
+
+struct glyph_entry
+{
+    font_atlas *atlas;
+    int bin_id, font_size;
+    short ox, oy, w, h;
+    float uv[4];
+
+    glyph_entry() = default;
+    glyph_entry(font_atlas *atlas, int bin_id, int font_size,
+        int ox, int oy, int w, int h, const float uv[4]);
+};
+
+inline glyph_entry::glyph_entry(font_atlas *atlas, int bin_id, int font_size,
+    int ox, int oy, int w, int h, const float uv[4]) :
+    atlas(atlas), bin_id(bin_id), font_size(font_size),
+    ox(ox), oy(oy), w(w), h(h), uv{uv[0], uv[1], uv[2], uv[3]} {}
+
+
+/* Font Manager */
 
 struct font_manager
 {
@@ -245,8 +296,10 @@ struct font_manager
         font_style fontStyle);
     virtual font_face* findFontByData(font_data fontRec);
     virtual font_face* findFontBySpec(font_spec fontSpec);
-    virtual font_atlas* getFontAtlas(font_face *face) = 0;
+    virtual void importAtlas(font_atlas *atlas) = 0;
+    virtual font_atlas* getCurrentAtlas(font_face *face) = 0;
     virtual glyph_renderer* getGlyphRenderer(font_face *face) = 0;
+    virtual glyph_entry* lookup(font_face *face, int font_size, int glyph) = 0;
 };
 
 
@@ -275,8 +328,10 @@ struct font_manager_ft : font_manager
     bool msdf_autoload;
 
     std::vector<std::unique_ptr<font_face_ft>> faces;
-    std::unique_ptr<font_atlas> atlas;
-    std::vector<std::shared_ptr<font_atlas>> atlasList;
+    std::vector<std::unique_ptr<font_atlas>> everyAtlas;
+    std::map<font_face*,std::vector<font_atlas*>> faceAtlasMap;
+    font_atlas* defaulAtlas;
+    std::map<glyph_key,glyph_entry> glyph_map;
 
     font_manager_ft(std::string fontDir = "");
     virtual ~font_manager_ft();
@@ -286,8 +341,11 @@ struct font_manager_ft : font_manager
     virtual size_t fontCount();
     virtual font_face* findFontById(size_t font_id);
     virtual font_face* findFontByPath(std::string path);
-    virtual font_atlas* getFontAtlas(font_face *face);
+    virtual void importAtlas(font_atlas *atlas);
+    virtual font_atlas* getNewAtlas(font_face *face);
+    virtual font_atlas* getCurrentAtlas(font_face *face);
     virtual glyph_renderer* getGlyphRenderer(font_face *face);
+    virtual glyph_entry* lookup(font_face *face, int font_size, int glyph);
 
     const std::vector<std::unique_ptr<font_face_ft>>& getFontList() { return faces; }
 };

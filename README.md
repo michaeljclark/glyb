@@ -7,6 +7,7 @@ and rendering library.
 - embeddable font matching and text layout engine
 - offline and online multi-threaded font-atlas generation
 - resolution independent signed distance field font rendering
+- scalable and transparent handling of multiple glyph atlases
 
 ![glyphic](/images/glyphic.png)
 

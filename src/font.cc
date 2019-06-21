@@ -513,33 +513,71 @@ font_face* font_manager_ft::findFontByPath(std::string path)
     return face;
 }
 
-font_atlas* font_manager_ft::getFontAtlas(font_face *face)
+void font_manager_ft::importAtlas(font_atlas *atlas)
 {
-    if (face != nullptr && msdf_enabled) {
-        if (atlasList.size() <= face->font_id) {
-            atlasList.resize(face->font_id + 1);
+    /* import glyphs from the atlas glyph map into the manager glyph map */
+    for (auto ai : atlas->glyph_map) {
+        const glyph_key &ak = ai.first;
+        const atlas_entry &ae = ai.second;
+        const auto gi = glyph_map.find(ak);
+        if (gi != glyph_map.end()) continue;
+        glyph_map.insert(glyph_map.end(),
+            std::pair<glyph_key,glyph_entry>(ak,
+                glyph_entry(atlas, ae.bin_id, ae.font_size,
+                    ae.ox, ae.oy, ae.w, ae.h, ae.uv )));
+    }
+}
+
+font_atlas* font_manager_ft::getNewAtlas(font_face *face)
+{
+    auto atlas = std::unique_ptr<font_atlas>(new font_atlas(0, 0, 0));
+
+    /* find or create atlas list for this face */
+    auto ai = faceAtlasMap.find(face);
+    if (ai == faceAtlasMap.end()) {
+        ai = faceAtlasMap.insert(faceAtlasMap.end(),
+            std::make_pair(face,std::vector<font_atlas*>()));
+    }
+
+    /* if this is the first atlas for this face, then we attempt to load
+     * the atlas; if unsuccessful we allocate backing store manually. */
+    if (msdf_enabled && msdf_autoload && ai->second.size() == 0) {
+        atlas->load(this, face);
+        importAtlas(atlas.get());
+    }
+    /* if load failed, allocate backing store using default size */
+    if (!atlas->pixels) {
+        atlas->reset(font_atlas::DEFAULT_WIDTH, font_atlas::DEFAULT_HEIGHT,
+            msdf_enabled ? font_atlas::MSDF_DEPTH : font_atlas::GRAY_DEPTH);
+    }
+    /* add to index and retain pointer */
+    auto atlasp = atlas.get();
+    if (face) {
+        ai->second.insert(ai->second.end(),atlasp);
+    }
+    everyAtlas.push_back(std::move(atlas));
+
+    return atlasp;
+}
+
+font_atlas* font_manager_ft::getCurrentAtlas(font_face *face)
+{
+    if (face != nullptr) {
+        auto ai = faceAtlasMap.find(face);
+        if (ai == faceAtlasMap.end()) {
+            ai = faceAtlasMap.insert(faceAtlasMap.end(),
+                std::make_pair(face,std::vector<font_atlas*>()));
         }
-        if (!atlasList[face->font_id]) {
-            /* create empty atlas too avoid allocating twice */
-            auto atlas = std::shared_ptr<font_atlas>(new font_atlas(0, 0, 0));
-            /* load atlas, which if successful, calls reset and allocates */
-            if (msdf_autoload) {
-                atlas->load(this, face);
-            }
-            /* if load atlas failed, we allocate default size */
-            if (!atlas->pixels) {
-                atlas->reset(font_atlas::DEFAULT_WIDTH,
-                    font_atlas::DEFAULT_HEIGHT, font_atlas::MSDF_DEPTH);
-            }
-            return (atlasList[face->font_id] = atlas).get();
+        if (ai->second.size() == 0) {
+            return getNewAtlas(face);
         } else {
-            return atlasList[face->font_id].get();
+            return ai->second.back();
         }
     }
-    if (!atlas) {
-        atlas = std::unique_ptr<font_atlas>(new font_atlas());
+    if (!defaulAtlas) {
+        defaulAtlas = getNewAtlas(nullptr);
     }
-    return atlas.get();
+    return defaulAtlas;
 }
 
 glyph_renderer* font_manager_ft::getGlyphRenderer(font_face *face)
@@ -550,6 +588,38 @@ glyph_renderer* font_manager_ft::getGlyphRenderer(font_face *face)
     return msdf_enabled ?
         static_cast<glyph_renderer*>(&msdf) :
         static_cast<glyph_renderer*>(&ft);
+}
+
+glyph_entry* font_manager_ft::lookup(font_face *face, int font_size, int glyph)
+{
+    atlas_entry ae;
+
+    /* lookup up in our glyph map */
+    auto gi = glyph_map.find({face->font_id, font_size, glyph});
+    if (gi != glyph_map.end()) {
+        return &gi->second;
+    }
+
+    /* lookup in the current atlas */
+    auto atlas = getCurrentAtlas(face);
+    ae = atlas->lookup(face, font_size, glyph, getGlyphRenderer(face));
+    if (ae.bin_id == -1) {
+        /* if full, make a new atlas (fixme: we don't search all atlases) */
+        atlas = getNewAtlas(face);
+        ae = atlas->lookup(face, font_size, glyph, getGlyphRenderer(face));
+        if (ae.bin_id == -1) {
+            /* glyph size is too big */
+            return nullptr;
+        }
+    }
+
+    /* create entry in our map and return pointer */
+    gi = glyph_map.insert(glyph_map.end(),
+        std::pair<glyph_key,glyph_entry>({face->font_id, font_size, glyph},
+            glyph_entry(atlas, ae.bin_id, ae.font_size,
+                ae.ox, ae.oy, ae.w, ae.h, ae.uv )));
+
+    return &gi->second;
 }
 
 
