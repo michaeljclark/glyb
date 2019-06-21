@@ -206,8 +206,7 @@ atlas_entry font_atlas::create(font_face *face, int font_size, int glyph,
         if (multithreading) {
             mutex.unlock();
         }
-        memset(&ae, 0, sizeof(ae));
-        return ae; /* atlas full */
+        return atlas_entry(-1); /* atlas full */
     }
 
     /* track minimum update rectangle */
