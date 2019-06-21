@@ -216,6 +216,30 @@ static void image_create_texture(GLuint *tex, draw_image img)
     Debug("image %u = %u x %u x %u\n", *tex, width, height, depth);
 }
 
+static void image_update_texture(GLuint tex, draw_image img)
+{
+    GLsizei width = (GLsizei)img.size[0];
+    GLsizei height = (GLsizei)img.size[1];
+    GLsizei depth = (GLsizei)img.size[2];
+
+    /* skip texture update if modified width and height is less than zero
+     * note: we currently ignore the dimensions of the modified rectangle */
+    if (img.modrect[2] <= 0 || img.modrect[3] <= 0) return;
+
+    glBindTexture(GL_TEXTURE_2D, tex);
+
+    switch (depth) {
+    case 1:
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height,
+            0, GL_RED, GL_UNSIGNED_BYTE, (GLvoid*)img.pixels);
+        break;
+    case 4:
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height,
+            0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)img.pixels);
+        break;
+    }
+}
+
 static GLenum cmd_mode_gl(int cmd_mode)
 {
     switch (cmd_mode) {

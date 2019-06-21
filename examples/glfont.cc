@@ -29,9 +29,9 @@
 #define CTX_OPENGL_MINOR 2
 
 #include "linmath.h"
+#include "binpack.h"
 #include "image.h"
 #include "draw.h"
-#include "binpack.h"
 #include "font.h"
 #include "glyph.h"
 #include "msdf.h"

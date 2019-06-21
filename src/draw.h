@@ -19,8 +19,8 @@ enum {
 
 typedef struct {
     int iid;
-    uint size[3];
-    uint modrect[4];
+    int size[3];
+    int modrect[4];
     int flags;
     uint8_t *pixels;
 } draw_image;
@@ -119,12 +119,40 @@ inline void draw_list_indices(draw_list &batch, uint iid, uint mode, uint shader
 
 inline void draw_list_image(draw_list &batch, image *img, int flags)
 {
-    uint w = img->getWidth(), h = img->getHeight(), d = img->getBytesPerPixel();
-    draw_image drim{img->iid, {w,h,d}, {0,0,w,h}, flags, img->getData()};
+    int w = img->getWidth(), h = img->getHeight(), d = img->getBytesPerPixel();
+
+    draw_image drim{img->iid, {w,h,d}, { 0, 0,
+        (int)img->getWidth(), (int)img->getHeight() }, flags, img->getData()};
+
     auto i = std::lower_bound(batch.images.begin(), batch.images.end(), drim,
         [](const draw_image &l, const draw_image &r) { return l.iid < r.iid; });
 
     if (i == batch.images.end() || i->iid != drim.iid) {
         batch.images.insert(i, drim);
+    }
+}
+
+inline void draw_list_image_delta(draw_list &batch, image *img, bin_rect delta)
+{
+    draw_image drim{img->iid, { 0, 0, 0 }, { 0, 0, 0, 0 }, 0, nullptr };
+
+    auto i = std::lower_bound(batch.images.begin(), batch.images.end(), drim,
+        [](const draw_image &l, const draw_image &r) { return l.iid < r.iid; });
+
+    if (i == batch.images.end() || i->iid != drim.iid) return;
+
+    if (i->modrect[0] == 0 && i->modrect[1] == 0 &&
+        i->modrect[2] == img->getWidth() && i->modrect[3] == img->getHeight()) {
+        // set delta
+        i->modrect[0] = delta.a.x;
+        i->modrect[1] = delta.a.y;
+        i->modrect[2] = (delta.b.x - delta.a.x);
+        i->modrect[3] = (delta.b.y - delta.a.y);
+    } else {
+        // widen delta
+        i->modrect[0] = std::min(i->modrect[0],delta.a.x);
+        i->modrect[1] = std::min(i->modrect[1],delta.a.y);
+        i->modrect[2] = std::max(i->modrect[2],(delta.b.x - delta.a.x));
+        i->modrect[3] = std::max(i->modrect[3],(delta.b.y - delta.a.y));
     }
 }

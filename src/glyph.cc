@@ -242,6 +242,21 @@ void font_atlas::create_uvs(float uv[4], bin_rect r)
     uv[3] = y1/width;
 }
 
+void font_atlas::expand_delta(bin_rect b)
+{
+    /*
+     * expand the delta rectangle.
+     *
+     * This interface is called after find_region with each newly
+     * allocated region, to keep track of the minimum update rectangle.
+     */
+    bin_rect last = delta;
+    delta.a.x = (std::min)(delta.a.x,b.a.x);
+    delta.a.y = (std::min)(delta.a.y,b.a.y);
+    delta.b.x = (std::max)(delta.b.x,b.b.x);
+    delta.b.y = (std::max)(delta.b.y,b.b.y);
+}
+
 bin_rect font_atlas::get_delta()
 {
     /*
@@ -253,20 +268,6 @@ bin_rect font_atlas::get_delta()
     bin_rect r = delta;
     delta = bin_rect(bin_point((int)width,(int)height),bin_point(0,0));
     return r;
-}
-
-void font_atlas::expand_delta(bin_rect b)
-{
-    /*
-     * expand the delta rectangle.
-     *
-     * This interface is called after find_region with each newly
-     * allocated region, to keep track of the minimum update rectangle.
-     */
-    delta.a.x = (std::min)(delta.a.x,b.a.x);
-    delta.a.y = (std::min)(delta.a.y,b.a.y);
-    delta.b.x = (std::max)(delta.b.x,b.b.x);
-    delta.b.y = (std::max)(delta.b.y,b.b.y);
 }
 
 atlas_entry font_atlas::resize(font_face *face, int font_size, int glyph,
@@ -418,7 +419,8 @@ void font_atlas::load(font_manager *manager, font_face *face)
  * text shaper (FreeType)
  */
 
-void text_shaper_ft::shape(std::vector<glyph_shape> &shapes, text_segment *segment)
+void text_shaper_ft::shape(std::vector<glyph_shape> &shapes,
+    text_segment *segment)
 {
     font_face_ft *face = static_cast<font_face_ft*>(segment->face);
     FT_Face ftface = face->ftface;
@@ -610,6 +612,7 @@ void text_renderer_ft::render(draw_list &batch,
     int atlas_iid = atlas->get_image()->iid;
     int atlas_shader = atlas->depth == 4 ? shader_msdf : shader_simple;
     int atlas_flags = st_clamp | atlas_image_filter(atlas);
+    bool round = false;
 
     draw_list_image(batch, atlas->get_image(), atlas_flags);
 
@@ -619,11 +622,15 @@ void text_renderer_ft::render(draw_list &batch,
         atlas_entry ae = atlas->lookup(face, font_size, shape.glyph, renderer);
         if (ae.bin_id < 0) continue;
         /* create polygons in vertex array */
-        int x1 = segment->x + ae.ox + (int)roundf(dx + shape.x_offset/64.0f);
-        int x2 = x1 + ae.w;
-        int y1 = segment->y - ae.oy + (int)roundf(dy + shape.y_offset/64.0f) -
+        float x1 = segment->x + ae.ox + dx + shape.x_offset/64.0f;
+        float x2 = x1 + ae.w;
+        float y1 = segment->y - ae.oy + dy + shape.y_offset/64.0f -
             ae.h - baseline_shift;
-        int y2 = y1 + ae.h;
+        float y2 = y1 + ae.h;
+        if (round) {
+            x1 = roundf(x1), x2 = roundf(x2);
+            y1 = roundf(x1), y2 = roundf(x2);
+        }
         if (ae.w > 0 && ae.h > 0) {
             float x1p = 0.5f + x1, x2p = 0.5f + x2;
             float y1p = 0.5f + y1, y2p = 0.5f + y2;
@@ -642,4 +649,5 @@ void text_renderer_ft::render(draw_list &batch,
         dx += shape.x_advance/64.0f + tracking;
         dy += shape.y_advance/64.0f;
     }
+    draw_list_image_delta(batch, atlas->get_image(), atlas->get_delta());
 }

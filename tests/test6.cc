@@ -103,7 +103,7 @@ void t2()
 
     for (auto &seg : segments) {
         if (seg.face) {
-            printf("x: %d, y: %d, font-name: %s, font-size: %d, text: %s\n",
+            printf("x: %f, y: %f, font-name: %s, font-size: %d, text: %s\n",
                 seg.x, seg.y, seg.face->name.c_str(), seg.font_size,
                 seg.text.c_str());
         }

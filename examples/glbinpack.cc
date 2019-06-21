@@ -24,11 +24,11 @@
 #define CTX_OPENGL_MAJOR 3
 #define CTX_OPENGL_MINOR 2
 
+#include "binpack.h"
 #include "linmath.h"
 #include "file.h"
 #include "image.h"
 #include "draw.h"
-#include "binpack.h"
 #include "logger.h"
 #include "glcommon.h"
 
