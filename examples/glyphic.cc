@@ -39,33 +39,29 @@
 #include "file.h"
 #include "glcommon.h"
 
+using ns = std::chrono::nanoseconds;
+using hires_clock = std::chrono::high_resolution_clock;
 
 /* globals */
 
 static program simple, msdf;
 static GLuint vao, vbo, ibo;
 static std::map<int,GLuint> tex_map;
-
 static mat4x4 mvp;
 static GLFWwindow* window;
+static font_manager_ft manager;
 
 static const char *font_path = "fonts/DejaVuSans.ttf";
 static const char *render_text = "glyphic";
 static const char* text_lang = "en";
 static const int font_dpi = 72;
+
 static bool help_text = false;
 static bool high_scalability = false;
 static int width = 1024, height = 768;
-static font_manager_ft manager;
-
 static double tl, tn, td, tb;
 
-static std::vector<std::string> book;
-
-using ns = std::chrono::nanoseconds;
-using hires_clock = std::chrono::high_resolution_clock;
-
-/* display  */
+/* shader enum to program */
 
 static program* cmd_shader_gl(int cmd_shader)
 {
@@ -76,10 +72,7 @@ static program* cmd_shader_gl(int cmd_shader)
     }
 }
 
-static inline int rnd_num(int b, int r)
-{
-    return b + (int)floorf(((float)rand()/(float)RAND_MAX)*(float)(r));
-}
+/* utility functions */
 
 static std::vector<std::string> read_file(file_ptr rsrc)
 {
@@ -117,6 +110,8 @@ static std::string format_string(const char* fmt, ...)
 
     return str;
 }
+
+/* on-screen stats*/
 
 static std::vector<std::string> get_stats(font_face *face)
 {
@@ -164,6 +159,11 @@ static int text_width(std::vector<glyph_shape> &shapes, text_segment &segment)
     return tw;
 }
 
+static inline int r(int base, int range)
+{
+    return base + (int)floorf(((float)rand()/(float)RAND_MAX)*(float)(range));
+}
+
 struct wisdom {
     float x, y, w, s;
     int font_size;
@@ -171,7 +171,10 @@ struct wisdom {
     std::string book_wisdom;
 };
 
+static std::vector<std::string> book;
 static std::vector<wisdom> wise;
+
+/* display  */
 
 static void display()
 {
@@ -200,14 +203,14 @@ static void display()
         }
 
         if (wise[j].x + wise[j].w <= 0) {
-            wise[j].x = width + rnd_num(0,width);
+            wise[j].x = width + r(0,width);
             wise[j].y = 80 + j * (high_scalability ? 20 : 80);
-            wise[j].s = rnd_num(100, 100);
-            wise[j].font_size = 12 + rnd_num(0, high_scalability ? 5 : 10) * 4;
-            int c = rnd_num(64,127);
+            wise[j].s = r(100, 100);
+            wise[j].font_size = 12 + r(0, high_scalability ? 5 : 10) * 4;
+            int c = r(64,127);
             wise[j].color = 0xff000000 | c << 16 | c << 8 | c;
             do {
-                wise[j].book_wisdom = book[rnd_num(32,book.size()-33)];
+                wise[j].book_wisdom = book[r(32,book.size()-33)];
             } while (wise[j].book_wisdom.size() < 20);
         }
 
@@ -345,12 +348,19 @@ static void initialize()
     glLineWidth(1.0);
 }
 
-/* GLFW GUI entry point */
-
 static void resize(GLFWwindow* window, int width, int height)
 {
     reshape(width, height);
 }
+
+static void keyboard(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if (key == GLFW_KEY_ESCAPE) {
+        exit(0);
+    }
+}
+
+/* GLFW GUI entry point */
 
 static void glyphic(int argc, char **argv)
 {
@@ -362,6 +372,7 @@ static void glyphic(int argc, char **argv)
     glfwMakeContextCurrent(window);
     gladLoadGL();
     glfwSwapInterval(1);
+    glfwSetKeyCallback(window, keyboard);
     glfwSetFramebufferSizeCallback(window, resize);
     glfwGetFramebufferSize(window, &width, &height);
 
