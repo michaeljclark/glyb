@@ -15,7 +15,10 @@ and rendering library.
 
 glyphic contains high level interfaces for text rendering. glyphic
 outputs font atlas bitmaps, vertex arrays and index arrays which can be
-used with OpenGL, Vulkan and DirectX.
+used with OpenGL, Vulkan and DirectX. glyphic makes managing multiple
+font atlases with complete Unicode coverage simple as the created draw
+lists contain image switching and update commands, so that any number
+of Unicode faces and glyphs can be used at one time.
 
 glyphic has online and offline font atlas glyph renderers using HarfBuzz
 and FreeType. Render time is less than one microsecond per glyph.
@@ -57,6 +60,7 @@ The project also contains several OpenGL examples using the library.
   - `glfont` - _example that displays sample text at multiple sizes_
   - `glsimple` - _simplest possible example for OpenGL_
   - `glbinpack` - _visualization of the bin packing algorithm_
+  - `glyphic` - _scalability test for regular and MSDF font atlases_
 - `third_party`
   - `freetype` - _font rendering engine_
   - `harfbuzz` - _text shaping engine_
@@ -233,6 +237,31 @@ static void display()
     glfwSwapBuffers(window);
 }
 ```
+
+## Examples
+
+glyphic contains several examples programs showing how to use its API:
+
+- `fontdb` - _example demonstrates scanning font metadata_
+- `ftrender` - _example renders glyphs to the console_
+- `genatlas` - _example MSDF font atlas batch generator_
+- `gllayout` - _example showing text layout with line breaks_
+- `glfont` - _example that displays sample text at multiple sizes_
+- `glsimple` - _simplest possible example for OpenGL_
+- `glbinpack` - _visualization of the bin packing algorithm_
+- `glyphic` - _scalability test for regular and MSDF font atlases_
+
+### examples/glyphic
+
+This example tests the scalability of the library by excersing shaping and
+rendering for a large number of glyphs. This example has offscreen render
+capability and can output a series of `ppm` image files to a video:
+
+- [scripts/glyphic-video-mp4.sh](scripts/glyphic-video-mp4.sh)
+
+Here is a screenshot from the `glyphic` example:
+
+![scalability](/images/scalability.png)
 
 ## Text Attributes
 
