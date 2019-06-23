@@ -224,6 +224,8 @@ static void display()
             GLuint tex;
             image_create_texture(&tex, img);
             tex_map[img.iid] = tex;
+        } else {
+            image_update_texture(tex_map[img.iid], img);
         }
     }
     glBindVertexArray(vao);

@@ -129,28 +129,36 @@ inline void draw_list_image_delta(draw_list &batch, image *img, bin_rect delta, 
         [](const draw_image &l, const draw_image &r) { return l.iid < r.iid; });
 
     if (i == batch.images.end() || i->iid != drim.iid) {
-        batch.images.insert(i, drim);
+        i = batch.images.insert(i, drim);
     } else {
-        if (i->modrect[0] == 0 && i->modrect[1] == 0 &&
-            i->modrect[2] == img->getWidth() && i->modrect[3] == img->getHeight()) {
+        if (delta.a.x == w && delta.a.y == h) {
+            // do nothing
+        }
+        else if (i->modrect[0] == 0 && i->modrect[1] == 0 &&
+            i->modrect[2] == w && i->modrect[3] == h) {
             // set delta
             i->modrect[0] = delta.a.x;
             i->modrect[1] = delta.a.y;
             i->modrect[2] = (delta.b.x - delta.a.x);
             i->modrect[3] = (delta.b.y - delta.a.y);
-        } else {
+        }
+        else {
             // widen delta
-            i->modrect[0] = std::min(i->modrect[0],delta.a.x);
-            i->modrect[1] = std::min(i->modrect[1],delta.a.y);
-            i->modrect[2] = std::max(i->modrect[2],(delta.b.x - delta.a.x));
-            i->modrect[3] = std::max(i->modrect[3],(delta.b.y - delta.a.y));
+            int x1 = std::min(i->modrect[0],delta.a.x);
+            int y1 = std::min(i->modrect[1],delta.a.y);
+            int x2 = std::max(i->modrect[0]+i->modrect[2],delta.b.x);
+            int y2 = std::max(i->modrect[1]+i->modrect[3],delta.b.y);
+            i->modrect[0] = x1;
+            i->modrect[1] = y1;
+            i->modrect[2] = x2-x1;
+            i->modrect[3] = y2-y1;
         }
     }
 }
 
 inline void draw_list_image(draw_list &batch, image *img, int flags)
 {
-    bin_rect delta(bin_point(0,0),bin_point((int)img->getWidth(),(int)img->getHeight()));
+    bin_rect delta(bin_point((int)img->getWidth(),(int)img->getHeight()),bin_point(0,0));
 
     return draw_list_image_delta(batch, img, delta, flags);
 }
