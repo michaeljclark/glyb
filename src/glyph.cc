@@ -249,7 +249,6 @@ void font_atlas::expand_delta(bin_rect b)
      * This interface is called after find_region with each newly
      * allocated region, to keep track of the minimum update rectangle.
      */
-    bin_rect last = delta;
     delta.a.x = (std::min)(delta.a.x,b.a.x);
     delta.a.y = (std::min)(delta.a.y,b.a.y);
     delta.b.x = (std::max)(delta.b.x,b.b.x);
