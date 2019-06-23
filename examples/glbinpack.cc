@@ -289,7 +289,7 @@ static void keyboard(GLFWwindow* window, int key, int scancode, int action, int 
 
 /* OpenGL initialization */
 
-static void initialize(bool offscreen)
+static void initialize()
 {
     const GLuint pixel = 0xffffffff;
 
@@ -351,7 +351,7 @@ static void binpack_gui(int argc, char **argv)
     glfwSetKeyCallback(window, keyboard);
     glfwGetFramebufferSize(window, &width, &height);
 
-    initialize(false);
+    initialize();
     reshape(width, height);
     while (!glfwWindowShouldClose(window)) {
         display();
@@ -444,7 +444,7 @@ static void binpack_offline(int argc, char **argv)
     gladLoadGL();
 
     fbo_initialize();
-    initialize(true);
+    initialize();
     reshape(width, height);
 
     for (size_t i = 1; i <= frame_count; i++) {

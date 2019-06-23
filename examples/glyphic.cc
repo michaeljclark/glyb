@@ -55,11 +55,25 @@ static const char *font_path = "fonts/DejaVuSans.ttf";
 static const char *render_text = "glyphic";
 static const char* text_lang = "en";
 static const int font_dpi = 72;
+static const int stats_font_fize = 18;
 
 static bool help_text = false;
 static bool high_scalability = false;
 static int width = 1024, height = 768;
 static double tl, tn, td, tb;
+
+static GLuint render_fbo = 0;
+static GLuint render_tex = 0;
+static GLuint depth_fbo = 0;
+static GLenum DrawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
+
+static bool batch_mode = false;
+static size_t frame_rate = 60;
+static size_t frame_skip = 15 * frame_rate;
+static size_t frame_count = 15 * frame_rate;
+static char filename[PATH_MAX];;
+static const char *filename_template = "video/ppm/glyphic-%09zu.ppm";
+static const char *atlas_dump_template = nullptr;
 
 /* shader enum to program */
 
@@ -113,7 +127,7 @@ static std::string format_string(const char* fmt, ...)
 
 /* on-screen stats*/
 
-static std::vector<std::string> get_stats(font_face *face)
+static std::vector<std::string> get_stats(font_face *face, float td)
 {
     std::vector<std::string> stats;
 
@@ -176,7 +190,40 @@ static std::vector<wisdom> wise;
 
 /* display  */
 
+static void draw(double tn, double td);
+
 static void display()
+{
+    auto t = hires_clock::now();
+
+    tl = tn;
+    tn = (double)std::chrono::duration_cast<ns>(t.time_since_epoch()).count()/1e9;
+    td = tn - tl;
+
+    draw(tn, td);
+}
+
+static void rect(draw_list &batch, font_atlas *atlas,
+    float x1, float y1, float x2, float y2, float z, uint color)
+{
+    int atlas_iid = atlas->get_image()->iid;
+    int atlas_shader = atlas->depth == 4 ? shader_msdf : shader_simple;
+    int atlas_flags = st_clamp | atlas_image_filter(atlas);
+
+    draw_list_image(batch, atlas->get_image(), atlas_flags);
+
+    uint o = static_cast<uint>(batch.vertices.size());
+    float uv1 = 0.0f, uv2 = atlas->uv1x1;
+    uint o0 = draw_list_vertex(batch, {{x1, y1, z}, {uv1, uv1}, color});
+    uint o1 = draw_list_vertex(batch, {{x2, y1, z}, {uv2, uv1}, color});
+    uint o2 = draw_list_vertex(batch, {{x2, y2, z}, {uv2, uv2}, color});
+    uint o3 = draw_list_vertex(batch, {{x1, y2, z}, {uv1, uv2}, color});
+
+    draw_list_indices(batch, atlas_iid, mode_triangles, atlas_shader,
+        {o0, o3, o1, o1, o3, o2});
+}
+
+static void draw(double tn, double td)
 {
     draw_list batch;
     std::vector<glyph_shape> shapes;
@@ -187,14 +234,10 @@ static void display()
     uint32_t color1 = 0xff808080;
     uint32_t color2 = 0xff000000;
     size_t wisdom_count = high_scalability ? 36 : 9;
+    float scale = sqrtf(width*height)/sqrtf(1024*768);
     float tw;
-    auto t = hires_clock::now();
 
     glfwGetFramebufferSize(window, &width, &height);
-
-    tl = tn;
-    tn = (double)std::chrono::duration_cast<ns>(t.time_since_epoch()).count()/1e9;
-    td = tn - tl;
 
     /* render wisdom */
     for (size_t j = 0; j < wisdom_count; j++) {
@@ -204,9 +247,14 @@ static void display()
 
         if (wise[j].x + wise[j].w <= 0) {
             wise[j].x = width + r(0,width);
-            wise[j].y = 80 + j * (high_scalability ? 20 : 80);
+            wise[j].y = (j + 1) * (high_scalability ? 20 : 80);
             wise[j].s = r(100, 100);
             wise[j].font_size = 12 + r(0, high_scalability ? 5 : 10) * 4;
+
+            wise[j].s = wise[j].s * scale;
+            wise[j].y = wise[j].y * scale;
+            wise[j].font_size = (int)((float)wise[j].font_size * scale);
+
             int c = r(64,127);
             wise[j].color = 0xff000000 | c << 16 | c << 8 | c;
             do {
@@ -231,7 +279,7 @@ static void display()
     float s = sin(fmod(tn, 1.f) * 4.0f * M_PI);
     float font_size = 160 + (int)(s * 25);
     text_segment glyphic_segment(render_text, text_lang, face,
-        font_size * 64, 0, 0, color2);
+        (int)((float)font_size * scale * 64.0f), 0, 0, color2);
     glyphic_segment.tracking = -5;
 
     shapes.clear();
@@ -243,14 +291,20 @@ static void display()
 
     /* render stats text */
     int x = 10, y = height - 10;
-    std::vector<std::string> stats = get_stats(face);
+    std::vector<std::string> stats = get_stats(face, td);
+    const uint32_t bg_color = 0xbfffffff;
     for (size_t i = 0; i < stats.size(); i++) {
         text_segment stats_segment(stats[i], text_lang, face,
-            18 * 64, x, y, color2);
+            (int)((float)stats_font_fize * scale * 64.0f), x, y, color2);
         shapes.clear();
         shaper.shape(shapes, &stats_segment);
+        tw = text_width(shapes, stats_segment);
+        font_atlas *atlas = manager.getCurrentAtlas(face);
+        int h = (int)((float)stats_font_fize * 1.0f * scale);
+        int h2 = (int)((float)stats_font_fize * 0.334f * scale);
+        rect(batch, atlas, x, y-h-h2/2, x+tw, y+h2/2, -0.0001f, bg_color);
         renderer.render(batch, shapes, &stats_segment);
-        y -= 24;
+        y -= ((float)stats_font_fize * scale * 1.334f);
     }
 
     /* updates buffers */
@@ -360,9 +414,41 @@ static void keyboard(GLFWwindow* window, int key, int scancode, int action, int 
     }
 }
 
+/* offscreen framebuffer */
+
+static void fbo_initialize()
+{
+    glGenFramebuffers(1, &render_fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, render_fbo);
+    printf("render_fbo = %d\n", render_fbo);
+
+    glGenTextures(1, &render_tex);
+    glBindTexture(GL_TEXTURE_2D, render_tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
+        GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    printf("render_tex = %d\n", render_tex);
+
+    glGenRenderbuffers(1, &depth_fbo);
+    glBindRenderbuffer(GL_RENDERBUFFER, depth_fbo);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+        GL_RENDERBUFFER, depth_fbo);
+    printf("depth_fbo = %d\n", depth_fbo);
+
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, render_tex, 0);
+    glDrawBuffers(1, DrawBuffers);
+    printf("fbo status = %s\n",
+        glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE ?
+        "happy" : "sad");
+
+    glBindFramebuffer(GL_FRAMEBUFFER, render_fbo);
+}
+
 /* GLFW GUI entry point */
 
-static void glyphic(int argc, char **argv)
+static void glyphic_gui(int argc, char **argv)
 {
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, CTX_OPENGL_MAJOR);
@@ -387,6 +473,87 @@ static void glyphic(int argc, char **argv)
     glfwTerminate();
 }
 
+/* write image to file */
+
+static void write_ppm(const char *filename, const uint8_t *buffer, int width, int height)
+{
+   FILE *f = fopen(filename, "wb");
+   if (!f) {
+      fprintf(stderr, "error: fopen failed: %s\n", strerror(errno));
+      exit(1);
+   }
+   fprintf(f,"P6\n");
+   fprintf(f,"# ppm-file\n");
+   fprintf(f,"%i %i\n", width, height);
+   fprintf(f,"255\n");
+   uint8_t *line = (uint8_t*)malloc(width * 3);
+   for (int y = height - 1; y >= 0; y--) {
+      const uint8_t *in = &buffer[y * width * 4];
+      uint8_t *out = line;
+      for (int x = 0; x < width; x++) {
+         *out++ = *in++; /* red */
+         *out++ = *in++; /* green */
+         *out++ = *in++; /* blue */
+         in++;           /* skip alpha */
+      }
+      fwrite(line, width, 3, f);
+   }
+   fclose(f);
+   free(line);
+}
+
+/* batch mode entry point */
+
+static void glyphic_offline(int argc, char **argv)
+{
+    GLubyte *buffer = new GLubyte[width * height * 4 * sizeof(GLubyte)];
+    if (!buffer) {
+        fprintf(stderr, "error: memory allocation failed\n");
+        exit(1);
+    }
+
+    /* create window */
+    glfwInit();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, CTX_OPENGL_MAJOR);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, CTX_OPENGL_MINOR);
+    glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+
+    window = glfwCreateWindow(width, height, argv[0], NULL, NULL);
+    glfwMakeContextCurrent(window);
+    gladLoadGL();
+
+    fbo_initialize();
+    initialize();
+    reshape(width, height);
+
+    size_t frame_num = 0;
+    for (size_t i = 1; i <= frame_skip; i++) {
+        draw(frame_num/(float)frame_rate, 1/(float)frame_rate);
+        printf("frame-%09zu : skipped\n", frame_num);
+        frame_num++;
+    }
+    if (atlas_dump_template != nullptr) {
+        auto face = manager.findFontByPath(font_path);
+        size_t i = 0;
+        for (auto atlas : manager.faceAtlasMap[face]) {
+            snprintf(filename, sizeof(filename), atlas_dump_template, i++);
+            image::saveToFile(std::string(filename), atlas->img, &image::PNG);
+            printf("frame-%09zu : wrote atlas to %s\n", frame_num, filename);
+        }
+    }
+    for (size_t i = 1; i <= frame_count; i++) {
+        draw(frame_num/(float)frame_rate, 1/(float)frame_rate);
+        glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
+        snprintf(filename, sizeof(filename), filename_template, i);
+        write_ppm(filename, buffer, width, height);
+        printf("frame-%09zu : wrote output to %s\n", frame_num, filename);
+        frame_num++;
+    }
+out:
+
+    delete [] buffer;
+}
+
 /* help text */
 
 void print_help(int argc, char **argv)
@@ -395,10 +562,21 @@ void print_help(int argc, char **argv)
         "Usage: %s [options]\n"
         "\n"
         "Options:\n"
-        "  -f, --font <ttf-file>  font file (default %s)\n"
-        "  -m, --enable-msdf      enable MSDF font rendering\n"
-        "  -q, --quadruple        quadruple the object count\n"
-        "  -h, --help             command line help\n",
+        "\n"
+        "Offline options:\n"
+        "  -o, --offline                      start in offline batch mode\n"
+        "  -t, --template <name-%%05d.ppm>    offline output template\n"
+        "  -s, --frame-size <width>x<height>  window or image size\n"
+        "  -r, --frame-rate <integer>         output frame rate\n"
+        "  -k, --frame-skip <integer>         output frame count start\n"
+        "  -c, --frame-count <integer>        output frame count limit\n"
+        "  -d, --dump-atlases <name-%%d.png>  dump atlas textures to png files\n"
+        "\n"
+        "Common options:\n"
+        "  -f, --font <ttf-file>              font file (default %s)\n"
+        "  -m, --enable-msdf                  enable MSDF font rendering\n"
+        "  -q, --quadruple                    quadruple the object count\n"
+        "  -h, --help                         command line help\n",
         argv[0], font_path);
 }
 
@@ -421,7 +599,14 @@ void parse_options(int argc, char **argv)
 {
     int i = 1;
     while (i < argc) {
-        if (match_opt(argv[i], "-f","--font")) {
+        if (strcmp(argv[i], "-o") == 0 ||
+            strcmp(argv[i], "--offline") == 0) {
+            i++;
+            batch_mode = true;
+        } else if (match_opt(argv[i], "-t", "--template")) {
+            if (check_param(++i == argc, "--template")) break;
+            filename_template = argv[i++];
+        } else if (match_opt(argv[i], "-f","--font")) {
             if (check_param(++i == argc, "--font")) break;
             font_path = argv[i++];
         } else if (match_opt(argv[i], "-m", "--enable-msdf")) {
@@ -430,6 +615,22 @@ void parse_options(int argc, char **argv)
             i++;
         } else if (match_opt(argv[i], "-q", "--quadruple")) {
             high_scalability = true;
+            i++;
+        } else if (match_opt(argv[i], "-s", "--frame-size")) {
+            if (check_param(++i == argc, "--frame-size")) break;
+            sscanf(argv[i++], "%dx%d", &width, &height);
+        } else if (match_opt(argv[i], "-r", "--frame-rate")) {
+            if (check_param(++i == argc, "--frame-rate")) break;
+            frame_rate = atoi(argv[i++]);
+        } else if (match_opt(argv[i], "-k", "--frame-skip")) {
+            if (check_param(++i == argc, "--frame-skip")) break;
+            frame_skip = atoi(argv[i++]);
+        } else if (match_opt(argv[i], "-c", "--frame-count")) {
+            if (check_param(++i == argc, "--frame-count")) break;
+            frame_count = atoi(argv[i++]);
+        } else if (match_opt(argv[i], "-d", "--dump-atlases")) {
+            if (check_param(++i == argc, "--dump-atlases")) break;
+            atlas_dump_template = argv[i++];
             i++;
         } else if (match_opt(argv[i], "-h", "--help")) {
             help_text = true;
@@ -452,6 +653,12 @@ void parse_options(int argc, char **argv)
 int main(int argc, char **argv)
 {
     parse_options(argc, argv);
-    glyphic(argc, argv);
+
+    if (batch_mode) {
+        glyphic_offline(argc, argv);
+    } else {
+        glyphic_gui(argc, argv);
+    }
+
     return 0;
 }
