@@ -309,7 +309,9 @@ static void draw(double tn, double td)
 
     /* updates buffers */
     program *prog = manager.msdf_enabled ? &msdf : &simple;
-    glGenVertexArrays(1, &vao);
+    if (!vao) {
+        glGenVertexArrays(1, &vao);
+    }
     glBindVertexArray(vao);
     vertex_buffer_create("vbo", &vbo, GL_ARRAY_BUFFER, batch.vertices);
     vertex_buffer_create("ibo", &ibo, GL_ELEMENT_ARRAY_BUFFER, batch.indices);
