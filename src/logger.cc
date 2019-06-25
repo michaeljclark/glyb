@@ -43,3 +43,12 @@ void logger::logError(const char* fmt, ...)
     log(fmt, ap);
     va_end(ap);
 }
+
+void logger::logPanic(const char* fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    log(fmt, ap);
+    va_end(ap);
+    exit(9);
+}

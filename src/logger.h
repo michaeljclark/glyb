@@ -9,6 +9,7 @@ struct logger
     static void log(const char* fmt, va_list ap);
     static void logDebug(const char* fmt, ...);
     static void logError(const char* fmt, ...);
+    static void logPanic(const char* fmt, ...);
 };
 
 #define Debug(fmt, ...) \
@@ -19,3 +20,6 @@ logger::logError(fmt, __VA_ARGS__);
 
 #define Warn(fmt, ...) \
 logger::logWarn(fmt, __VA_ARGS__);
+
+#define Panic(fmt, ...) \
+logger::logPanic(fmt, __VA_ARGS__);
