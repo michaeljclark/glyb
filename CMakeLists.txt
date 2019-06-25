@@ -95,6 +95,8 @@ add_subdirectory(third_party/msdfgen)
 include_directories(third_party/msdfgen)
 list(APPEND LIBS lib_msdfgen)
 
+include_directories(third_party/glm)
+
 include_directories(src)
 
 set(GLYPHIC_SOURCES
@@ -132,6 +134,9 @@ target_link_libraries(ftrender libglyphic ${LIBS} ${CMAKE_DL_LIBS})
 
 add_executable(glbinpack examples/glbinpack.cc)
 target_link_libraries(glbinpack libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})
+
+add_executable(glcanvas examples/glcanvas.cc)
+target_link_libraries(glcanvas libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})
 
 add_executable(glfont examples/glfont.cc)
 target_link_libraries(glfont libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})

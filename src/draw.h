@@ -37,6 +37,7 @@ enum {
 enum {
     shader_simple   = 1,
     shader_msdf     = 2,
+    shader_canvas   = 3,
 };
 
 typedef struct {
