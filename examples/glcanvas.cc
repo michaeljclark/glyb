@@ -63,7 +63,13 @@ static const char *font_path = "fonts/DejaVuSans.ttf";
 static const int font_dpi = 72;
 static int width = 1024, height = 768;
 
-/* shape */
+/*
+ * shape
+ *
+ * The following shape code is derived from msdfgen/ext/import-font.cpp
+ * It has been simplified and adopts a data-oriented programming approach.
+ * The context output is arrays formatted suitably to download to a GPU.
+ */
 
 enum EdgeType { Linear = 2, Quadratic = 3, Cubic = 4, };
 
