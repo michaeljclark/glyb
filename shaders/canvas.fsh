@@ -162,11 +162,11 @@ float signedDistanceQuadratic(vec2 p[4], out float dir, vec2 origin, out float p
     int solutions = solveCubic(t, a, b, c, d);
 
     vec2 epDir = directionQuadratic(p, 0);
-    float minDistance = length(nonZeroSign(cross(epDir, qa))*qa); // distance from A
+    float minDistance = nonZeroSign(cross(epDir, qa))*length(qa); // distance from A
     param = -dot(qa, epDir)/dot(epDir, epDir);
     {
         epDir = directionQuadratic(p, 1);
-        float distance = length(nonZeroSign(cross(epDir, p[2]-origin))*(p[2]-origin)); // distance from B
+        float distance = nonZeroSign(cross(epDir, p[2]-origin))*length(p[2]-origin); // distance from B
         if (abs(distance) < abs(minDistance)) {
             minDistance = distance;
             param = dot(origin-p[1], epDir)/dot(epDir, epDir);
@@ -205,11 +205,11 @@ float signedDistanceCubic(vec2 p[4], out float dir, vec2 origin, out float param
     vec2 as = p[3]-p[2]-p[2]-p[1]-br;
 
     vec2 epDir = directionCubic(p, 0);
-    float minDistance = nonZeroSign(cross(epDir, qa))*qa.length(); // distance from A
+    float minDistance = nonZeroSign(cross(epDir, qa))*length(qa); // distance from A
     param = -dot(qa, epDir)/dot(epDir, epDir);
     {
         epDir = directionCubic(p, 1);
-        float distance = nonZeroSign(cross(epDir, p[3]-origin))*(p[3]-origin).length(); // distance from B
+        float distance = nonZeroSign(cross(epDir, p[3]-origin))*length(p[3]-origin); // distance from B
         if (abs(distance) < abs(minDistance)) {
             minDistance = distance;
             param = dot(epDir-(p[3]-origin), epDir)/dot(epDir, epDir);
@@ -220,7 +220,7 @@ float signedDistanceCubic(vec2 p[4], out float dir, vec2 origin, out float param
         float t = i/4;
         for (int step = 0;; ++step) {
             vec2 qe = p[0]+3*t*ab+3*t*t*br+t*t*t*as-origin; // do not simplify with qa !!!
-            float distance = nonZeroSign(cross(directionCubic(p, t), qe))*qe.length();
+            float distance = nonZeroSign(cross(directionCubic(p, t), qe))*length(qe);
             if (abs(distance) < abs(minDistance)) {
                 minDistance = distance;
                 param = t;
