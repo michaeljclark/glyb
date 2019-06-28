@@ -275,13 +275,13 @@ void getEdge(out Edge edge, int edge_num)
     edge.p[3] = vec2(texelFetch(u_tex2, o + 7).r, texelFetch(u_tex2, o + 8).r);
 }
 
-float getDistance(Shape shape, vec2 origin)
+float getDistance(Shape shape, vec2 origin, out float dir)
 {
     float minDistance = FLT_MAX;
     for (int i = 0; i < shape.edge_count; i++) {
         Edge edge;
         getEdge(edge, shape.edge_offset + i);
-        float distance = FLT_MAX, dir, param;
+        float distance = FLT_MAX, param;
         switch(edge.edge_type) {
         case Linear:
             distance = signedDistanceLinear(edge.p, dir, origin, param);
@@ -317,7 +317,8 @@ void main()
     vec3 p = vec3(v_uv0.xy, 1) * transform;
 
 
-    float distance = getDistance(shape, p.xy);
+    float dir;
+    float distance = getDistance(shape, p.xy, dir);
     //float alpha = smoothstep(1.5 - smoothing, 1.5 + smoothing, distance);
     float alpha = (distance + 5.0)/10.0;
 
