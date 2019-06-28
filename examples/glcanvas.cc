@@ -39,6 +39,7 @@
 #include "linmath.h"
 #include "binpack.h"
 #include "image.h"
+#include "utf8.h"
 #include "draw.h"
 #include "font.h"
 #include "glyph.h"
@@ -62,6 +63,8 @@ static GLFWwindow* window;
 static const char *font_path = "fonts/DejaVuSans.ttf";
 static const int font_dpi = 72;
 static int width = 1024, height = 768;
+static bool help_text = false;
+static int codepoint = 99;
 
 /*
  * shape
@@ -308,13 +311,14 @@ static void reshape(int width, int height)
     update_uniforms(&simple);
 }
 
-void create_tbo()
+void create_tbo(int codepoint)
 {
     Context ctx;
     font_face *face = manager.findFontByPath(font_path);
     FT_Face ftface = static_cast<font_face_ft*>(face)->ftface;
+    int glyph = FT_Get_Char_Index(ftface, codepoint);
 
-    load_glyph(&ctx, ftface, 128 * 64, font_dpi, FT_Get_Char_Index(ftface, 'a'));
+    load_glyph(&ctx, ftface, 128 * 64, font_dpi, glyph);
     print_shape(ctx, 0);
 
     buffer_texture_create(shape_tb, ctx.shapes, GL_TEXTURE0, GL_R32I);
@@ -341,7 +345,7 @@ static void initialize()
     glDeleteShader(msdf_fsh);
     glDeleteShader(canvas_fsh);
 
-    create_tbo();
+    create_tbo(codepoint);
 
     /* pipeline */
     glEnable(GL_CULL_FACE);
@@ -385,10 +389,67 @@ static void glcanvas(int argc, char **argv)
     glfwTerminate();
 }
 
+/* help text */
+
+void print_help(int argc, char **argv)
+{
+    fprintf(stderr,
+        "Usage: %s [options]\n"
+        "  -g, --glyph <glyph>   glyph to render (default '%c')\n"
+        "  -h, --help            command line help\n", argv[0], codepoint);
+}
+
+/* option parsing */
+
+bool check_param(bool cond, const char *param)
+{
+    if (cond) {
+        printf("error: %s requires parameter\n", param);
+    }
+    return (help_text = cond);
+}
+
+bool match_opt(const char *arg, const char *opt, const char *longopt)
+{
+    return strcmp(arg, opt) == 0 || strcmp(arg, longopt) == 0;
+}
+
+void parse_options(int argc, char **argv)
+{
+    int i = 1;
+    while (i < argc) {
+        if (match_opt(argv[i], "-g", "--glyph")) {
+            if (check_param(++i == argc, "--glyph")) break;
+            const char *codepoint_str = argv[i++];
+            if (utf8_codelen(codepoint_str) == strlen(codepoint_str)) {
+                codepoint = utf8_to_utf32(codepoint_str);
+            } else if (!(codepoint = atoi(codepoint_str))) {
+                printf("error:--glyph must be a single character or integer\n");
+                help_text = true;
+                break;
+            }
+        } else if (match_opt(argv[i], "-h", "--help")) {
+            help_text = true;
+            i++;
+         } else {
+            fprintf(stderr, "error: unknown option: %s\n", argv[i]);
+            help_text = true;
+            break;
+        }
+    }
+
+    if (help_text) {
+        print_help(argc, argv);
+        exit(1);
+    }
+
+}
+
 /* entry point */
 
 int main(int argc, char **argv)
 {
+    parse_options(argc, argv);
     glcanvas(argc, argv);
     return 0;
 }
