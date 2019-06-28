@@ -311,9 +311,9 @@ void main()
     float scale = max(size.x,size.y);
     vec2 rem = shape.size - scale;
     mat3 transform = mat3(
-        vec3(  scale,       0,       0 + rem.x/2 + shape.offset.x ),
-        vec3(      0,  -scale,   scale + rem.y/2 + shape.offset.y ),
-        vec3(      0,       0,   scale ));
+        scale,       0,       0 + rem.x/2 + shape.offset.x,
+        0,      -scale,   scale + rem.y/2 + shape.offset.y,
+        0,           0,   scale);
     vec3 p = vec3(v_uv0.xy, 1) * transform;
 
 
