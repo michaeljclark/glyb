@@ -288,12 +288,13 @@ float getDistanceEdge(Edge edge, vec2 origin, out float dir, out float param)
 float getDistanceShape(Shape shape, vec2 origin, out float dir, out float param)
 {
     Edge edge;
-    float distance, minDistance = FLT_MAX;
+    float distance, minDistance = FLT_MAX, minDir = FLT_MAX;
     for (int i = 0; i < shape.edge_count; i++) {
         getEdge(edge, shape.edge_offset + i);
         distance = getDistanceEdge(edge, origin, dir, param);
-        if (abs(distance) < abs(minDistance)) {
+        if (abs(distance) < abs(minDistance) || abs(distance) == abs(minDistance) && dir < minDir) {
             minDistance = distance;
+            minDir = dir;
         }
     }
     return minDistance;
