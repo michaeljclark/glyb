@@ -318,16 +318,17 @@ void main()
     Shape shape;
     getShape(shape, 0);
 
-    const float smoothing = 1.0/8.0;
-
     mat3 transform = getShapeTransform(shape);
     vec3 p = vec3(v_uv0.xy, 1) * transform;
 
     float dir, param;
     float distance = getDistanceShape(shape, p.xy, dir, param);
 
-    //float alpha = smoothstep(1.5 - smoothing, 1.5 + smoothing, distance);
-    float alpha = (distance + 5.0)/10.0;
+    float dx = dFdx( v_uv0.x );
+    float dy = dFdy( v_uv0.y );
+    float m = sqrt(shape.size.x * shape.size.y) * sqrt(dx*dx + dy*dy);
+
+    float alpha = smoothstep(-m, m, distance);
 
     gl_FragColor = vec4(v_color.rgb,alpha);
 }
