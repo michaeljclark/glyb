@@ -23,7 +23,7 @@ void main()
     float dy = dFdy( v_uv0.y ) * sz.y;
     float toPixels = 16.0 * inversesqrt( dx * dx + dy * dy );
     float sigDist = median( sample.r, sample.g, sample.b ) - 0.5;
-    float opacity = clamp( sigDist * toPixels + 0.5, 0.0, 1.0 );
+    float alpha = clamp( sigDist * toPixels + 0.5, 0.0, 1.0 );
 
-    gl_FragColor = v_color * opacity;
+    gl_FragColor = vec4(pow(v_color.rgb, vec3(1.0/v_gamma)), alpha);
 }
