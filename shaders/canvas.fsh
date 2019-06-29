@@ -307,8 +307,8 @@ mat3 getShapeTransform(Shape shape)
     float scale = max(size.x,size.y);
     vec2 rem = vec2(shape.size.x, shape.size.y) - vec2(scale);
     return mat3(
-        scale,       0,       0 + rem.x/2 + shape.offset.x/64.0f ,
-        0,      -scale,   scale + rem.y/2 + shape.offset.y/64.0f ,
+        scale,       0,       0 + rem.x/2 + shape.offset.x ,
+        0,      -scale,   scale + rem.y/2 + shape.offset.y ,
         0,           0,   scale
     );
 }
