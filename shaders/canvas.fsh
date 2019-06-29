@@ -300,22 +300,28 @@ float getDistance(Shape shape, vec2 origin, out float dir)
     return minDistance;
 }
 
+mat3 getShapeTransform(Shape shape)
+{
+    const float padding = 8;
+    vec2 size = vec2(shape.size.x, shape.size.y) + padding;
+    float scale = max(size.x,size.y);
+    vec2 rem = vec2(shape.size.x, shape.size.y) - vec2(scale);
+    return mat3(
+        scale,       0,       0 + rem.x/2 + shape.offset.x/64.0f ,
+        0,      -scale,   scale + rem.y/2 + shape.offset.y/64.0f ,
+        0,           0,   scale
+    );
+}
+
 void main()
 {
     Shape shape;
     getShape(shape, 0);
 
     const float smoothing = 1.0/8.0;
-    const float shape_pad = 8;
-    vec2 size = shape.size + shape_pad;
-    float scale = max(size.x,size.y);
-    vec2 rem = shape.size - scale;
-    mat3 transform = mat3(
-        scale,       0,       0 + rem.x/2 + shape.offset.x,
-        0,      -scale,   scale + rem.y/2 + shape.offset.y,
-        0,           0,   scale);
-    vec3 p = vec3(v_uv0.xy, 1) * transform;
 
+    mat3 transform = getShapeTransform(shape);
+    vec3 p = vec3(v_uv0.xy, 1) * transform;
 
     float dir;
     float distance = getDistance(shape, p.xy, dir);
