@@ -39,8 +39,8 @@
 #include "file.h"
 #include "glcommon.h"
 
-using ns = std::chrono::nanoseconds;
-using hires_clock = std::chrono::high_resolution_clock;
+using namespace std::chrono;
+
 
 /* globals */
 
@@ -74,6 +74,7 @@ static size_t frame_count = 15 * frame_rate;
 static char filename[PATH_MAX];;
 static const char *filename_template = "video/ppm/glyphic-%09zu.ppm";
 static const char *atlas_dump_template = nullptr;
+
 
 /* shader enum to program */
 
@@ -189,19 +190,6 @@ static std::vector<std::string> book;
 static std::vector<wisdom> wise;
 
 /* display  */
-
-static void draw(double tn, double td);
-
-static void display()
-{
-    auto t = hires_clock::now();
-
-    tl = tn;
-    tn = (double)std::chrono::duration_cast<ns>(t.time_since_epoch()).count()/1e9;
-    td = tn - tl;
-
-    draw(tn, td);
-}
 
 static void rect(draw_list &batch, font_atlas *atlas,
     float x1, float y1, float x2, float y2, float z, uint color)
@@ -345,6 +333,17 @@ static void draw(double tn, double td)
     }
 
     glfwSwapBuffers(window);
+}
+
+static void display()
+{
+    auto t = high_resolution_clock::now();
+
+    tl = tn;
+    tn = (double)duration_cast<nanoseconds>(t.time_since_epoch()).count()/1e9;
+    td = tn - tl;
+
+    draw(tn, td);
 }
 
 static void update_uniforms(program *prog)

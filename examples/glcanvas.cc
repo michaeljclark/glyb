@@ -46,8 +46,8 @@
 #include "logger.h"
 #include "glcommon.h"
 
-using ns = std::chrono::nanoseconds;
-using hires_clock = std::chrono::high_resolution_clock;
+using namespace std::chrono;
+
 
 /* globals */
 
@@ -66,9 +66,12 @@ static const char *font_path = "fonts/DejaVuSans.ttf";
 static const char* text_lang = "en";
 static const int font_dpi = 72;
 static const int font_size_default = 18;
+
 static int width = 1024, height = 768;
+static double tl, tn, td;
 static bool help_text = false;
 static int codepoint = 99;
+
 
 /*
  * shape
@@ -262,21 +265,6 @@ static std::vector<std::string> get_stats(font_face *face, float td)
     return stats;
 }
 
-static void draw(double tn, double td);
-
-static double tl, tn, td;
-
-static void display()
-{
-    auto t = hires_clock::now();
-
-    tl = tn;
-    tn = (double)std::chrono::duration_cast<ns>(t.time_since_epoch()).count()/1e9;
-    td = tn - tl;
-
-    draw(tn, td);
-}
-
 static void draw(double tn, double td)
 {
     draw_list batch;
@@ -356,6 +344,17 @@ static void draw(double tn, double td)
     }
 
     glfwSwapBuffers(window);
+}
+
+static void display()
+{
+    auto t = high_resolution_clock::now();
+
+    tl = tn;
+    tn = (double)duration_cast<nanoseconds>(t.time_since_epoch()).count()/1e9;
+    td = tn - tl;
+
+    draw(tn, td);
 }
 
 static void update_uniforms(program *prog)
