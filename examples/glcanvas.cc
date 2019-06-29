@@ -46,6 +46,8 @@
 #include "logger.h"
 #include "glcommon.h"
 
+using ns = std::chrono::nanoseconds;
+using hires_clock = std::chrono::high_resolution_clock;
 
 /* globals */
 
@@ -61,7 +63,9 @@ static mat4x4 mvp;
 static GLFWwindow* window;
 
 static const char *font_path = "fonts/DejaVuSans.ttf";
+static const char* text_lang = "en";
 static const int font_dpi = 72;
+static const int font_size_default = 18;
 static int width = 1024, height = 768;
 static bool help_text = false;
 static int codepoint = 99;
@@ -209,13 +213,12 @@ static program* cmd_shader_gl(int cmd_shader)
 {
     switch (cmd_shader) {
     case shader_simple:  return &simple;
-    case shader_msdf:    return &msdf;
     case shader_canvas:  return &canvas;
     default: return nullptr;
     }
 }
 
-static void rect(draw_list &batch, glm::ivec2 A, glm::ivec2 B, int Z, uint col)
+static void rect(draw_list &batch, uint iid, glm::ivec2 A, glm::ivec2 B, int Z, uint col)
 {
     uint o = static_cast<uint>(batch.vertices.size());
 
@@ -227,34 +230,100 @@ static void rect(draw_list &batch, glm::ivec2 A, glm::ivec2 B, int Z, uint col)
     uint o2 = draw_list_vertex(batch, {{b.x, b.y, (float)z}, {1, 1}, col});
     uint o3 = draw_list_vertex(batch, {{a.x, b.y, (float)z}, {0, 1}, col});
 
-    draw_list_indices(batch, tbo_iid, mode_triangles, shader_canvas,
+    draw_list_indices(batch, iid, mode_triangles, shader_canvas,
         {o0, o3, o1, o1, o3, o2});
 }
 
+static std::string format_string(const char* fmt, ...)
+{
+    std::vector<char> buf(128);
+    va_list ap;
+
+    va_start(ap, fmt);
+    int len = vsnprintf(buf.data(), buf.capacity(), fmt, ap);
+    va_end(ap);
+
+    std::string str;
+    if (len >= (int)buf.capacity()) {
+        buf.resize(len + 1);
+        va_start(ap, fmt);
+        vsnprintf(buf.data(), buf.capacity(), fmt, ap);
+        va_end(ap);
+    }
+    str = buf.data();
+
+    return str;
+}
+
+static std::vector<std::string> get_stats(font_face *face, float td)
+{
+    std::vector<std::string> stats;
+    stats.push_back(format_string("frames-per-second: %5.2f", 1.0/td));
+    return stats;
+}
+
+static void draw(double tn, double td);
+
+static double tl, tn, td;
+
 static void display()
 {
+    auto t = hires_clock::now();
+
+    tl = tn;
+    tn = (double)std::chrono::duration_cast<ns>(t.time_since_epoch()).count()/1e9;
+    td = tn - tl;
+
+    draw(tn, td);
+}
+
+static void draw(double tn, double td)
+{
     draw_list batch;
-    program *prog = &canvas;
+    std::vector<glyph_shape> shapes;
+    text_shaper_hb shaper;
+    text_renderer_ft renderer(&manager);
 
     glfwGetFramebufferSize(window, &width, &height);
-
     glm::ivec2 screen(width, height), size((std::min)(width, height));
     glm::ivec2 p1 = (screen - size)/2, p2 = p1 + size;
 
-    rect(batch, p1, p2, 0, 0xff000000);
+    /* draw glyph */
+    rect(batch, tbo_iid, p1, p2, 0, 0xff000000);
 
-    if (!vao) {
-        glGenVertexArrays(1, &vao);
+    /* render stats text */
+    int x = 10, y = height - 10;
+    auto face = manager.findFontByPath(font_path);
+    std::vector<std::string> stats = get_stats(face, td);
+    const uint32_t bg_color = 0xbfffffff;
+    for (size_t i = 0; i < stats.size(); i++) {
+        text_segment stats_segment(stats[i], text_lang, face,
+            (int)((float)font_size_default * 64.0f), x, y, 0xff000000);
+        shapes.clear();
+        shaper.shape(shapes, &stats_segment);
+        font_atlas *atlas = manager.getCurrentAtlas(face);
+        renderer.render(batch, shapes, &stats_segment);
+        y -= ((float)font_size_default * 1.334f);
     }
-    glBindVertexArray(vao);
+
+    /* create vertex and index buffers arrays (idempotent) */
     vertex_buffer_create("vbo", &vbo, GL_ARRAY_BUFFER, batch.vertices);
     vertex_buffer_create("ibo", &ibo, GL_ELEMENT_ARRAY_BUFFER, batch.indices);
-    vertex_array_pointer(prog, "a_pos", 3, GL_FLOAT, 0, &draw_vertex::pos);
-    vertex_array_pointer(prog, "a_uv0", 2, GL_FLOAT, 0, &draw_vertex::uv);
-    vertex_array_pointer(prog, "a_color", 4, GL_UNSIGNED_BYTE, 1, &draw_vertex::color);
-    vertex_array_1f(prog, "a_gamma", 2.0f);
-    glBindVertexArray(0);
 
+    /* one time config for vertex array objects */
+    if (!vao) {
+        glGenVertexArrays(1, &vao);
+        glBindVertexArray(vao);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+        vertex_array_pointer(&canvas, "a_pos", 3, GL_FLOAT, 0, &draw_vertex::pos);
+        vertex_array_pointer(&canvas, "a_uv0", 2, GL_FLOAT, 0, &draw_vertex::uv);
+        vertex_array_pointer(&canvas, "a_color", 4, GL_UNSIGNED_BYTE, 1, &draw_vertex::color);
+        vertex_array_1f(&canvas, "a_gamma", 2.0f);
+        glBindVertexArray(0);
+    }
+
+    /* okay, lets send commands to the GPU */
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -264,9 +333,10 @@ static void display()
             GLuint tex;
             image_create_texture(&tex, img);
             tex_map[img.iid] = tex;
+        } else {
+            image_update_texture(tex_map[img.iid], img);
         }
     }
-    glBindVertexArray(vao);
     for (auto cmd : batch.cmds) {
         glUseProgram(cmd_shader_gl(cmd.shader)->pid);
         if (cmd.iid == tbo_iid) {
@@ -280,6 +350,7 @@ static void display()
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, tex_map[cmd.iid]);
         }
+        glBindVertexArray(vao);
         glDrawElements(cmd_mode_gl(cmd.mode), cmd.count, GL_UNSIGNED_INT,
             (void*)(cmd.offset * sizeof(uint)));
     }
