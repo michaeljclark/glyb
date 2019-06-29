@@ -275,24 +275,23 @@ void getEdge(out Edge edge, int edge_num)
     edge.p[3] = vec2(texelFetch(u_tex2, o + 7).r, texelFetch(u_tex2, o + 8).r);
 }
 
-float getDistance(Shape shape, vec2 origin, out float dir, out float param)
+float getDistanceEdge(Edge edge, vec2 origin, out float dir, out float param)
 {
-    float minDistance = FLT_MAX;
+    switch(edge.edge_type) {
+    case Linear:    return signedDistanceLinear   (edge.p, dir, origin, param);
+    case Quadratic: return signedDistanceQuadratic(edge.p, dir, origin, param);
+    case Cubic:     return signedDistanceCubic    (edge.p, dir, origin, param);
+    }
+    return FLT_MAX; /* not reached */
+}
+
+float getDistanceShape(Shape shape, vec2 origin, out float dir, out float param)
+{
+    Edge edge;
+    float distance, minDistance = FLT_MAX;
     for (int i = 0; i < shape.edge_count; i++) {
-        Edge edge;
         getEdge(edge, shape.edge_offset + i);
-        float distance = FLT_MAX, param;
-        switch(edge.edge_type) {
-        case Linear:
-            distance = signedDistanceLinear(edge.p, dir, origin, param);
-            break;
-        case Quadratic:
-            distance = signedDistanceQuadratic(edge.p, dir, origin, param);
-            break;
-        case Cubic:
-            distance = signedDistanceCubic(edge.p, dir, origin, param);
-            break;
-        }
+        distance = getDistanceEdge(edge, origin, dir, param);
         if (abs(distance) < abs(minDistance)) {
             minDistance = distance;
         }
@@ -324,7 +323,7 @@ void main()
     vec3 p = vec3(v_uv0.xy, 1) * transform;
 
     float dir, param;
-    float distance = getDistance(shape, p.xy, dir, param);
+    float distance = getDistanceShape(shape, p.xy, dir, param);
 
     //float alpha = smoothstep(1.5 - smoothing, 1.5 + smoothing, distance);
     float alpha = (distance + 5.0)/10.0;
