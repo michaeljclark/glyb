@@ -137,6 +137,7 @@ target_link_libraries(glbinpack libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})
 
 add_executable(glcanvas examples/glcanvas.cc)
 target_link_libraries(glcanvas libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})
+set_target_properties(glcanvas PROPERTIES CXX_STANDARD 17)
 
 add_executable(glfont examples/glfont.cc)
 target_link_libraries(glfont libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})

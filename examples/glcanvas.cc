@@ -35,8 +35,9 @@
 #define CTX_OPENGL_MINOR 2
 
 #include "glm/glm.hpp"
+#include "glm/ext/matrix_float4x4.hpp"
+#include "glm/ext/matrix_clip_space.hpp"
 
-#include "linmath.h"
 #include "binpack.h"
 #include "image.h"
 #include "utf8.h"
@@ -47,7 +48,11 @@
 #include "glcommon.h"
 
 using namespace std::chrono;
-
+using ivec2 = glm::ivec2;
+using vec2 = glm::vec2;
+using vec3 = glm::vec3;
+using mat3 = glm::mat3;
+using mat4 = glm::mat4;
 
 /* globals */
 
@@ -59,7 +64,7 @@ static GLuint vao, vbo, ibo;
 static std::map<int,GLuint> tex_map;
 static font_manager_ft manager;
 
-static mat4x4 mvp;
+static mat4 mvp;
 static GLFWwindow* window;
 
 static const char *font_path = "fonts/DejaVuSans.ttf";
@@ -85,7 +90,7 @@ enum EdgeType { Linear = 2, Quadratic = 3, Cubic = 4, };
 
 struct Edge {
     float type;
-    glm::vec2 p[4];
+    vec2 p[4];
 };
 
 struct Contour {
@@ -94,16 +99,16 @@ struct Contour {
 
 struct Shape {
     int contour_offset, contour_count, edge_offset, edge_count;
-    glm::ivec2 offset, size;
+    ivec2 offset, size;
 };
 
 struct Context {
     std::vector<Shape> shapes;
     std::vector<Contour> contours;
     std::vector<Edge> edges;
-    glm::vec2 pos;
+    vec2 pos;
 
-    void newShape(glm::ivec2 offset, glm::ivec2 size) {
+    void newShape(ivec2 offset, ivec2 size) {
         shapes.emplace_back(Shape{(int)contours.size(), 0,
             (int)edges.size(), 0, offset, size });
     }
@@ -120,39 +125,39 @@ struct Context {
 
 typedef const FT_Vector ftvec;
 
-static Context* ctx(void *u) { return static_cast<Context*>(u); }
-static glm::vec2 pt(ftvec *v) { return glm::vec2(v->x/64.f, v->y/64.f); }
+static Context* uctx(void *u) { return static_cast<Context*>(u); }
+static vec2 pt(ftvec *v) { return vec2(v->x/64.f, v->y/64.f); }
 
 static int ftMoveTo(ftvec *p, void *u) {
-    ctx(u)->newContour();
-    ctx(u)->pos = pt(p);
+    uctx(u)->newContour();
+    uctx(u)->pos = pt(p);
     return 0;
 }
 
 static int ftLineTo(ftvec *p, void *u) {
-    ctx(u)->newEdge(Edge{Linear, { ctx(u)->pos, pt(p) }});
-    ctx(u)->pos = pt(p);
+    uctx(u)->newEdge(Edge{Linear, { uctx(u)->pos, pt(p) }});
+    uctx(u)->pos = pt(p);
     return 0;
 }
 
 static int ftConicTo(ftvec *c, ftvec *p, void *u) {
-    ctx(u)->newEdge(Edge{Quadratic, { ctx(u)->pos, pt(c), pt(p) }});
-    ctx(u)->pos = pt(p);
+    uctx(u)->newEdge(Edge{Quadratic, { uctx(u)->pos, pt(c), pt(p) }});
+    uctx(u)->pos = pt(p);
     return 0;
 }
 
 static int ftCubicTo(ftvec *c1, ftvec *c2, ftvec *p, void *u) {
-    ctx(u)->newEdge(Edge{Cubic, { ctx(u)->pos, pt(c1), pt(c2), pt(p) }});
-    ctx(u)->pos = pt(p);
+    uctx(u)->newEdge(Edge{Cubic, { uctx(u)->pos, pt(c1), pt(c2), pt(p) }});
+    uctx(u)->pos = pt(p);
     return 0;
 }
 
-static glm::ivec2 offset(FT_Glyph_Metrics *m) {
-    return glm::ivec2((int)m->horiBearingX, (int)m->horiBearingY-m->height);
+static ivec2 offset(FT_Glyph_Metrics *m) {
+    return ivec2((int)m->horiBearingX, (int)m->horiBearingY-m->height);
 }
 
-static glm::ivec2 size(FT_Glyph_Metrics *m) {
-    return glm::ivec2((int)m->width, m->height);
+static ivec2 size(FT_Glyph_Metrics *m) {
+    return ivec2((int)m->width, m->height);
 }
 
 static void load_glyph(Context *ctx, FT_Face ftface, int sz, int dpi, int glyph)
@@ -212,6 +217,8 @@ static void print_shape(Context &ctx, int shape)
 
 /* display  */
 
+Context ctx;
+
 static program* cmd_shader_gl(int cmd_shader)
 {
     switch (cmd_shader) {
@@ -221,20 +228,41 @@ static program* cmd_shader_gl(int cmd_shader)
     }
 }
 
-static void rect(draw_list &batch, uint iid, glm::ivec2 A, glm::ivec2 B, int Z, uint col)
+static void rect(draw_list &b, uint iid, ivec2 A, ivec2 B, int Z,
+    vec2 UV0, vec2 UV1, uint c, float m)
 {
-    uint o = static_cast<uint>(batch.vertices.size());
+    uint o = static_cast<uint>(b.vertices.size());
 
-    glm::vec2 a = A, b = B;
+    vec2 j = A, k = B;
     float z = Z;
 
-    uint o0 = draw_list_vertex(batch, {{a.x, a.y, (float)z}, {0, 0}, col});
-    uint o1 = draw_list_vertex(batch, {{b.x, a.y, (float)z}, {1, 0}, col});
-    uint o2 = draw_list_vertex(batch, {{b.x, b.y, (float)z}, {1, 1}, col});
-    uint o3 = draw_list_vertex(batch, {{a.x, b.y, (float)z}, {0, 1}, col});
+    uint o0 = draw_list_vertex(b, {{j.x, j.y, (float)z}, {UV0.x, UV0.y}, c, m});
+    uint o1 = draw_list_vertex(b, {{k.x, j.y, (float)z}, {UV1.x, UV0.y}, c, m});
+    uint o2 = draw_list_vertex(b, {{k.x, k.y, (float)z}, {UV1.x, UV1.y}, c, m});
+    uint o3 = draw_list_vertex(b, {{j.x, k.y, (float)z}, {UV0.x, UV1.y}, c, m});
 
-    draw_list_indices(batch, iid, mode_triangles, shader_canvas,
+    draw_list_indices(b, iid, mode_triangles, shader_canvas,
         {o0, o3, o1, o1, o3, o2});
+}
+
+static mat3 shape_transform(Shape &shape, float padding)
+{
+    vec2 size = vec2(shape.size)/64.0f + padding;
+    float scale = (std::max)(size.x,size.y);
+    vec2 rem = vec2(shape.size)/64.0f - vec2(scale);
+    return mat3(scale,       0,       0 + rem.x/2 + shape.offset.x/64.0f ,
+                0,      -scale,   scale + rem.y/2 + shape.offset.y/64.0f ,
+                0,           0,   scale);
+}
+
+static void rect(draw_list &batch, ivec2 A, ivec2 B, int Z,
+    uint shape_num, float padding, uint color)
+{
+    Shape &shape = ctx.shapes[shape_num];
+    auto t = shape_transform(shape, padding);
+    auto UV0 = vec3(0,0,1) * t;
+    auto UV1 = vec3(1,1,1) * t;
+    rect(batch, tbo_iid, A, B, Z, UV0, UV1, color, shape_num);
 }
 
 static std::string format_string(const char* fmt, ...)
@@ -273,11 +301,11 @@ static void draw(double tn, double td)
     text_renderer_ft renderer(&manager);
 
     glfwGetFramebufferSize(window, &width, &height);
-    glm::ivec2 screen(width, height), size((std::min)(width, height));
-    glm::ivec2 p1 = (screen - size)/2, p2 = p1 + size;
+    ivec2 screen(width, height), size((std::min)(width, height));
+    ivec2 p1 = (screen - size)/2, p2 = p1 + size;
 
-    /* draw glyph */
-    rect(batch, tbo_iid, p1, p2, 0, 0xff000000);
+    rect(batch, p1, p2, /* z = */ 0, /* shape_num = */ 0,
+        /* pad = */ 8.0f, /* color = */ 0xff000000);
 
     /* render stats text */
     int x = 10, y = height - 10;
@@ -307,6 +335,7 @@ static void draw(double tn, double td)
         vertex_array_pointer(&canvas, "a_pos", 3, GL_FLOAT, 0, &draw_vertex::pos);
         vertex_array_pointer(&canvas, "a_uv0", 2, GL_FLOAT, 0, &draw_vertex::uv);
         vertex_array_pointer(&canvas, "a_color", 4, GL_UNSIGNED_BYTE, 1, &draw_vertex::color);
+        vertex_array_pointer(&canvas, "a_material", 1, GL_FLOAT, 0, &draw_vertex::material);
         vertex_array_1f(&canvas, "a_gamma", 2.0f);
         glBindVertexArray(0);
     }
@@ -359,7 +388,7 @@ static void display()
 
 static void update_uniforms(program *prog)
 {
-    uniform_matrix_4fv(prog, "u_mvp", (const GLfloat *)mvp);
+    uniform_matrix_4fv(prog, "u_mvp", (const GLfloat *)&mvp[0][0]);
     uniform_1i(prog, "u_tex0", 0);
     uniform_1i(prog, "u_tex1", 1);
     uniform_1i(prog, "u_tex2", 2);
@@ -367,8 +396,9 @@ static void update_uniforms(program *prog)
 
 static void reshape(int width, int height)
 {
-    mat4x4_ortho(mvp, 0.0f, (float)width, (float)height, 0.0f, 0.0f, 100.0f);
-    uniform_matrix_4fv(&simple, "u_mvp", (const GLfloat *)mvp);
+    mvp = glm::ortho(0.0f, (float)width,(float)height, 0.0f, 0.0f, 100.0f);
+
+    uniform_matrix_4fv(&simple, "u_mvp", (const GLfloat *)&mvp[0][0]);
     glViewport(0, 0, width, height);
 
     glUseProgram(canvas.pid);
@@ -383,7 +413,6 @@ static void reshape(int width, int height)
 
 void create_tbo(int codepoint)
 {
-    Context ctx;
     font_face *face = manager.findFontByPath(font_path);
     FT_Face ftface = static_cast<font_face_ft*>(face)->ftface;
     int glyph = FT_Get_Char_Index(ftface, codepoint);
