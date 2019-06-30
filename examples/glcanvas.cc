@@ -360,8 +360,6 @@ static void draw(double tn, double td)
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_BUFFER, shape_tb.tex);
             glActiveTexture(GL_TEXTURE1);
-            glBindTexture(GL_TEXTURE_BUFFER, contour_tb.tex);
-            glActiveTexture(GL_TEXTURE2);
             glBindTexture(GL_TEXTURE_BUFFER, edge_tb.tex);
         } else {
             glActiveTexture(GL_TEXTURE0);
@@ -390,8 +388,8 @@ static void update_uniforms(program *prog)
 {
     uniform_matrix_4fv(prog, "u_mvp", (const GLfloat *)&mvp[0][0]);
     uniform_1i(prog, "u_tex0", 0);
-    uniform_1i(prog, "u_tex1", 1);
-    uniform_1i(prog, "u_tex2", 2);
+    uniform_1i(prog, "tb_shape", 0);
+    uniform_1i(prog, "tb_edge", 1);
 }
 
 static void reshape(int width, int height)
@@ -421,8 +419,7 @@ void create_tbo(int codepoint)
     print_shape(ctx, 0);
 
     buffer_texture_create(shape_tb, ctx.shapes, GL_TEXTURE0, GL_R32I);
-    buffer_texture_create(contour_tb, ctx.contours, GL_TEXTURE1, GL_R32I);
-    buffer_texture_create(edge_tb, ctx.edges, GL_TEXTURE2, GL_R32F);
+    buffer_texture_create(edge_tb, ctx.edges, GL_TEXTURE1, GL_R32F);
 }
 
 /* OpenGL initialization */

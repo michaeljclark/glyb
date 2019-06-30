@@ -10,9 +10,8 @@ varying float v_gamma;
 varying float v_glyph;
 varying float v_material;
 
-uniform isamplerBuffer u_tex0;
-uniform isamplerBuffer u_tex1;
-uniform samplerBuffer u_tex2;
+uniform isamplerBuffer tb_shape;
+uniform samplerBuffer tb_edge;
 
 #define FLT_MAX 3.4028235e38
 #define M_PI 3.1415926535897932384626433832795
@@ -258,24 +257,24 @@ float signedDistanceCubic(vec2 p[4], out float dir, vec2 origin, out float param
 void getShape(out Shape shape, int shape_num)
 {
     int o = shape_num * 8;
-    shape.contour_offset = texelFetch(u_tex0, o + 0).r;
-    shape.contour_count = texelFetch(u_tex0, o + 1).r;
-    shape.edge_offset = texelFetch(u_tex0, o + 2).r;
-    shape.edge_count = texelFetch(u_tex0, o + 3).r;
-    shape.offset = vec2(texelFetch(u_tex0, o + 4).r,
-                        texelFetch(u_tex0, o + 5).r) / 64.f;
-    shape.size = vec2(texelFetch(u_tex0, o + 6).r,
-                      texelFetch(u_tex0, o + 7).r) / 64.f;
+    shape.contour_offset = texelFetch(tb_shape, o + 0).r;
+    shape.contour_count =  texelFetch(tb_shape, o + 1).r;
+    shape.edge_offset =    texelFetch(tb_shape, o + 2).r;
+    shape.edge_count =     texelFetch(tb_shape, o + 3).r;
+    shape.offset =    vec2(texelFetch(tb_shape, o + 4).r,
+                           texelFetch(tb_shape, o + 5).r) / 64.f;
+    shape.size =      vec2(texelFetch(tb_shape, o + 6).r,
+                           texelFetch(tb_shape, o + 7).r) / 64.f;
 }
 
 void getEdge(out Edge edge, int edge_num)
 {
     int o = edge_num * 9;
-    edge.edge_type = int(texelFetch(u_tex2, o + 0).r);
-    edge.p[0] = vec2(texelFetch(u_tex2, o + 1).r, texelFetch(u_tex2, o + 2).r);
-    edge.p[1] = vec2(texelFetch(u_tex2, o + 3).r, texelFetch(u_tex2, o + 4).r);
-    edge.p[2] = vec2(texelFetch(u_tex2, o + 5).r, texelFetch(u_tex2, o + 6).r);
-    edge.p[3] = vec2(texelFetch(u_tex2, o + 7).r, texelFetch(u_tex2, o + 8).r);
+    edge.edge_type = int(texelFetch(tb_edge, o + 0).r);
+    edge.p[0] = vec2(texelFetch(tb_edge, o + 1).r, texelFetch(tb_edge, o + 2).r);
+    edge.p[1] = vec2(texelFetch(tb_edge, o + 3).r, texelFetch(tb_edge, o + 4).r);
+    edge.p[2] = vec2(texelFetch(tb_edge, o + 5).r, texelFetch(tb_edge, o + 6).r);
+    edge.p[3] = vec2(texelFetch(tb_edge, o + 7).r, texelFetch(tb_edge, o + 8).r);
 }
 
 float getDistanceEdge(Edge edge, vec2 origin, out float dir, out float param)
