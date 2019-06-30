@@ -1,6 +1,4 @@
-#version 130
-
-#extension GL_EXT_gpu_shader4 : enable
+#version 110
 
 attribute vec3 a_pos;
 attribute vec2 a_uv0;
