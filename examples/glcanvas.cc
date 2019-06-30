@@ -49,6 +49,8 @@
 
 using namespace std::chrono;
 
+using dvec2 = glm::dvec2;
+
 /* globals */
 
 enum { tbo_iid = 99 };
@@ -63,10 +65,12 @@ static mat4 mvp;
 static GLFWwindow* window;
 
 static const char *font_path = "fonts/DejaVuSans.ttf";
+static const char *render_text = "καλως ηρθες";
 static const char* text_lang = "en";
 static const int font_dpi = 72;
-static const int font_size_default = 18;
+static const int stats_font_size = 18;
 
+static float zoom = 128.0f;
 static int width = 1024, height = 768;
 static double tl, tn, td;
 static bool help_text = false;
@@ -76,6 +80,7 @@ static int codepoint = 'g';
 
 Context ctx;
 draw_list batch;
+vec2 origin;
 
 static program* cmd_shader_gl(int cmd_shader)
 {
@@ -103,21 +108,15 @@ static void rect(draw_list &b, uint iid, ivec2 A, ivec2 B, int Z,
         {o0, o3, o1, o1, o3, o2});
 }
 
-static mat3 shape_transform(Shape &shape, float padding)
-{
-    vec2 size = vec2(shape.size) + padding;
-    float scale = (std::max)(size.x,size.y);
-    vec2 rem = vec2(shape.size) - vec2(scale);
-    return mat3(scale,       0,       0 + rem.x/2 + shape.offset.x ,
-                0,      -scale,   scale + rem.y/2 + shape.offset.y ,
-                0,           0,   scale);
-}
-
 static void rect(draw_list &batch, ivec2 A, ivec2 B, int Z,
     uint shape_num, float padding, uint color)
 {
     Shape &shape = ctx.shapes[shape_num];
-    auto t = shape_transform(shape, padding);
+    auto &size = shape.size;
+    auto &offset = shape.offset;
+    auto t = mat3(size.x,       0,        offset.x ,
+                       0,      -size.y,   size.y + offset.y ,
+                       0,       0,        1);
     auto UV0 = vec3(0,0,1) * t;
     auto UV1 = vec3(1,1,1) * t;
     rect(batch, tbo_iid, A, B, Z, UV0, UV1, color, shape_num);
@@ -151,6 +150,8 @@ static std::vector<std::string> get_stats(font_face *face, float td)
     return stats;
 }
 
+static std::map<int,int> glyph_map;
+
 static void draw(double tn, double td)
 {
     std::vector<glyph_shape> shapes;
@@ -161,11 +162,58 @@ static void draw(double tn, double td)
 
     glfwGetFramebufferSize(window, &width, &height);
 
-    ivec2 screen(width, height), size((std::min)(width, height));
-    ivec2 p1 = (screen - size)/2, p2 = p1 + size;
+    {
+        int font_size = (int)zoom;
 
-    rect(batch, p1, p2, /* z = */ 0, /* shape_num = */ 0,
-        /* pad = */ 8.0f, /* color = */ 0xff000000);
+        auto face = manager.findFontByPath(font_path);
+        FT_Face ftface = static_cast<font_face_ft*>(face)->ftface;
+        text_segment segment(render_text, text_lang, face,
+            font_size * 64, 0, 0, 0);
+
+        shaper.shape(shapes, &segment);
+        float text_width = 0;
+        for (auto &s : shapes) {
+            text_width += s.x_advance/64.0f;
+        }
+
+        ivec2 screen(width, height), text_size((int)text_width, font_size);
+        vec2 tl = vec2(screen - text_size)/2.0f;
+
+        float x = 0;
+        size_t shapes_size = ctx.shapes.size();
+
+        for (auto &s : shapes) {
+            /* lookup shape num, load glyph if necessary */
+            int shape_num = 0;
+            auto gi = glyph_map.find(s.glyph);
+            if (gi == glyph_map.end()) {
+                shape_num = glyph_map[s.glyph] = ctx.shapes.size();
+                load_glyph(&ctx, ftface, 1024, font_dpi, s.glyph);
+                print_shape(ctx, shape_num);
+            } else {
+                shape_num = gi->second;
+            }
+            Shape &shape = ctx.shapes[shape_num];
+
+            /* figure out glyph dimensions */
+            float s_scale = font_size * 64.0f / 1024.0f;
+            vec2 s_size = shape.size * s_scale;
+            vec2 s_offset = shape.offset * s_scale;
+            vec2 p1 = tl + vec2(x, font_size-s_size.y) +
+                vec2(s_offset.x,-s_offset.y) + origin;
+            vec2 p2 = p1 + vec2(s_size.x,s_size.y);
+
+            /* emit geometry and advance */
+            rect(batch, p1, p2, /* z = */ 0, /* shape_num = */ shape_num,
+                /* pad = */ 0.0f, /* color = */ 0xff000000);
+            x += s.x_advance/64.0f + segment.tracking;
+        }
+
+        if (shapes_size != ctx.shapes.size()) {
+            buffer_texture_create(shape_tb, ctx.shapes, GL_TEXTURE0, GL_R32I);
+            buffer_texture_create(edge_tb, ctx.edges, GL_TEXTURE1, GL_R32F);
+        }
+    }
 
     /* render stats text */
     int x = 10, y = height - 10;
@@ -174,12 +222,12 @@ static void draw(double tn, double td)
     const uint32_t bg_color = 0xbfffffff;
     for (size_t i = 0; i < stats.size(); i++) {
         text_segment stats_segment(stats[i], text_lang, face,
-            (int)((float)font_size_default * 64.0f), x, y, 0xff000000);
+            (int)((float)stats_font_size * 64.0f), x, y, 0xff000000);
         shapes.clear();
         shaper.shape(shapes, &stats_segment);
         font_atlas *atlas = manager.getCurrentAtlas(face);
         renderer.render(batch, shapes, &stats_segment);
-        y -= ((float)font_size_default * 1.334f);
+        y -= ((float)stats_font_size * 1.334f);
     }
 
     /* update vertex and index buffers arrays (idempotent) */
@@ -254,17 +302,52 @@ static void reshape(int width, int height)
     update_uniforms(&simple);
 }
 
-void create_tbo(int codepoint)
+/* keyboard callback */
+
+static void keyboard(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-    font_face *face = manager.findFontByPath(font_path);
-    FT_Face ftface = static_cast<font_face_ft*>(face)->ftface;
-    int glyph = FT_Get_Char_Index(ftface, codepoint);
+    if (key == GLFW_KEY_ESCAPE) {
+        exit(0);
+    }
+}
 
-    load_glyph(&ctx, ftface, 128 * 64, font_dpi, glyph);
-    print_shape(ctx, 0);
+/* mouse callbacks */
 
-    buffer_texture_create(shape_tb, ctx.shapes, GL_TEXTURE0, GL_R32I);
-    buffer_texture_create(edge_tb, ctx.edges, GL_TEXTURE1, GL_R32F);
+static bool mouse_left_drag = false;
+static dvec2 mouse_pos, mouse_pos_drag_start;
+
+static void scroll(GLFWwindow* window, double xoffset, double yoffset)
+{
+    int quantum = ((int)zoom >> 4);
+    if (yoffset < 0 && zoom < 65536) {
+        float ratio = 1.0f + (float)quantum / (float)zoom;
+        origin *= ratio;
+        zoom += quantum;
+    } else if (yoffset > 0 && zoom > 64) {
+        float ratio = 1.0f + (float)quantum / (float)zoom;
+        origin /= ratio;
+        zoom -= quantum;
+    }
+}
+
+static void mouse_button(GLFWwindow* window, int button, int action, int mods)
+{
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        mouse_left_drag = true;
+        mouse_pos_drag_start = mouse_pos;
+    } else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
+        mouse_left_drag = false;
+    }
+}
+
+static void cursor_position(GLFWwindow* window, double xpos, double ypos)
+{
+    mouse_pos = dvec2(xpos, ypos);
+
+    if (mouse_left_drag) {
+        origin += mouse_pos - mouse_pos_drag_start;
+        mouse_pos_drag_start = mouse_pos;
+    }
 }
 
 /* OpenGL initialization */
@@ -303,11 +386,13 @@ static void initialize()
     vertex_array_pointer(p, "a_pos", 3, GL_FLOAT, 0, &draw_vertex::pos);
     vertex_array_pointer(p, "a_uv0", 2, GL_FLOAT, 0, &draw_vertex::uv);
     vertex_array_pointer(p, "a_color", 4, GL_UNSIGNED_BYTE, 1, &draw_vertex::color);
-    vertex_array_pointer(p, "a_material", 1, GL_FLOAT, 0, &draw_vertex::material);
+    vertex_array_pointer(p, "x_material", 1, GL_FLOAT, 0, &draw_vertex::material);
     vertex_array_1f(p, "a_gamma", 2.0f);
     glBindVertexArray(0);
 
-    create_tbo(codepoint);
+    /* create shape and edge buffer textures */
+    buffer_texture_create(shape_tb, ctx.shapes, GL_TEXTURE0, GL_R32I);
+    buffer_texture_create(edge_tb, ctx.edges, GL_TEXTURE1, GL_R32F);
 
     /* pipeline */
     glEnable(GL_CULL_FACE);
@@ -337,6 +422,10 @@ static void glcanvas(int argc, char **argv)
     glfwMakeContextCurrent(window);
     gladLoadGL();
     glfwSwapInterval(1);
+    glfwSetScrollCallback(window, scroll);
+    glfwSetKeyCallback(window, keyboard);
+    glfwSetMouseButtonCallback(window, mouse_button);
+    glfwSetCursorPosCallback(window, cursor_position);
     glfwSetFramebufferSizeCallback(window, resize);
     glfwGetFramebufferSize(window, &width, &height);
 

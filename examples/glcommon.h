@@ -226,11 +226,15 @@ static void buffer_texture_create(texture_buffer &buf, std::vector<T> vec,
     GLvoid *data = vec.data();
     size_t length = vec.size() * sizeof(T);
 
-    glGenBuffers(1, &buf.tbo);
+    if (!buf.tbo) {
+        glGenBuffers(1, &buf.tbo);
+    }
     glBindBuffer(GL_TEXTURE_BUFFER, buf.tbo);
     glBufferData(GL_TEXTURE_BUFFER, length, data, GL_STATIC_DRAW);
 
-    glGenTextures(1, &buf.tex);
+    if (!buf.tex) {
+        glGenTextures(1, &buf.tex);
+    }
     glActiveTexture(texture);
     glBindTexture(GL_TEXTURE_BUFFER, buf.tex);
     glTexBuffer(GL_TEXTURE_BUFFER, format, buf.tbo);
