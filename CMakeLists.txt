@@ -150,6 +150,7 @@ target_link_libraries(glsimple libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})
 
 add_executable(glyphic examples/glyphic.cc)
 target_link_libraries(glyphic libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})
+set_target_properties(glyphic PROPERTIES CXX_STANDARD 17)
 
 file(GLOB BINPACK_TESTS tests/*.cc)
 foreach(src ${BINPACK_TESTS})
