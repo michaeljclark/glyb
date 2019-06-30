@@ -4,6 +4,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <cstdarg>
 #include <cstring>
 #include <cerrno>
 #include <cctype>
@@ -26,7 +27,6 @@
 
 #include "binpack.h"
 #include "linmath.h"
-#include "file.h"
 #include "image.h"
 #include "draw.h"
 #include "logger.h"
@@ -57,7 +57,6 @@ static GLubyte *buffer;
 static int width = 1024, height = 768;
 static size_t frame_step = 1;
 static size_t frame_count = 1;
-static char filename[PATH_MAX];;
 static const char *filename_template = "video/ppm/binpack-%09zu.ppm";
 static bool help_text = false;
 static bool batch_mode = false;
@@ -394,6 +393,29 @@ static void fbo_initialize()
     glBindFramebuffer(GL_FRAMEBUFFER, render_fbo);
 }
 
+/* utility functions */
+
+static std::string format_string(const char* fmt, ...)
+{
+    std::vector<char> buf(128);
+    va_list ap;
+
+    va_start(ap, fmt);
+    int len = vsnprintf(buf.data(), buf.capacity(), fmt, ap);
+    va_end(ap);
+
+    std::string str;
+    if (len >= (int)buf.capacity()) {
+        buf.resize(len + 1);
+        va_start(ap, fmt);
+        vsnprintf(buf.data(), buf.capacity(), fmt, ap);
+        va_end(ap);
+    }
+    str = buf.data();
+
+    return str;
+}
+
 /* write image to file */
 
 static void write_ppm(const char *filename, const uint8_t *buffer, int width, int height)
@@ -451,9 +473,9 @@ static void binpack_offline(int argc, char **argv)
         update_buffers();
         display();
         glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
-        snprintf(filename, sizeof(filename), filename_template, i);
-        write_ppm(filename, buffer, width, height);
-        printf("wrote output to %s\n", filename);
+        std::string filename = format_string(filename_template, i);
+        write_ppm(filename.c_str(), buffer, width, height);
+        printf("wrote output to %s\n", filename.c_str());
         for (size_t j = 0; j < frame_step; j++) {
             if (!bp.find_region(++step_count,rnd_size()).first) goto out;
         }

@@ -74,7 +74,6 @@ static bool batch_mode = false;
 static size_t frame_rate = 60;
 static size_t frame_skip = 15 * frame_rate;
 static size_t frame_count = 15 * frame_rate;
-static char filename[PATH_MAX];;
 static const char *filename_template = "video/ppm/glyphic-%09zu.ppm";
 static const char *atlas_dump_template = nullptr;
 
@@ -548,17 +547,17 @@ static void glyphic_offline(int argc, char **argv)
         auto face = manager.findFontByPath(font_path);
         size_t i = 0;
         for (auto atlas : manager.faceAtlasMap[face]) {
-            snprintf(filename, sizeof(filename), atlas_dump_template, i++);
+            std::string filename = format_string(atlas_dump_template, i++);
             image::saveToFile(std::string(filename), atlas->img, &image::PNG);
-            printf("frame-%09zu : wrote atlas to %s\n", frame_num, filename);
+            printf("frame-%09zu : wrote atlas to %s\n", frame_num, filename.c_str());
         }
     }
     for (size_t i = 1; i <= frame_count; i++) {
         draw(frame_num/(float)frame_rate, 1/(float)frame_rate);
         glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
-        snprintf(filename, sizeof(filename), filename_template, i);
-        write_ppm(filename, buffer, width, height);
-        printf("frame-%09zu : wrote output to %s\n", frame_num, filename);
+        std::string filename = format_string(filename_template, i++);
+        write_ppm(filename.c_str(), buffer, width, height);
+        printf("frame-%09zu : wrote output to %s\n", frame_num, filename.c_str());
         frame_num++;
     }
 out:
