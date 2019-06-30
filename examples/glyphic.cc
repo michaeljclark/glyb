@@ -169,7 +169,7 @@ static std::vector<std::string> get_stats(font_face *face, float td)
     return stats;
 }
 
-static int text_width(std::vector<glyph_shape> &shapes, text_segment &segment)
+static float text_width(std::vector<glyph_shape> &shapes, text_segment &segment)
 {
     float tw = 0;
     for (auto &s : shapes) {
@@ -227,7 +227,7 @@ static void draw(double tn, double td)
     uint32_t color1 = 0xff808080;
     uint32_t color2 = 0xff000000;
     size_t wisdom_count = high_scalability ? 36 : 9;
-    float scale = sqrtf(width*height)/sqrtf(1024*768);
+    float scale = sqrtf((float)width*(float)height)/sqrtf(1024.0f*768.0f);
     float tw;
 
     draw_list_clear(batch);
@@ -241,9 +241,9 @@ static void draw(double tn, double td)
         }
 
         if (wise[j].x + wise[j].w <= 0) {
-            wise[j].x = width + r(0,width);
-            wise[j].y = (j + 1) * (high_scalability ? 20 : 80);
-            wise[j].s = r(100, 100);
+            wise[j].x = (float)width + (float)r(0,width);
+            wise[j].y = (float)(j + 1) * (high_scalability ? 20.0f : 80.0f);
+            wise[j].s = (float)r(100, 100);
             wise[j].font_size = 12 + r(0, high_scalability ? 5 : 10) * 4;
 
             wise[j].s = wise[j].s * scale;
@@ -253,7 +253,8 @@ static void draw(double tn, double td)
             int c = r(64,127);
             wise[j].color = 0xff000000 | c << 16 | c << 8 | c;
             do {
-                wise[j].book_wisdom = book.size() > 0 ? book[r(32,book.size()-33)] :
+                wise[j].book_wisdom = book.size() > 0 ?
+                book[r(32,(int)book.size()-33)] :
                 "wisdom wisdom wisdom wisdom wisdom wisdom wisdom wisdom wisdom";
             } while (wise[j].book_wisdom.size() < 20);
         }
@@ -268,26 +269,26 @@ static void draw(double tn, double td)
         wisdom_segment.y = wise[j].y;
         renderer.render(batch, shapes, &wisdom_segment);
 
-        wise[j].x -= wise[j].s * td;
+        wise[j].x -= wise[j].s * (float)td;
     }
 
     /* render pulsating glyphic text */
-    float s = sin(fmod(tn, 1.f) * 4.0f * M_PI);
-    float font_size = 160 + (int)(s * 25);
+    float s = sinf(fmodf((float)tn, 1.f) * 4.0f * (float)M_PI);
+    float font_size = 160.0f + floorf(s * 25);
     text_segment glyphic_segment(render_text, text_lang, face,
         (int)((float)font_size * scale * 64.0f), 0, 0, color2);
-    glyphic_segment.tracking = -5;
+    glyphic_segment.tracking = -5.0f;
 
     shapes.clear();
     shaper.shape(shapes, &glyphic_segment);
     tw = text_width(shapes, glyphic_segment);
-    glyphic_segment.x = (width - (int)tw) / 2 - 10;
-    glyphic_segment.y =  height/2 + font_size*0.33f;
+    glyphic_segment.x = (float)(width - (int)tw) / 2.0f - 10.0f;
+    glyphic_segment.y =  (float)height/2.0f + (float)font_size*0.33f;
     renderer.render(batch, shapes, &glyphic_segment);
 
     /* render stats text */
-    int x = 10, y = height - 10;
-    std::vector<std::string> stats = get_stats(face, td);
+    float x = 10.0f, y = height - 10.0f;
+    std::vector<std::string> stats = get_stats(face, (float)td);
     const uint32_t bg_color = 0xbfffffff;
     for (size_t i = 0; i < stats.size(); i++) {
         text_segment stats_segment(stats[i], text_lang, face,
@@ -296,9 +297,9 @@ static void draw(double tn, double td)
         shaper.shape(shapes, &stats_segment);
         tw = text_width(shapes, stats_segment);
         font_atlas *atlas = manager.getCurrentAtlas(face);
-        int h = (int)((float)stats_font_fize * 1.0f * scale);
-        int h2 = (int)((float)stats_font_fize * 0.334f * scale);
-        rect(batch, atlas, x, y-h-h2/2, x+tw, y+h2/2, -0.0001f, bg_color);
+        float h = ((float)stats_font_fize * 1.0f * scale);
+        float h2 = ((float)stats_font_fize * 0.334f * scale);
+        rect(batch, atlas, x, y-h-h2/2.0f, x+tw, y+h2/2.0f, -0.0001f, bg_color);
         renderer.render(batch, shapes, &stats_segment);
         y -= ((float)stats_font_fize * scale * 1.334f);
     }
@@ -564,7 +565,6 @@ static void glyphic_offline(int argc, char **argv)
         printf("frame-%09zu : wrote output to %s\n", frame_num, filename.c_str());
         frame_num++;
     }
-out:
 
     delete [] buffer;
 }
