@@ -396,7 +396,6 @@ static void reshape(int width, int height)
 {
     mvp = glm::ortho(0.0f, (float)width,(float)height, 0.0f, 0.0f, 100.0f);
 
-    uniform_matrix_4fv(&simple, "u_mvp", (const GLfloat *)&mvp[0][0]);
     glViewport(0, 0, width, height);
 
     glUseProgram(canvas.pid);

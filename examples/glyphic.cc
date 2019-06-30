@@ -355,7 +355,6 @@ static void update_uniforms(program *prog)
 static void reshape(int width, int height)
 {
     mat4x4_ortho(mvp, 0.0f, (float)width, (float)height, 0.0f, 0.0f, 100.0f);
-    uniform_matrix_4fv(&msdf, "u_mvp", (const GLfloat *)mvp);
     glViewport(0, 0, width, height);
 
     glUseProgram(msdf.pid);
