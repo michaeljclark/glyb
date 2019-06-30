@@ -312,7 +312,7 @@ void main()
 
     float dx = dFdx( v_uv0.x );
     float dy = dFdy( v_uv0.y );
-    float ps = sqrt(dx*dx + dy*dy);
+    float ps = sqrt(dx*dx + dy*dy)/2.0;
     float alpha = smoothstep(-ps, ps, distance);
 
     gl_FragColor = vec4(pow(v_color.rgb, vec3(1.0/v_gamma)), alpha);
