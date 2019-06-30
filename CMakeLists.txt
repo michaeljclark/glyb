@@ -116,12 +116,15 @@ set(GLYPHIC_SOURCES
   src/msdf.h
   src/multi.cc
   src/multi.h
+  src/shape.cc
+  src/shape.h
   src/text.cc
   src/text.h
   src/utf8.cc
   src/utf8.h
 )
 add_library(libglyphic STATIC ${GLYPHIC_SOURCES})
+set_target_properties(libglyphic PROPERTIES CXX_STANDARD 17)
 
 add_executable(genatlas examples/genatlas.cc)
 target_link_libraries(genatlas libglyphic ${LIBS} ${CMAKE_DL_LIBS})

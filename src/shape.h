@@ -1,0 +1,57 @@
+// See LICENSE for license details.
+
+#pragma once
+
+using ivec2 = glm::ivec2;
+using vec2 = glm::vec2;
+using vec3 = glm::vec3;
+using mat3 = glm::mat3;
+using mat4 = glm::mat4;
+
+/*
+ * shape
+ *
+ * The following shape code is derived from msdfgen/ext/import-font.cpp
+ * It has been simplified and adopts a data-oriented programming approach.
+ * The context output is arrays formatted suitably to download to a GPU.
+ */
+
+enum EdgeType { Linear = 2, Quadratic = 3, Cubic = 4, };
+
+struct Edge {
+    float type;
+    vec2 p[4];
+};
+
+struct Contour {
+    float edge_offset, edge_count;
+};
+
+struct Shape {
+    float contour_offset, contour_count, edge_offset, edge_count;
+    vec2 offset, size;
+};
+
+struct Context {
+    std::vector<Shape> shapes;
+    std::vector<Contour> contours;
+    std::vector<Edge> edges;
+    vec2 pos;
+
+    void newShape(ivec2 offset, vec2 size) {
+        shapes.emplace_back(Shape{(float)contours.size(), 0,
+            (float)edges.size(), 0, offset, size });
+    }
+    void newContour() {
+        contours.emplace_back(Contour{(float)edges.size(), 0});
+        shapes.back().contour_count++;
+    }
+    void newEdge(Edge&& e) {
+        edges.emplace_back(e);
+        contours.back().edge_count++;
+        shapes.back().edge_count++;
+    }
+};
+
+void load_glyph(Context *ctx, FT_Face ftface, int sz, int dpi, int glyph);
+void print_shape(Context &ctx, int shape);
