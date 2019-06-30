@@ -10,7 +10,7 @@ varying float v_gamma;
 varying float v_glyph;
 varying float v_material;
 
-uniform isamplerBuffer tb_shape;
+uniform samplerBuffer tb_shape;
 uniform samplerBuffer tb_edge;
 
 #define FLT_MAX 3.4028235e38
@@ -257,14 +257,14 @@ float signedDistanceCubic(vec2 p[4], out float dir, vec2 origin, out float param
 void getShape(out Shape shape, int shape_num)
 {
     int o = shape_num * 8;
-    shape.contour_offset = texelFetch(tb_shape, o + 0).r;
-    shape.contour_count =  texelFetch(tb_shape, o + 1).r;
-    shape.edge_offset =    texelFetch(tb_shape, o + 2).r;
-    shape.edge_count =     texelFetch(tb_shape, o + 3).r;
+    shape.contour_offset = int(texelFetch(tb_shape, o + 0).r);
+    shape.contour_count =  int(texelFetch(tb_shape, o + 1).r);
+    shape.edge_offset =    int(texelFetch(tb_shape, o + 2).r);
+    shape.edge_count =     int(texelFetch(tb_shape, o + 3).r);
     shape.offset =    vec2(texelFetch(tb_shape, o + 4).r,
-                           texelFetch(tb_shape, o + 5).r) / 64.f;
+                           texelFetch(tb_shape, o + 5).r);
     shape.size =      vec2(texelFetch(tb_shape, o + 6).r,
-                           texelFetch(tb_shape, o + 7).r) / 64.f;
+                           texelFetch(tb_shape, o + 7).r);
 }
 
 void getEdge(out Edge edge, int edge_num)

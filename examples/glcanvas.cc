@@ -94,12 +94,12 @@ struct Edge {
 };
 
 struct Contour {
-    int edge_offset, edge_count;
+    float edge_offset, edge_count;
 };
 
 struct Shape {
-    int contour_offset, contour_count, edge_offset, edge_count;
-    ivec2 offset, size;
+    float contour_offset, contour_count, edge_offset, edge_count;
+    vec2 offset, size;
 };
 
 struct Context {
@@ -108,12 +108,12 @@ struct Context {
     std::vector<Edge> edges;
     vec2 pos;
 
-    void newShape(ivec2 offset, ivec2 size) {
-        shapes.emplace_back(Shape{(int)contours.size(), 0,
-            (int)edges.size(), 0, offset, size });
+    void newShape(ivec2 offset, vec2 size) {
+        shapes.emplace_back(Shape{(float)contours.size(), 0,
+            (float)edges.size(), 0, offset, size });
     }
     void newContour() {
-        contours.emplace_back(Contour{(int)edges.size(), 0});
+        contours.emplace_back(Contour{(float)edges.size(), 0});
         shapes.back().contour_count++;
     }
     void newEdge(Edge&& e) {
@@ -152,12 +152,12 @@ static int ftCubicTo(ftvec *c1, ftvec *c2, ftvec *p, void *u) {
     return 0;
 }
 
-static ivec2 offset(FT_Glyph_Metrics *m) {
-    return ivec2((int)m->horiBearingX, (int)m->horiBearingY-m->height);
+static vec2 offset(FT_Glyph_Metrics *m) {
+    return vec2(m->horiBearingX/64.0f, (m->horiBearingY-m->height)/64.0f);
 }
 
-static ivec2 size(FT_Glyph_Metrics *m) {
-    return ivec2((int)m->width, m->height);
+static vec2 size(FT_Glyph_Metrics *m) {
+    return vec2(m->width/64.0f, m->height/64.0f);
 }
 
 static void load_glyph(Context *ctx, FT_Face ftface, int sz, int dpi, int glyph)
@@ -186,11 +186,11 @@ static void print_shape(Context &ctx, int shape)
     Shape &s = ctx.shapes[shape];
     printf("shape %d (contour count = %d, edge count = %d, "
         "offset = (%d,%d), size = (%d,%d))\n",
-        shape, s.contour_count, s.edge_count,
-        s.offset.x, s.offset.y, s.size.x, s.size.y);
+        shape, (int)s.contour_count, (int)s.edge_count,
+        (int)s.offset.x, (int)s.offset.y, (int)s.size.x, (int)s.size.y);
     for (size_t i = 0; i < s.contour_count; i++) {
         Contour &c = ctx.contours[s.contour_offset + i];
-        printf("  contour %zu (edge count = %d)\n", i, c.edge_count);
+        printf("  contour %zu (edge count = %d)\n", i, (int)c.edge_count);
         for (size_t j = 0; j < c.edge_count; j++) {
             Edge &e = ctx.edges[c.edge_offset + j];
             switch ((int)e.type) {
@@ -248,11 +248,11 @@ static void rect(draw_list &b, uint iid, ivec2 A, ivec2 B, int Z,
 
 static mat3 shape_transform(Shape &shape, float padding)
 {
-    vec2 size = vec2(shape.size)/64.0f + padding;
+    vec2 size = vec2(shape.size) + padding;
     float scale = (std::max)(size.x,size.y);
-    vec2 rem = vec2(shape.size)/64.0f - vec2(scale);
-    return mat3(scale,       0,       0 + rem.x/2 + shape.offset.x/64.0f ,
-                0,      -scale,   scale + rem.y/2 + shape.offset.y/64.0f ,
+    vec2 rem = vec2(shape.size) - vec2(scale);
+    return mat3(scale,       0,       0 + rem.x/2 + shape.offset.x ,
+                0,      -scale,   scale + rem.y/2 + shape.offset.y ,
                 0,           0,   scale);
 }
 
