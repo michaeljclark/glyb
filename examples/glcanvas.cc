@@ -218,6 +218,7 @@ static void print_shape(Context &ctx, int shape)
 /* display  */
 
 Context ctx;
+draw_list batch;
 
 static program* cmd_shader_gl(int cmd_shader)
 {
@@ -295,12 +296,14 @@ static std::vector<std::string> get_stats(font_face *face, float td)
 
 static void draw(double tn, double td)
 {
-    draw_list batch;
     std::vector<glyph_shape> shapes;
     text_shaper_hb shaper;
     text_renderer_ft renderer(&manager);
 
+    draw_list_clear(batch);
+
     glfwGetFramebufferSize(window, &width, &height);
+
     ivec2 screen(width, height), size((std::min)(width, height));
     ivec2 p1 = (screen - size)/2, p2 = p1 + size;
 
@@ -322,23 +325,9 @@ static void draw(double tn, double td)
         y -= ((float)font_size_default * 1.334f);
     }
 
-    /* create vertex and index buffers arrays (idempotent) */
+    /* update vertex and index buffers arrays (idempotent) */
     vertex_buffer_create("vbo", &vbo, GL_ARRAY_BUFFER, batch.vertices);
     vertex_buffer_create("ibo", &ibo, GL_ELEMENT_ARRAY_BUFFER, batch.indices);
-
-    /* one time config for vertex array objects */
-    if (!vao) {
-        glGenVertexArrays(1, &vao);
-        glBindVertexArray(vao);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
-        vertex_array_pointer(&canvas, "a_pos", 3, GL_FLOAT, 0, &draw_vertex::pos);
-        vertex_array_pointer(&canvas, "a_uv0", 2, GL_FLOAT, 0, &draw_vertex::uv);
-        vertex_array_pointer(&canvas, "a_color", 4, GL_UNSIGNED_BYTE, 1, &draw_vertex::color);
-        vertex_array_pointer(&canvas, "x_material", 1, GL_FLOAT, 0, &draw_vertex::material);
-        vertex_array_1f(&canvas, "a_gamma", 2.0f);
-        glBindVertexArray(0);
-    }
 
     /* okay, lets send commands to the GPU */
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -443,6 +432,23 @@ static void initialize()
     glDeleteShader(simple_fsh);
     glDeleteShader(msdf_fsh);
     glDeleteShader(canvas_fsh);
+
+    /* create vertex and index buffers arrays */
+    vertex_buffer_create("vbo", &vbo, GL_ARRAY_BUFFER, batch.vertices);
+    vertex_buffer_create("ibo", &ibo, GL_ELEMENT_ARRAY_BUFFER, batch.indices);
+
+    /* configure vertex array object */
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+    program *p = &canvas; /* use any program to get attribute locations */
+    vertex_array_pointer(p, "a_pos", 3, GL_FLOAT, 0, &draw_vertex::pos);
+    vertex_array_pointer(p, "a_uv0", 2, GL_FLOAT, 0, &draw_vertex::uv);
+    vertex_array_pointer(p, "a_color", 4, GL_UNSIGNED_BYTE, 1, &draw_vertex::color);
+    vertex_array_pointer(p, "a_material", 1, GL_FLOAT, 0, &draw_vertex::material);
+    vertex_array_1f(p, "a_gamma", 2.0f);
+    glBindVertexArray(0);
 
     create_tbo(codepoint);
 

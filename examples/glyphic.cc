@@ -186,6 +186,7 @@ struct wisdom {
     std::string book_wisdom;
 };
 
+static draw_list batch;
 static std::vector<std::string> book;
 static std::vector<wisdom> wise;
 
@@ -213,7 +214,6 @@ static void rect(draw_list &batch, font_atlas *atlas,
 
 static void draw(double tn, double td)
 {
-    draw_list batch;
     std::vector<glyph_shape> shapes;
     text_shaper_hb shaper;
     text_renderer_ft renderer(&manager);
@@ -224,6 +224,8 @@ static void draw(double tn, double td)
     size_t wisdom_count = high_scalability ? 36 : 9;
     float scale = sqrtf(width*height)/sqrtf(1024*768);
     float tw;
+
+    draw_list_clear(batch);
 
     glfwGetFramebufferSize(window, &width, &height);
 
@@ -296,18 +298,8 @@ static void draw(double tn, double td)
     }
 
     /* updates buffers */
-    program *prog = manager.msdf_enabled ? &msdf : &simple;
-    if (!vao) {
-        glGenVertexArrays(1, &vao);
-    }
-    glBindVertexArray(vao);
     vertex_buffer_create("vbo", &vbo, GL_ARRAY_BUFFER, batch.vertices);
     vertex_buffer_create("ibo", &ibo, GL_ELEMENT_ARRAY_BUFFER, batch.indices);
-    vertex_array_pointer(prog, "a_pos", 3, GL_FLOAT, 0, &draw_vertex::pos);
-    vertex_array_pointer(prog, "a_uv0", 2, GL_FLOAT, 0, &draw_vertex::uv);
-    vertex_array_pointer(prog, "a_color", 4, GL_UNSIGNED_BYTE, 1, &draw_vertex::color);
-    vertex_array_1f(prog, "a_gamma", 2.0f);
-    glBindVertexArray(0);
 
     /* update textures */
     for (auto img : batch.images) {
@@ -381,6 +373,22 @@ static void initialize()
     glDeleteShader(vsh);
     glDeleteShader(simple_fsh);
     glDeleteShader(msdf_fsh);
+
+    /* create vertex and index buffers arrays */
+    vertex_buffer_create("vbo", &vbo, GL_ARRAY_BUFFER, batch.vertices);
+    vertex_buffer_create("ibo", &ibo, GL_ELEMENT_ARRAY_BUFFER, batch.indices);
+
+    /* configure vertex array object */
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+    program *p = &simple;
+    vertex_array_pointer(p, "a_pos", 3, GL_FLOAT, 0, &draw_vertex::pos);
+    vertex_array_pointer(p, "a_uv0", 2, GL_FLOAT, 0, &draw_vertex::uv);
+    vertex_array_pointer(p, "a_color", 4, GL_UNSIGNED_BYTE, 1, &draw_vertex::color);
+    vertex_array_1f(p, "a_gamma", 2.0f);
+    glBindVertexArray(0);
 
     /*
      * we need to scan font directory for caching to work, as it uses
