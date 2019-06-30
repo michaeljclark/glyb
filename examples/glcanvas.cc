@@ -427,14 +427,18 @@ static void initialize()
 {
     GLuint simple_fsh, msdf_fsh, canvas_fsh, vsh;
 
+    std::vector<std::string> attrs = {
+        "a_pos", "a_uv0", "a_color", "x_material", "a_gamma"
+    };
+
     /* shader program */
     vsh = compile_shader(GL_VERTEX_SHADER, "shaders/simple.vsh");
     simple_fsh = compile_shader(GL_FRAGMENT_SHADER, "shaders/simple.fsh");
     msdf_fsh = compile_shader(GL_FRAGMENT_SHADER, "shaders/msdf.fsh");
     canvas_fsh = compile_shader(GL_FRAGMENT_SHADER, "shaders/canvas.fsh");
-    link_program(&simple, vsh, simple_fsh);
-    link_program(&msdf, vsh, msdf_fsh);
-    link_program(&canvas, vsh, canvas_fsh);
+    link_program(&simple, vsh, simple_fsh, attrs);
+    link_program(&msdf, vsh, msdf_fsh, attrs);
+    link_program(&canvas, vsh, canvas_fsh, attrs);
     glDeleteShader(vsh);
     glDeleteShader(simple_fsh);
     glDeleteShader(msdf_fsh);

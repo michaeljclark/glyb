@@ -64,7 +64,21 @@ static GLuint compile_shader(GLenum type, const char *filename)
     return shader;
 }
 
-static void link_program(program *prog, GLuint vsh, GLuint fsh)
+static std::string to_string(std::map<std::string,GLuint> &list)
+{
+    std::string s("{");
+    for (auto &ent : list) {
+        s.append(s.size() > 1 ? ", ": " ");
+        s.append(ent.first);
+        s.append("=");
+        s.append(std::to_string(ent.second));
+    }
+    s.append(s.size() > 1 ? " }": "}");
+    return s;
+}
+
+static void link_program(program *prog, GLuint vsh, GLuint fsh,
+    std::vector<std::string> attrs = std::vector<std::string>())
 {
     GLuint n = 1;
     GLint status, numattrs, numuniforms;
@@ -110,9 +124,24 @@ static void link_program(program *prog, GLuint vsh, GLuint fsh)
      * starting from 1 counting upwards. We then re-link the program,
      * as we don't know the attribute names until shader is linked.
      */
+    /* bind specified attributes so order is consistent across shaders */
+    GLuint attr_idx = 1;
+    for (auto &attr_name : attrs) {
+        auto ai = prog->attrs.find(attr_name);
+        if (ai != prog->attrs.end()) {
+            glBindAttribLocation(prog->pid, (prog->attrs[attr_name] = attr_idx),
+                attr_name.c_str());
+        }
+        attr_idx++;
+    }
+    /* bind remaining unspecified attributes in increasing order */
     for (auto &ent : prog->attrs) {
-        glBindAttribLocation(prog->pid, (prog->attrs[ent.first] = n++),
-            ent.first.c_str());
+        auto ai = std::find(attrs.begin(), attrs.end(), ent.first);
+        if (ai == attrs.end()) {
+            glBindAttribLocation(prog->pid, (prog->attrs[ent.first] = attr_idx),
+                ent.first.c_str());
+            attr_idx++;
+        }
     }
     glLinkProgram(prog->pid);
     glGetProgramiv(prog->pid, GL_LINK_STATUS, &status);
@@ -121,12 +150,17 @@ static void link_program(program *prog, GLuint vsh, GLuint fsh)
         exit(1);
     }
 
-    for (auto &ent : prog->attrs) {
-        Debug("attr %s = %d\n", ent.first.c_str(), ent.second);
-    }
-    for (auto &ent : prog->uniforms) {
-        Debug("uniform %s = %d\n", ent.first.c_str(), ent.second);
-    }
+    Debug("program = %u, attributes %s, uniforms %s\n", prog->pid,
+        to_string(prog->attrs).c_str(),
+        to_string(prog->uniforms).c_str());
+}
+
+static std::unique_ptr<program> make_program(GLuint vsh, GLuint fsh,
+    std::vector<std::string> attrs = std::vector<std::string>())
+{
+    auto prog = std::make_unique<program>();
+    link_program(prog.get(), vsh, fsh, attrs);
+    return std::move(prog);
 }
 
 static void use_program(program *prog)
