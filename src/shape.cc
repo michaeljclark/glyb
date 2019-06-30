@@ -1,14 +1,6 @@
 // See LICENSE for license details.
 
 #include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <cerrno>
-#include <cctype>
-#include <climits>
-#include <cassert>
-#include <cmath>
-#include <ctime>
 
 #include <vector>
 
@@ -19,8 +11,6 @@
 #include FT_OUTLINE_H
 
 #include "glm/glm.hpp"
-#include "glm/ext/matrix_float4x4.hpp"
-#include "glm/ext/matrix_clip_space.hpp"
 
 #include "shape.h"
 #include "logger.h"
