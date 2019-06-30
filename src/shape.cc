@@ -88,11 +88,11 @@ void print_shape(Context &ctx, int shape)
         "offset = (%d,%d), size = (%d,%d))\n",
         shape, (int)s.contour_count, (int)s.edge_count,
         (int)s.offset.x, (int)s.offset.y, (int)s.size.x, (int)s.size.y);
-    for (size_t i = 0; i < s.contour_count; i++) {
-        Contour &c = ctx.contours[s.contour_offset + i];
+    for (size_t i = 0; i < (size_t)s.contour_count; i++) {
+        Contour &c = ctx.contours[(size_t)s.contour_offset + i];
         printf("  contour %zu (edge count = %d)\n", i, (int)c.edge_count);
         for (size_t j = 0; j < c.edge_count; j++) {
-            Edge &e = ctx.edges[c.edge_offset + j];
+            Edge &e = ctx.edges[(size_t)c.edge_offset + j];
             switch ((int)e.type) {
             case EdgeType::Linear:
                 printf("    edge %zu Linear (%f,%f) - (%f, %f)\n",
