@@ -72,6 +72,7 @@ static const int font_dpi = 72;
 static const int stats_font_size = 18;
 
 static float zoom = 128.0f;
+static const int glyph_load_size = 64;
 static int width = 1024, height = 768;
 static double tl, tn, td;
 static bool help_text = false;
@@ -187,7 +188,7 @@ static void draw(double tn, double td)
             auto gi = glyph_map.find(s.glyph);
             if (gi == glyph_map.end()) {
                 shape_num = glyph_map[s.glyph] = ctx.shapes.size();
-                load_glyph(&ctx, ftface, 1024, font_dpi, s.glyph);
+                load_glyph(&ctx, ftface, glyph_load_size << 6, font_dpi, s.glyph);
                 print_shape(ctx, shape_num);
             } else {
                 shape_num = gi->second;
@@ -195,7 +196,7 @@ static void draw(double tn, double td)
             Shape &shape = ctx.shapes[shape_num];
 
             /* figure out glyph dimensions */
-            float s_scale = font_size * 64.0f / 1024.0f;
+            float s_scale = font_size * 64.0f / (float)(glyph_load_size << 6);
             vec2 s_size = shape.size * s_scale;
             vec2 s_offset = shape.offset * s_scale;
             vec2 p1 = tl + vec2(x, font_size-s_size.y) +
