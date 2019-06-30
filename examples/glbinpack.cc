@@ -25,12 +25,18 @@
 #define CTX_OPENGL_MAJOR 3
 #define CTX_OPENGL_MINOR 2
 
+#include "glm/glm.hpp"
+#include "glm/ext/matrix_clip_space.hpp"
+#include "glm/ext/matrix_transform.hpp"
+
 #include "binpack.h"
-#include "linmath.h"
 #include "image.h"
 #include "draw.h"
 #include "logger.h"
 #include "glcommon.h"
+
+using mat4 = glm::mat4;
+using vec3 = glm::vec3;
 
 
 /* OpenGL objects and buffers */
@@ -39,7 +45,7 @@ static GLuint tex;
 static GLuint vao, vbo, ibo;
 static program simple;
 static draw_list batch;
-static mat4x4 m, p, mvp;
+static mat4 m, p, mvp;
 static GLFWwindow* window;
 
 /* bin_packer algorithm settings */
@@ -91,15 +97,17 @@ static void display()
 
 static void reshape(int width, int height)
 {
+    mat4 p, m;
+
     vec3 eye{0.0f, 0.0f, 2.2f};
     vec3 center{0.0f, 0.0f, 0.0f};
     vec3 up{0.0f, 1.0f, 0.0f};
 
-    mat4x4_perspective(p, 45, (float) width / (float) height, 1, 10);
-    mat4x4_look_at(m, eye, center, up);
-    mat4x4_mul(mvp, p, m);
+    p = glm::perspective(45.0f, (float) width / (float) height, 1.0f, 10.0f);
+    m = glm::lookAt (eye, center, up);
+    mvp = p * m; 
 
-    uniform_matrix_4fv(&simple, "u_mvp", (const GLfloat *)mvp);
+    uniform_matrix_4fv(&simple, "u_mvp", (const GLfloat *)&mvp[0][0]);
 
     glViewport(0, 0, width, height);
 }

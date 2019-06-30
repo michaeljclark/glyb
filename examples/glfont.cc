@@ -28,7 +28,9 @@
 #define CTX_OPENGL_MAJOR 3
 #define CTX_OPENGL_MINOR 2
 
-#include "linmath.h"
+#include "glm/glm.hpp"
+#include "glm/ext/matrix_clip_space.hpp"
+
 #include "binpack.h"
 #include "image.h"
 #include "draw.h"
@@ -39,6 +41,8 @@
 #include "logger.h"
 #include "glcommon.h"
 
+using mat4 = glm::mat4;
+
 
 /* globals */
 
@@ -47,7 +51,7 @@ static program simple, msdf;
 static draw_list batch;
 static std::map<int,GLuint> tex_map;
 
-static mat4x4 mvp;
+static mat4 mvp;
 static GLFWwindow* window;
 
 static const char *font_path = "fonts/RobotoMono-Regular.ttf";
@@ -68,7 +72,7 @@ static font_manager_ft manager;
 
 static void update_uniforms(program *prog)
 {
-    uniform_matrix_4fv(prog, "u_mvp", (const GLfloat *)mvp);
+    uniform_matrix_4fv(prog, "u_mvp", (const GLfloat *)&mvp[0][0]);
     uniform_1i(prog, "u_tex0", 0);
 }
 
@@ -107,7 +111,8 @@ static void display()
 
 static void reshape(int width, int height)
 {
-    mat4x4_ortho(mvp, 0.0f, (float)width, (float)height, 0.0f, 0.0f, 100.0f);
+    mvp = glm::ortho(0.0f, (float)width,(float)height, 0.0f, 0.0f, 100.0f);
+
     glViewport(0, 0, width, height);
 
     glUseProgram(msdf.pid);
