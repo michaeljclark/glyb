@@ -98,7 +98,7 @@ static void update_geometry()
 {
     auto face = manager.findFontByPath(font_path);
 
-    const int x = 100, y = 100 + font_size;
+    const float x = 100.0f, y = 100.0f + (float)font_size;
     const uint32_t color = 0xff000000;
 
     std::vector<glyph_shape> shapes;
