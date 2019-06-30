@@ -99,6 +99,9 @@ include_directories(third_party/glm)
 
 include_directories(src)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 set(GLYPHIC_SOURCES
   src/binpack.cc
   src/binpack.h
@@ -140,7 +143,6 @@ target_link_libraries(glbinpack libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})
 
 add_executable(glcanvas examples/glcanvas.cc)
 target_link_libraries(glcanvas libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})
-set_target_properties(glcanvas PROPERTIES CXX_STANDARD 17)
 
 add_executable(glfont examples/glfont.cc)
 target_link_libraries(glfont libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})
@@ -153,7 +155,6 @@ target_link_libraries(glsimple libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})
 
 add_executable(glyphic examples/glyphic.cc)
 target_link_libraries(glyphic libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})
-set_target_properties(glyphic PROPERTIES CXX_STANDARD 17)
 
 file(GLOB BINPACK_TESTS tests/*.cc)
 foreach(src ${BINPACK_TESTS})
