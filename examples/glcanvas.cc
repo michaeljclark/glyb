@@ -21,6 +21,7 @@
 #include <atomic>
 #include <mutex>
 #include <chrono>
+#include <numeric>
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -171,10 +172,8 @@ static void draw(double tn, double td)
             font_size * 64, 0, 0, 0);
 
         shaper.shape(shapes, &segment);
-        float text_width = 0;
-        for (auto &s : shapes) {
-            text_width += s.x_advance/64.0f;
-        }
+        float text_width = std::accumulate(shapes.begin(), shapes.end(), 0.0f,
+            [](float t, glyph_shape& s) { return t + s.x_advance/64.0f; });
 
         ivec2 screen(width, height), text_size((int)text_width, font_size);
         vec2 tl = vec2(screen - text_size)/2.0f;
