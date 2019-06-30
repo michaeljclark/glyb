@@ -153,7 +153,7 @@ static void update_geometry()
     font_face *face = manager.findFontByPath(font_path);
     font_atlas *atlas = manager.getCurrentAtlas(face);
 
-    int x = 100, y = 100;
+    float x = 100, y = 100;
 
     draw_list_clear(batch);
 
@@ -168,7 +168,7 @@ static void update_geometry()
         y += sz;
         std::string size_text = std::to_string(sz);
         auto size_segment = std::make_unique<text_segment>
-            (size_text, text_lang, face, 12 * 64, x - 50, y, black);
+            (size_text, text_lang, face, 12 * 64, x - 50.0f, y, black);
         auto render_segment = std::make_unique<text_segment>
             (render_text, text_lang, face, sz * 64, x, y, black);
         auto size_shapes = std::make_unique<std::vector<glyph_shape>>();
