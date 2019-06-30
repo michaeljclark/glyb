@@ -207,25 +207,6 @@ static void buffer_texture_create(texture_buffer &buf, std::vector<T> vec,
         (size_t)(texture - GL_TEXTURE0), buf.tbo, buf.tex, length);
 }
 
-static void buffer_texture_create(GLuint *tbo, GLuint *tex, void *data,
-    size_t length, GLenum texture, GLenum format)
-{
-    glGenBuffers(1, tbo);
-    glBindBuffer(GL_TEXTURE_BUFFER, *tbo);
-    glBufferData(GL_TEXTURE_BUFFER, length, data, GL_STATIC_DRAW);
-
-    glGenTextures(1, tex);
-    glActiveTexture(texture);
-    glBindTexture(GL_TEXTURE_BUFFER, *tex);
-    glTexBuffer(GL_TEXTURE_BUFFER, format, *tbo);
-
-    glBindBuffer(GL_TEXTURE_BUFFER, 0);
-
-    printf("buffer texture unit = %zu tbo = %u, tex = %u, size = %zu\n",
-        (size_t)(texture - GL_TEXTURE0), *tbo, *tex, length);
-}
-
-
 static void image_create_texture(GLuint *tex, draw_image img)
 {
     static const GLint swizzleMask[] = {GL_ONE, GL_ONE, GL_ONE, GL_RED};
