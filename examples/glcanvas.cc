@@ -335,7 +335,7 @@ static void draw(double tn, double td)
         vertex_array_pointer(&canvas, "a_pos", 3, GL_FLOAT, 0, &draw_vertex::pos);
         vertex_array_pointer(&canvas, "a_uv0", 2, GL_FLOAT, 0, &draw_vertex::uv);
         vertex_array_pointer(&canvas, "a_color", 4, GL_UNSIGNED_BYTE, 1, &draw_vertex::color);
-        vertex_array_pointer(&canvas, "a_material", 1, GL_FLOAT, 0, &draw_vertex::material);
+        vertex_array_pointer(&canvas, "x_material", 1, GL_FLOAT, 0, &draw_vertex::material);
         vertex_array_1f(&canvas, "a_gamma", 2.0f);
         glBindVertexArray(0);
     }

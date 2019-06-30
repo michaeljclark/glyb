@@ -6,7 +6,7 @@ attribute vec3 a_pos;
 attribute vec2 a_uv0;
 attribute vec4 a_color;
 attribute float a_gamma;
-attribute float a_material;
+attribute float x_material;
 
 uniform mat4 u_mvp;
 
@@ -19,6 +19,6 @@ void main() {
     v_color = a_color;
     v_gamma = a_gamma;
     v_uv0 = a_uv0;
-    v_material = a_material;
+    v_material = x_material;
     gl_Position = u_mvp * vec4(a_pos.xyz, 1.0);
 }
