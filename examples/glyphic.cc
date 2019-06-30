@@ -254,7 +254,8 @@ static void draw(double tn, double td)
             int c = r(64,127);
             wise[j].color = 0xff000000 | c << 16 | c << 8 | c;
             do {
-                wise[j].book_wisdom = book[r(32,book.size()-33)];
+                wise[j].book_wisdom = book.size() > 0 ? book[r(32,book.size()-33)] :
+                "wisdom wisdom wisdom wisdom wisdom wisdom wisdom wisdom wisdom";
             } while (wise[j].book_wisdom.size() < 20);
         }
 
@@ -369,7 +370,7 @@ static void initialize()
 {
     GLuint simple_fsh, msdf_fsh, vsh;
 
-    book = read_file(file::getResource("data/pg5827.txt"));
+    book = read_file(file::getFile("data/pg5827.txt"));
 
     /* shader program */
     vsh = compile_shader(GL_VERTEX_SHADER, "shaders/simple.vsh");
