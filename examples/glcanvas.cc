@@ -75,7 +75,7 @@ static const int font_size_default = 18;
 static int width = 1024, height = 768;
 static double tl, tn, td;
 static bool help_text = false;
-static int codepoint = 99;
+static int codepoint = 'g';
 
 
 /*
