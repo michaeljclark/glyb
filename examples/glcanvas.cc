@@ -76,6 +76,8 @@ static double tl, tn, td;
 static bool help_text = false;
 static int codepoint = 'g';
 
+/* canvas state */
+
 struct zoom_state {
     float zoom;
     dvec2 mouse_pos;
@@ -83,7 +85,9 @@ struct zoom_state {
 };
 
 static Context ctx;
+static font_face *face;
 static draw_list batch;
+static std::map<int,int> glyph_map;
 static zoom_state state = { .zoom = 128.0f }, state_save;
 static bool mouse_left_drag = false, mouse_right_drag = false;
 
@@ -125,9 +129,6 @@ static std::vector<std::string> get_stats(font_face *face, float td)
     stats.push_back(format_string("frames-per-second: %5.2f", 1.0/td));
     return stats;
 }
-
-static std::map<int,int> glyph_map;
-static font_face *face;
 
 static void draw(double tn, double td)
 {
