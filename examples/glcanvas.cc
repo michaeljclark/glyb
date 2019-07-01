@@ -167,7 +167,7 @@ static void draw(double tn, double td)
     canvas_renderer.render(batch, shapes, &segment);
 
     /* update shape texture buffers only when new shapes are added */
-     if (num_shapes != ctx.shapes.size()) {
+    if (num_shapes != ctx.shapes.size()) {
         buffer_texture_create(shape_tb, ctx.shapes, GL_TEXTURE0, GL_R32I);
         buffer_texture_create(edge_tb, ctx.edges, GL_TEXTURE1, GL_R32F);
     }
