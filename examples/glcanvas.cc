@@ -69,7 +69,7 @@ static const char* text_lang = "en";
 static const int font_dpi = 72;
 static const int stats_font_size = 18;
 
-static const float min_zoom = 64.0f, max_zoom = 65536.0f;
+static const float min_zoom = 16.0f, max_zoom = 65536.0f;
 static const int glyph_load_size = 64;
 static int width = 1024, height = 768;
 static double tl, tn, td;
