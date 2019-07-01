@@ -64,7 +64,7 @@ static mat4 mvp;
 static GLFWwindow* window;
 
 static const char *font_path = "fonts/DejaVuSans.ttf";
-static const char *render_text = "καλως ηρθες";
+static const char *render_text = "πάθος λόγος ἦθος";
 static const char* text_lang = "en";
 static const int font_dpi = 72;
 static const int stats_font_size = 18;
@@ -88,7 +88,7 @@ static Context ctx;
 static font_face *face;
 static draw_list batch;
 static std::map<int,int> glyph_map;
-static zoom_state state = { .zoom = 128.0f }, state_save;
+static zoom_state state = { .zoom = 64.0f }, state_save;
 static bool mouse_left_drag = false, mouse_right_drag = false;
 
 /* display  */
