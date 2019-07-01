@@ -1,8 +1,22 @@
 // See LICENSE for license details.
 
 #include <cstdio>
+#include <cstdint>
+#include <cstdlib>
+#include <climits>
+#include <cstring>
+#include <cassert>
+#include <cctype>
+#include <cmath>
 
+#include <string>
+#include <memory>
 #include <vector>
+#include <map>
+#include <tuple>
+#include <algorithm>
+#include <atomic>
+#include <mutex>
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -12,6 +26,12 @@
 
 #include "glm/glm.hpp"
 
+#include "binpack.h"
+#include "image.h"
+#include "utf8.h"
+#include "draw.h"
+#include "font.h"
+#include "glyph.h"
 #include "shape.h"
 #include "logger.h"
 
@@ -112,5 +132,84 @@ void print_shape(Context &ctx, int shape)
                 break;
             }
         }
+    }
+}
+
+/*
+ * draw list utility
+ */
+
+static void rect(draw_list &b, uint iid, ivec2 A, ivec2 B, int Z,
+    vec2 UV0, vec2 UV1, uint c, float m)
+{
+    uint o = static_cast<uint>(b.vertices.size());
+
+    vec2 j = A, k = B;
+    float z = (float)Z;
+
+    uint o0 = draw_list_vertex(b, {{j.x, j.y, (float)z}, {UV0.x, UV0.y}, c, m});
+    uint o1 = draw_list_vertex(b, {{k.x, j.y, (float)z}, {UV1.x, UV0.y}, c, m});
+    uint o2 = draw_list_vertex(b, {{k.x, k.y, (float)z}, {UV1.x, UV1.y}, c, m});
+    uint o3 = draw_list_vertex(b, {{j.x, k.y, (float)z}, {UV0.x, UV1.y}, c, m});
+
+    draw_list_indices(b, iid, mode_triangles, shader_canvas,
+        {o0, o3, o1, o1, o3, o2});
+}
+
+static void rect(draw_list &batch, ivec2 A, ivec2 B, int Z,
+    Context &ctx, uint shape_num, uint color)
+{
+    Shape &shape = ctx.shapes[shape_num];
+    auto &size = shape.size;
+    auto &offset = shape.offset;
+    auto t = mat3(size.x,       0,        offset.x ,
+                       0,      -size.y,   size.y + offset.y ,
+                       0,       0,        1);
+    auto UV0 = vec3(0,0,1) * t;
+    auto UV1 = vec3(1,1,1) * t;
+    rect(batch, tbo_iid, A, B, Z, UV0, UV1, color, (float)shape_num);
+}
+
+/*
+ * text renderer
+ */
+
+static const int glyph_load_size = 64;
+
+void text_renderer_canvas::render(draw_list &batch,
+        std::vector<glyph_shape> &shapes,
+        text_segment *segment)
+{
+    font_face_ft *face = static_cast<font_face_ft*>(segment->face);
+    FT_Face ftface = face->ftface;
+    int font_size = segment->font_size;
+    int font_dpi = font_manager::dpi;
+
+    float x_offset = 0;
+    for (auto &s : shapes) {
+        /* lookup shape num, load glyph if necessary */
+        int shape_num = 0;
+        auto gi = glyph_map.find(s.glyph);
+        if (gi == glyph_map.end()) {
+            shape_num = glyph_map[s.glyph] = (int)ctx.shapes.size();
+            load_glyph(&ctx, ftface, glyph_load_size << 6, font_dpi, s.glyph);
+            print_shape(ctx, shape_num);
+        } else {
+            shape_num = gi->second;
+        }
+        Shape &shape = ctx.shapes[shape_num];
+
+        /* figure out glyph dimensions */
+        float s_scale = font_size / (float)(glyph_load_size << 6);
+        vec2 s_size = shape.size * s_scale;
+        vec2 s_offset = shape.offset * s_scale;
+        float y_offset = (font_size / 64.0f) - s_size.y;
+        vec2 p1 = vec2(segment->x, segment->y) + vec2(x_offset, y_offset) +
+            vec2(s_offset.x,-s_offset.y);
+        vec2 p2 = p1 + vec2(s_size.x,s_size.y);
+
+        /* emit geometry and advance */
+        rect(batch, p1, p2, 0, ctx, shape_num, segment->color);
+        x_offset += s.x_advance/64.0f + segment->tracking;
     }
 }

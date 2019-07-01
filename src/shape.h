@@ -55,3 +55,23 @@ struct Context {
 
 void load_glyph(Context *ctx, FT_Face ftface, int sz, int dpi, int glyph);
 void print_shape(Context &ctx, int shape);
+
+/*
+ * text renderer
+ */
+
+struct text_renderer_canvas : text_renderer
+{
+	Context &ctx;
+	std::map<int,int> &glyph_map;
+
+	text_renderer_canvas(Context &ctx, std::map<int,int> &glyph_map);
+    virtual ~text_renderer_canvas() = default;
+
+    virtual void render(draw_list &batch,
+        std::vector<glyph_shape> &shapes,
+        text_segment *segment);
+};
+
+inline text_renderer_canvas::text_renderer_canvas(Context &ctx,
+	std::map<int,int> &glyph_map) : ctx(ctx), glyph_map(glyph_map) {}

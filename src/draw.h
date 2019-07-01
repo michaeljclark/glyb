@@ -11,6 +11,8 @@ typedef struct {
     float material;
 } draw_vertex;
 
+enum { tbo_iid = -1 };
+
 enum {
     st_clamp       = (1 << 1),
     st_wrap        = (1 << 2),

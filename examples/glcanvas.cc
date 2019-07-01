@@ -39,12 +39,12 @@
 #include "glm/ext/matrix_clip_space.hpp"
 
 #include "binpack.h"
-#include "shape.h"
 #include "image.h"
 #include "utf8.h"
 #include "draw.h"
 #include "font.h"
 #include "glyph.h"
+#include "shape.h"
 #include "logger.h"
 #include "glcommon.h"
 
@@ -53,8 +53,6 @@ using namespace std::chrono;
 using dvec2 = glm::dvec2;
 
 /* globals */
-
-enum { tbo_iid = 99 };
 
 static texture_buffer shape_tb, contour_tb, edge_tb;
 static program simple, msdf, canvas;
@@ -93,37 +91,6 @@ static program* cmd_shader_gl(int cmd_shader)
     }
 }
 
-static void rect(draw_list &b, uint iid, ivec2 A, ivec2 B, int Z,
-    vec2 UV0, vec2 UV1, uint c, float m)
-{
-    uint o = static_cast<uint>(b.vertices.size());
-
-    vec2 j = A, k = B;
-    float z = Z;
-
-    uint o0 = draw_list_vertex(b, {{j.x, j.y, (float)z}, {UV0.x, UV0.y}, c, m});
-    uint o1 = draw_list_vertex(b, {{k.x, j.y, (float)z}, {UV1.x, UV0.y}, c, m});
-    uint o2 = draw_list_vertex(b, {{k.x, k.y, (float)z}, {UV1.x, UV1.y}, c, m});
-    uint o3 = draw_list_vertex(b, {{j.x, k.y, (float)z}, {UV0.x, UV1.y}, c, m});
-
-    draw_list_indices(b, iid, mode_triangles, shader_canvas,
-        {o0, o3, o1, o1, o3, o2});
-}
-
-static void rect(draw_list &batch, ivec2 A, ivec2 B, int Z,
-    uint shape_num, float padding, uint color)
-{
-    Shape &shape = ctx.shapes[shape_num];
-    auto &size = shape.size;
-    auto &offset = shape.offset;
-    auto t = mat3(size.x,       0,        offset.x ,
-                       0,      -size.y,   size.y + offset.y ,
-                       0,       0,        1);
-    auto UV0 = vec3(0,0,1) * t;
-    auto UV1 = vec3(1,1,1) * t;
-    rect(batch, tbo_iid, A, B, Z, UV0, UV1, color, shape_num);
-}
-
 static std::string format_string(const char* fmt, ...)
 {
     std::vector<char> buf(128);
@@ -153,71 +120,51 @@ static std::vector<std::string> get_stats(font_face *face, float td)
 }
 
 static std::map<int,int> glyph_map;
+static font_face *face;
 
 static void draw(double tn, double td)
 {
     std::vector<glyph_shape> shapes;
     text_shaper_hb shaper;
     text_renderer_ft renderer(&manager);
+    text_renderer_canvas canvas_renderer(ctx, glyph_map);
+
+    if (!face) {
+        face = manager.findFontByPath(font_path);
+    }
 
     draw_list_clear(batch);
 
     glfwGetFramebufferSize(window, &width, &height);
 
-    {
-        int font_size = (int)zoom;
+    /* create text to render */
+    int font_size = (int)zoom;
+    text_segment segment(render_text, text_lang, face,
+        font_size * 64, 0, 0, 0xff000000);
 
-        auto face = manager.findFontByPath(font_path);
-        FT_Face ftface = static_cast<font_face_ft*>(face)->ftface;
-        text_segment segment(render_text, text_lang, face,
-            font_size * 64, 0, 0, 0);
+    /* shape text and get width */
+    shaper.shape(shapes, &segment);
+    float text_width = std::accumulate(shapes.begin(), shapes.end(), 0.0f,
+        [](float t, glyph_shape& s) { return t + s.x_advance/64.0f; });
 
-        shaper.shape(shapes, &segment);
-        float text_width = std::accumulate(shapes.begin(), shapes.end(), 0.0f,
-            [](float t, glyph_shape& s) { return t + s.x_advance/64.0f; });
+    /* set text position */
+    ivec2 screen(width, height), text_size((int)text_width, font_size);
+    vec2 topleft = vec2(screen - text_size)/2.0f + origin;
+    segment.x = topleft.x;
+    segment.y = topleft.y;
 
-        ivec2 screen(width, height), text_size((int)text_width, font_size);
-        vec2 tl = vec2(screen - text_size)/2.0f;
+    /* render text to canvas as beziers, recording shape buffer size */
+    size_t num_shapes = ctx.shapes.size();
+    canvas_renderer.render(batch, shapes, &segment);
 
-        float x = 0;
-        size_t shapes_size = ctx.shapes.size();
-
-        for (auto &s : shapes) {
-            /* lookup shape num, load glyph if necessary */
-            int shape_num = 0;
-            auto gi = glyph_map.find(s.glyph);
-            if (gi == glyph_map.end()) {
-                shape_num = glyph_map[s.glyph] = ctx.shapes.size();
-                load_glyph(&ctx, ftface, glyph_load_size << 6, font_dpi, s.glyph);
-                print_shape(ctx, shape_num);
-            } else {
-                shape_num = gi->second;
-            }
-            Shape &shape = ctx.shapes[shape_num];
-
-            /* figure out glyph dimensions */
-            float s_scale = font_size * 64.0f / (float)(glyph_load_size << 6);
-            vec2 s_size = shape.size * s_scale;
-            vec2 s_offset = shape.offset * s_scale;
-            vec2 p1 = tl + vec2(x, font_size-s_size.y) +
-                vec2(s_offset.x,-s_offset.y) + origin;
-            vec2 p2 = p1 + vec2(s_size.x,s_size.y);
-
-            /* emit geometry and advance */
-            rect(batch, p1, p2, /* z = */ 0, /* shape_num = */ shape_num,
-                /* pad = */ 0.0f, /* color = */ 0xff000000);
-            x += s.x_advance/64.0f + segment.tracking;
-        }
-
-        if (shapes_size != ctx.shapes.size()) {
-            buffer_texture_create(shape_tb, ctx.shapes, GL_TEXTURE0, GL_R32I);
-            buffer_texture_create(edge_tb, ctx.edges, GL_TEXTURE1, GL_R32F);
-        }
+    /* update shape texture buffers only when new shapes are added */
+     if (num_shapes != ctx.shapes.size()) {
+        buffer_texture_create(shape_tb, ctx.shapes, GL_TEXTURE0, GL_R32I);
+        buffer_texture_create(edge_tb, ctx.edges, GL_TEXTURE1, GL_R32F);
     }
 
     /* render stats text */
     int x = 10, y = height - 10;
-    auto face = manager.findFontByPath(font_path);
     std::vector<std::string> stats = get_stats(face, td);
     const uint32_t bg_color = 0xbfffffff;
     for (size_t i = 0; i < stats.size(); i++) {
