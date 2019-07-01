@@ -37,17 +37,20 @@ struct Context {
     std::vector<Edge> edges;
     vec2 pos;
 
-    void newShape(vec2 offset, vec2 size) {
+    int newShape(vec2 offset, vec2 size) {
+        int shape_num = (int)shapes.size();
         shapes.emplace_back(Shape{(float)contours.size(), 0,
             (float)edges.size(), 0, offset, size });
         return shape_num;
     }
-    void newContour() {
+    int newContour() {
+        int contour_num = (int)contours.size();
         contours.emplace_back(Contour{(float)edges.size(), 0});
         shapes.back().contour_count++;
         return contour_num;
     }
-    void newEdge(Edge&& e) {
+    int newEdge(Edge&& e) {
+        int edge_num = (int)edges.size();
         edges.emplace_back(e);
         contours.back().edge_count++;
         shapes.back().edge_count++;
