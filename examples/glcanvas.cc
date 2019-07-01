@@ -45,6 +45,7 @@
 #include "font.h"
 #include "glyph.h"
 #include "shape.h"
+#include "color.h"
 #include "logger.h"
 #include "glcommon.h"
 
@@ -156,7 +157,7 @@ static void draw(double tn, double td)
         [](float t, glyph_shape& s) { return t + s.x_advance/64.0f; });
 
     /* set text position */
-    ivec2 screen(width, height), text_size((int)text_width, font_size);
+    vec2 screen(width, height), text_size((int)text_width, font_size);
     vec2 topleft = vec2(screen - text_size)/2.0f + state.origin;
     segment.x = topleft.x;
     segment.y = topleft.y;

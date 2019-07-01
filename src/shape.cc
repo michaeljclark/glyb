@@ -73,11 +73,12 @@ static int ftCubicTo(ftvec *c1, ftvec *c2, ftvec *p, void *u) {
 }
 
 static vec2 offset(FT_Glyph_Metrics *m) {
-    return vec2(m->horiBearingX/64.0f, (m->horiBearingY-m->height)/64.0f);
+    return vec2(floorf(m->horiBearingX/64.0f),
+                floorf((m->horiBearingY-m->height)/64.0f));
 }
 
 static vec2 size(FT_Glyph_Metrics *m) {
-    return vec2(m->width/64.0f, m->height/64.0f);
+    return vec2(ceilf(m->width/64.0f), ceilf(m->height/64.0f));
 }
 
 void load_glyph(Context *ctx, FT_Face ftface, int sz, int dpi, int glyph)
@@ -139,24 +140,23 @@ void print_shape(Context &ctx, int shape)
  * draw list utility
  */
 
-static void rect(draw_list &b, uint iid, ivec2 A, ivec2 B, int Z,
+static void rect(draw_list &b, uint iid, vec2 A, vec2 B, int Z,
     vec2 UV0, vec2 UV1, uint c, float m)
 {
     uint o = static_cast<uint>(b.vertices.size());
 
-    vec2 j = A, k = B;
     float z = (float)Z;
 
-    uint o0 = draw_list_vertex(b, {{j.x, j.y, (float)z}, {UV0.x, UV0.y}, c, m});
-    uint o1 = draw_list_vertex(b, {{k.x, j.y, (float)z}, {UV1.x, UV0.y}, c, m});
-    uint o2 = draw_list_vertex(b, {{k.x, k.y, (float)z}, {UV1.x, UV1.y}, c, m});
-    uint o3 = draw_list_vertex(b, {{j.x, k.y, (float)z}, {UV0.x, UV1.y}, c, m});
+    uint o0 = draw_list_vertex(b, {{A.x, A.y, (float)z}, {UV0.x, UV0.y}, c, m});
+    uint o1 = draw_list_vertex(b, {{B.x, A.y, (float)z}, {UV1.x, UV0.y}, c, m});
+    uint o2 = draw_list_vertex(b, {{B.x, B.y, (float)z}, {UV1.x, UV1.y}, c, m});
+    uint o3 = draw_list_vertex(b, {{A.x, B.y, (float)z}, {UV0.x, UV1.y}, c, m});
 
     draw_list_indices(b, iid, mode_triangles, shader_canvas,
         {o0, o3, o1, o1, o3, o2});
 }
 
-static void rect(draw_list &batch, ivec2 A, ivec2 B, int Z,
+static void rect(draw_list &batch, vec2 A, vec2 B, int Z,
     Context &ctx, uint shape_num, uint color)
 {
     Shape &shape = ctx.shapes[shape_num];

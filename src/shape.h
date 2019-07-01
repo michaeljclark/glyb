@@ -2,7 +2,6 @@
 
 #pragma once
 
-using ivec2 = glm::ivec2;
 using vec2 = glm::vec2;
 using vec3 = glm::vec3;
 using mat3 = glm::mat3;
@@ -38,18 +37,21 @@ struct Context {
     std::vector<Edge> edges;
     vec2 pos;
 
-    void newShape(ivec2 offset, vec2 size) {
+    void newShape(vec2 offset, vec2 size) {
         shapes.emplace_back(Shape{(float)contours.size(), 0,
             (float)edges.size(), 0, offset, size });
+        return shape_num;
     }
     void newContour() {
         contours.emplace_back(Contour{(float)edges.size(), 0});
         shapes.back().contour_count++;
+        return contour_num;
     }
     void newEdge(Edge&& e) {
         edges.emplace_back(e);
         contours.back().edge_count++;
         shapes.back().edge_count++;
+        return edge_num;
     }
 };
 
@@ -62,10 +64,10 @@ void print_shape(Context &ctx, int shape);
 
 struct text_renderer_canvas : text_renderer
 {
-	Context &ctx;
-	std::map<int,int> &glyph_map;
+    Context &ctx;
+    std::map<int,int> &glyph_map;
 
-	text_renderer_canvas(Context &ctx, std::map<int,int> &glyph_map);
+    text_renderer_canvas(Context &ctx, std::map<int,int> &glyph_map);
     virtual ~text_renderer_canvas() = default;
 
     virtual void render(draw_list &batch,
@@ -74,4 +76,4 @@ struct text_renderer_canvas : text_renderer
 };
 
 inline text_renderer_canvas::text_renderer_canvas(Context &ctx,
-	std::map<int,int> &glyph_map) : ctx(ctx), glyph_map(glyph_map) {}
+    std::map<int,int> &glyph_map) : ctx(ctx), glyph_map(glyph_map) {}
