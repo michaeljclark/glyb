@@ -69,18 +69,25 @@ static const char* text_lang = "en";
 static const int font_dpi = 72;
 static const int stats_font_size = 18;
 
-static float zoom = 128.0f;
+static const float min_zoom = 64.0f, max_zoom = 65536.0f;
 static const int glyph_load_size = 64;
 static int width = 1024, height = 768;
 static double tl, tn, td;
 static bool help_text = false;
 static int codepoint = 'g';
 
-/* display  */
+struct zoom_state {
+    float zoom;
+    dvec2 mouse_pos;
+    vec2 origin;
+};
 
-Context ctx;
-draw_list batch;
-vec2 origin;
+static Context ctx;
+static draw_list batch;
+static zoom_state state = { .zoom = 128.0f }, state_save;
+static bool mouse_left_drag = false, mouse_right_drag = false;
+
+/* display  */
 
 static program* cmd_shader_gl(int cmd_shader)
 {
@@ -138,7 +145,7 @@ static void draw(double tn, double td)
     glfwGetFramebufferSize(window, &width, &height);
 
     /* create text to render */
-    int font_size = (int)zoom;
+    int font_size = (int)state.zoom;
     text_segment segment(render_text, text_lang, face,
         font_size * 64, 0, 0, 0xff000000);
 
@@ -149,7 +156,7 @@ static void draw(double tn, double td)
 
     /* set text position */
     ivec2 screen(width, height), text_size((int)text_width, font_size);
-    vec2 topleft = vec2(screen - text_size)/2.0f + origin;
+    vec2 topleft = vec2(screen - text_size)/2.0f + state.origin;
     segment.x = topleft.x;
     segment.y = topleft.y;
 
@@ -260,20 +267,16 @@ static void keyboard(GLFWwindow* window, int key, int scancode, int action, int 
 
 /* mouse callbacks */
 
-static bool mouse_left_drag = false;
-static dvec2 mouse_pos, mouse_pos_drag_start;
-
 static void scroll(GLFWwindow* window, double xoffset, double yoffset)
 {
-    int quantum = ((int)zoom >> 4);
-    if (yoffset < 0 && zoom < 65536) {
-        float ratio = 1.0f + (float)quantum / (float)zoom;
-        origin *= ratio;
-        zoom += quantum;
-    } else if (yoffset > 0 && zoom > 64) {
-        float ratio = 1.0f + (float)quantum / (float)zoom;
-        origin /= ratio;
-        zoom -= quantum;
+    float quantum = state.zoom / 16.0f;
+    float ratio = 1.0f + (float)quantum / (float)state.zoom;
+    if (yoffset < 0 && state.zoom < max_zoom) {
+        state.origin *= ratio;
+        state.zoom += quantum;
+    } else if (yoffset > 0 && state.zoom > min_zoom) {
+        state.origin /= ratio;
+        state.zoom -= quantum;
     }
 }
 
@@ -281,19 +284,35 @@ static void mouse_button(GLFWwindow* window, int button, int action, int mods)
 {
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
         mouse_left_drag = true;
-        mouse_pos_drag_start = mouse_pos;
-    } else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
+        state_save = state;
+    }
+    else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
         mouse_left_drag = false;
+    }
+    else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
+        mouse_right_drag = true;
+        state_save = state;
+    }
+    else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE) {
+        mouse_right_drag = false;
     }
 }
 
 static void cursor_position(GLFWwindow* window, double xpos, double ypos)
 {
-    mouse_pos = dvec2(xpos, ypos);
+    state.mouse_pos = dvec2(xpos, ypos);
 
     if (mouse_left_drag) {
-        origin += mouse_pos - mouse_pos_drag_start;
-        mouse_pos_drag_start = mouse_pos;
+        state.origin += state.mouse_pos - state_save.mouse_pos;
+        state_save.mouse_pos = state.mouse_pos;
+    }
+    else if (mouse_right_drag) {
+        dvec2 delta = state.mouse_pos - state_save.mouse_pos;
+        float zoom = state_save.zoom * powf(65.0f/64.0f,-delta.y);
+        if (zoom != state.zoom && zoom > min_zoom && zoom < max_zoom) {
+            state.zoom = zoom;
+            state.origin = state_save.origin * (zoom / state_save.zoom);
+        }
     }
 }
 
