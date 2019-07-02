@@ -64,18 +64,6 @@ struct Context {
         shapes.back().edge_count++;
         return edge_num;
     }
-    int newCircle(vec2 center, float radius, float padding) {
-        int shape_num = newShape(vec2(0), vec2((radius+padding)*2.0f));
-        edges.emplace_back(Edge{Circle,{center + padding, vec2(radius)}});
-        shapes.back().edge_count++;
-        return shape_num;
-    }
-    int newEllipse(vec2 center, vec2 radius, float padding) {
-        int shape_num = newShape(vec2(0), (radius+padding)*2.0f);
-        edges.emplace_back(Edge{Ellipse,{center + padding, radius}});
-        shapes.back().edge_count++;
-        return shape_num;
-    }
     int newShape(EdgeType edge_type, vec2 offset, vec2 size, vec2 p0,
             vec2 p1 = vec2(0), vec2 p2 = vec2(0), vec2 p3 = vec2(0)) {
         int shape_num = newShape(offset, size);
