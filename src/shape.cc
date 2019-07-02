@@ -140,23 +140,21 @@ void print_shape(Context &ctx, int shape)
  * draw list utility
  */
 
-static void rect(draw_list &b, uint iid, vec2 A, vec2 B, int Z,
+static void rect(draw_list &b, uint iid, vec2 A, vec2 B, float Z,
     vec2 UV0, vec2 UV1, uint c, float m)
 {
     uint o = static_cast<uint>(b.vertices.size());
 
-    float z = (float)Z;
-
-    uint o0 = draw_list_vertex(b, {{A.x, A.y, (float)z}, {UV0.x, UV0.y}, c, m});
-    uint o1 = draw_list_vertex(b, {{B.x, A.y, (float)z}, {UV1.x, UV0.y}, c, m});
-    uint o2 = draw_list_vertex(b, {{B.x, B.y, (float)z}, {UV1.x, UV1.y}, c, m});
-    uint o3 = draw_list_vertex(b, {{A.x, B.y, (float)z}, {UV0.x, UV1.y}, c, m});
+    uint o0 = draw_list_vertex(b, {{A.x, A.y, Z}, {UV0.x, UV0.y}, c, m});
+    uint o1 = draw_list_vertex(b, {{B.x, A.y, Z}, {UV1.x, UV0.y}, c, m});
+    uint o2 = draw_list_vertex(b, {{B.x, B.y, Z}, {UV1.x, UV1.y}, c, m});
+    uint o3 = draw_list_vertex(b, {{A.x, B.y, Z}, {UV0.x, UV1.y}, c, m});
 
     draw_list_indices(b, iid, mode_triangles, shader_canvas,
         {o0, o3, o1, o1, o3, o2});
 }
 
-static void rect(draw_list &batch, vec2 A, vec2 B, int Z,
+static void rect(draw_list &batch, vec2 A, vec2 B, float Z,
     Context &ctx, uint shape_num, uint color)
 {
     Shape &shape = ctx.shapes[shape_num];
@@ -189,7 +187,7 @@ static int find_single_edge_shape(Context &ctx, Shape &shape, Edge &edge, int ma
 }
 
 void rectangle(Context &ctx, draw_list &batch, vec2 pos, vec2 halfSize,
-    float padding, uint32_t c)
+    float padding, float z, uint32_t c)
 {
     Shape shape{0, 0, 0, 1, vec2(0), vec2((halfSize+padding)*2.0f) };
     Edge edge{Rectangle,{halfSize + padding, halfSize}};
@@ -203,11 +201,11 @@ void rectangle(Context &ctx, draw_list &batch, vec2 pos, vec2 halfSize,
 
     /* emit rectangle that covers the circle plus its padding */
     rect(batch, tbo_iid, pos - halfSize - padding, pos + halfSize + padding,
-        0.0f, vec2(0,0), (halfSize+padding)*2.0f, c, (float)shape_num);
+        z, vec2(0,0), (halfSize+padding)*2.0f, c, (float)shape_num);
 }
 
 void rounded_rectangle(Context &ctx, draw_list &batch, vec2 pos, vec2 halfSize,
-    float radius, float padding, uint32_t c)
+    float radius, float padding, float z, uint32_t c)
 {
     Shape shape{0, 0, 0, 1, vec2(0), vec2((halfSize+padding)*2.0f) };
     Edge edge{RoundedRectangle,{halfSize + padding, halfSize, vec2(radius)}};
@@ -221,11 +219,11 @@ void rounded_rectangle(Context &ctx, draw_list &batch, vec2 pos, vec2 halfSize,
 
     /* emit rectangle that covers the circle plus its padding */
     rect(batch, tbo_iid, pos - halfSize - padding, pos + halfSize + padding,
-        0.0f, vec2(0,0), (halfSize+padding)*2.0f, c, (float)shape_num);
+        z, vec2(0,0), (halfSize+padding)*2.0f, c, (float)shape_num);
 }
 
 void circle(Context &ctx, draw_list &batch, vec2 pos, float radius,
-    float padding, uint32_t c)
+    float padding, float z, uint32_t c)
 {
     Shape shape{0, 0, 0, 1, vec2(0), vec2((radius + padding) * 2.0f) };
     Edge edge{Circle,{vec2(radius + padding), vec2(radius)}};
@@ -239,11 +237,11 @@ void circle(Context &ctx, draw_list &batch, vec2 pos, float radius,
 
     /* emit rectangle that covers the circle plus its padding */
     rect(batch, tbo_iid, pos - radius - padding, pos + radius + padding,
-        0.0f, vec2(0,0), vec2((radius+padding)*2.0f), c, (float)shape_num);
+        z, vec2(0,0), vec2((radius+padding)*2.0f), c, (float)shape_num);
 }
 
 void ellipse(Context &ctx, draw_list &batch, vec2 pos, vec2 radius,
-    float padding, uint32_t c)
+    float padding, float z, uint32_t c)
 {
     Shape shape{0, 0, 0, 1, vec2(0), (radius + padding) * 2.0f };
     Edge edge{Ellipse,{radius + padding, radius}};
@@ -257,7 +255,7 @@ void ellipse(Context &ctx, draw_list &batch, vec2 pos, vec2 radius,
 
     /* emit rectangle that covers the circle plus its padding */
     rect(batch, tbo_iid, pos - radius - padding, pos + radius + padding,
-        0.0f, vec2(0,0), (radius+padding)*2.0f, c, (float)shape_num);
+        z, vec2(0,0), (radius+padding)*2.0f, c, (float)shape_num);
 }
 
 

@@ -88,13 +88,13 @@ struct Context {
 void load_glyph(Context *ctx, FT_Face ftface, int sz, int dpi, int glyph);
 void print_shape(Context &ctx, int shape);
 void rectangle(Context &ctx, draw_list &batch, vec2 pos, vec2 halfSize,
-    float padding, uint32_t c);
+    float padding, float z, uint32_t c);
 void rounded_rectangle(Context &ctx, draw_list &batch, vec2 pos, vec2 halfSize,
-    float radius, float padding, uint32_t c);
+    float radius, float padding, float z, uint32_t c);
 void circle(Context &ctx, draw_list &batch, vec2 pos, float radius,
-    float padding, uint32_t c);
+    float padding, float z, uint32_t c);
 void ellipse(Context &ctx, draw_list &batch, vec2 pos, vec2 radius,
-    float padding, uint32_t c);
+    float padding, float z, uint32_t c);
 
 /*
  * text renderer
