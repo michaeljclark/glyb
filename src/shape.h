@@ -15,7 +15,15 @@ using mat4 = glm::mat4;
  * The context output is arrays formatted suitably to download to a GPU.
  */
 
-enum EdgeType { Linear = 2, Quadratic = 3, Cubic = 4, };
+enum EdgeType {
+    Linear = 2,
+    Quadratic = 3,
+    Cubic = 4,
+    Rectangle = 5,
+    Circle = 6,
+    Ellipse = 7,
+    RoundedRectangle = 8,
+};
 
 struct Edge {
     float type;
@@ -56,10 +64,37 @@ struct Context {
         shapes.back().edge_count++;
         return edge_num;
     }
+    int newCircle(vec2 center, float radius, float padding) {
+        int shape_num = newShape(vec2(0), vec2((radius+padding)*2.0f));
+        edges.emplace_back(Edge{Circle,{center + padding, vec2(radius)}});
+        shapes.back().edge_count++;
+        return shape_num;
+    }
+    int newEllipse(vec2 center, vec2 radius, float padding) {
+        int shape_num = newShape(vec2(0), (radius+padding)*2.0f);
+        edges.emplace_back(Edge{Ellipse,{center + padding, radius}});
+        shapes.back().edge_count++;
+        return shape_num;
+    }
+    int newShape(EdgeType edge_type, vec2 offset, vec2 size, vec2 p0,
+            vec2 p1 = vec2(0), vec2 p2 = vec2(0), vec2 p3 = vec2(0)) {
+        int shape_num = newShape(offset, size);
+        edges.emplace_back(Edge{(float)edge_type,{p0, p1, p2, p3}});
+        shapes.back().edge_count++;
+        return shape_num;
+    }
 };
 
 void load_glyph(Context *ctx, FT_Face ftface, int sz, int dpi, int glyph);
 void print_shape(Context &ctx, int shape);
+void rectangle(Context &ctx, draw_list &batch, vec2 pos, vec2 halfSize,
+    float padding, uint32_t c);
+void rounded_rectangle(Context &ctx, draw_list &batch, vec2 pos, vec2 halfSize,
+    float radius, float padding, uint32_t c);
+void circle(Context &ctx, draw_list &batch, vec2 pos, float radius,
+    float padding, uint32_t c);
+void ellipse(Context &ctx, draw_list &batch, vec2 pos, vec2 radius,
+    float padding, uint32_t c);
 
 /*
  * text renderer

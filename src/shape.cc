@@ -170,6 +170,97 @@ static void rect(draw_list &batch, vec2 A, vec2 B, int Z,
     rect(batch, tbo_iid, A, B, Z, UV0, UV1, color, (float)shape_num);
 }
 
+static int find_single_edge_shape(Context &ctx, Shape &shape, Edge &edge, int match_fields)
+{
+    /* this is really inefficient! */
+    for (size_t i = 0; i < ctx.shapes.size(); i++) {
+        int j = ctx.shapes[i].edge_offset;
+        if (ctx.shapes[i].edge_count != 1) continue;
+        if (ctx.shapes[i].offset != shape.offset) continue;
+        if (ctx.shapes[i].size != shape.size) continue;
+        if (ctx.edges[j].type != edge.type) continue;
+        if (match_fields >= 1 && ctx.edges[j].p[0] != edge.p[0]) continue;
+        if (match_fields >= 2 && ctx.edges[j].p[1] != edge.p[1]) continue;
+        if (match_fields >= 3 && ctx.edges[j].p[2] != edge.p[2]) continue;
+        if (match_fields >= 4 && ctx.edges[j].p[3] != edge.p[3]) continue;
+        return (int)i;
+    }
+    return -1;
+}
+
+void rectangle(Context &ctx, draw_list &batch, vec2 pos, vec2 halfSize,
+    float padding, uint32_t c)
+{
+    Shape shape{0, 0, 0, 1, vec2(0), vec2((halfSize+padding)*2.0f) };
+    Edge edge{Rectangle,{halfSize + padding, halfSize}};
+
+    /* search for a shaoe of the same dimensions, and create if not found */
+    int shape_num = find_single_edge_shape(ctx, shape, edge, 2);
+    if (shape_num == -1) {
+        shape_num = ctx.newShape(Rectangle, vec2(0), vec2(halfSize+padding)*2.0f,
+            halfSize+padding, halfSize);
+    }
+
+    /* emit rectangle that covers the circle plus its padding */
+    rect(batch, tbo_iid, pos - halfSize - padding, pos + halfSize + padding,
+        0.0f, vec2(0,0), (halfSize+padding)*2.0f, c, (float)shape_num);
+}
+
+void rounded_rectangle(Context &ctx, draw_list &batch, vec2 pos, vec2 halfSize,
+    float radius, float padding, uint32_t c)
+{
+    Shape shape{0, 0, 0, 1, vec2(0), vec2((halfSize+padding)*2.0f) };
+    Edge edge{RoundedRectangle,{halfSize + padding, halfSize, vec2(radius)}};
+
+    /* search for a shaoe of the same dimensions, and create if not found */
+    int shape_num = find_single_edge_shape(ctx, shape, edge, 3);
+    if (shape_num == -1) {
+        shape_num = ctx.newShape(RoundedRectangle, vec2(0), vec2(halfSize+padding)*2.0f,
+            halfSize+padding, halfSize, vec2(radius));
+    }
+
+    /* emit rectangle that covers the circle plus its padding */
+    rect(batch, tbo_iid, pos - halfSize - padding, pos + halfSize + padding,
+        0.0f, vec2(0,0), (halfSize+padding)*2.0f, c, (float)shape_num);
+}
+
+void circle(Context &ctx, draw_list &batch, vec2 pos, float radius,
+    float padding, uint32_t c)
+{
+    Shape shape{0, 0, 0, 1, vec2(0), vec2((radius + padding) * 2.0f) };
+    Edge edge{Circle,{vec2(radius + padding), vec2(radius)}};
+
+    /* search for a shaoe of the same dimensions, and create if not found */
+    int shape_num = find_single_edge_shape(ctx, shape, edge, 2);
+    if (shape_num == -1) {
+        shape_num = ctx.newShape(Circle, vec2(0), vec2(radius+padding)*2.0f,
+            vec2(radius+padding), vec2(radius));
+    }
+
+    /* emit rectangle that covers the circle plus its padding */
+    rect(batch, tbo_iid, pos - radius - padding, pos + radius + padding,
+        0.0f, vec2(0,0), vec2((radius+padding)*2.0f), c, (float)shape_num);
+}
+
+void ellipse(Context &ctx, draw_list &batch, vec2 pos, vec2 radius,
+    float padding, uint32_t c)
+{
+    Shape shape{0, 0, 0, 1, vec2(0), (radius + padding) * 2.0f };
+    Edge edge{Ellipse,{radius + padding, radius}};
+
+    /* search for a shaoe of the same dimensions, and create if not found */
+    int shape_num = find_single_edge_shape(ctx, shape, edge, 2);
+    if (shape_num == -1) {
+        shape_num = ctx.newShape(Ellipse, vec2(0), (radius+padding)*2.0f,
+            radius + padding, radius);
+    }
+
+    /* emit rectangle that covers the circle plus its padding */
+    rect(batch, tbo_iid, pos - radius - padding, pos + radius + padding,
+        0.0f, vec2(0,0), (radius+padding)*2.0f, c, (float)shape_num);
+}
+
+
 /*
  * text renderer
  */

@@ -325,7 +325,7 @@ static void initialize()
     GLuint simple_fsh, msdf_fsh, canvas_fsh, vsh;
 
     std::vector<std::string> attrs = {
-        "a_pos", "a_uv0", "a_color", "x_material", "a_gamma"
+        "a_pos", "a_uv0", "a_color", "a_material", "a_gamma"
     };
 
     /* shader program */
@@ -354,8 +354,10 @@ static void initialize()
     vertex_array_pointer(p, "a_pos", 3, GL_FLOAT, 0, &draw_vertex::pos);
     vertex_array_pointer(p, "a_uv0", 2, GL_FLOAT, 0, &draw_vertex::uv);
     vertex_array_pointer(p, "a_color", 4, GL_UNSIGNED_BYTE, 1, &draw_vertex::color);
-    vertex_array_pointer(p, "x_material", 1, GL_FLOAT, 0, &draw_vertex::material);
+    vertex_array_pointer(p, "a_material", 1, GL_FLOAT, 0, &draw_vertex::material);
     vertex_array_1f(p, "a_gamma", 2.0f);
+    vertex_array_1f(p, "a_width", 0.0f);
+    vertex_array_4f(p, "a_stroke", 0.0f, 0.0f, 0.0f, 1.0f);
     glBindVertexArray(0);
 
     /* create shape and edge buffer textures */

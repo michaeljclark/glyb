@@ -205,6 +205,15 @@ static void vertex_array_1f(program *prog, const char *attr, float v1)
     }
 }
 
+static void vertex_array_4f(program *prog, const char *attr, float v1,
+    float v2, float v3, float v4)
+{
+    if (prog->attrs.find(attr) != prog->attrs.end()) {
+        glDisableVertexAttribArray(prog->attrs[attr]);
+        glVertexAttrib4f(prog->attrs[attr], v1, v2, v3, v4);
+    }
+}
+
 static void uniform_1i(program *prog, const char *uniform, GLint i)
 {
     if (prog->uniforms.find(uniform) != prog->uniforms.end()) {

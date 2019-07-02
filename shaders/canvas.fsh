@@ -1,13 +1,22 @@
-// ported from msdfgen
+/*
+ * Signed distance field shape fragment shader.
+ *
+ * MIT License, See LICENSE.md
+ *
+ * Copyright © 2013 Inigo Quilez
+ * Copyright © 2016 Viktor Chlumsky
+ * Copyright © 2019 Michael Clark
+ */
 
 #version 130
 
 #extension GL_EXT_gpu_shader4 : enable
 
+varying vec4 v_stroke;
 varying vec4 v_color;
 varying vec2 v_uv0;
 varying float v_gamma;
-varying float v_glyph;
+varying float v_width;
 varying float v_material;
 
 uniform samplerBuffer tb_shape;
@@ -19,6 +28,10 @@ uniform samplerBuffer tb_edge;
 #define Linear 2
 #define Quadratic 3
 #define Cubic 4
+#define Rectangle 5
+#define Circle 6
+#define Ellipse 7
+#define RoundedRectangle 8
 
 struct Shape {
     int contour_offset, contour_count, edge_offset, edge_count;
@@ -29,6 +42,70 @@ struct Edge {
     int edge_type;
     vec2 p[4];
 };
+
+/*
+ * Copyright © 2013 Inigo Quilez, MIT License
+ *
+ * Analytical distance to an 2D ellipse, is more complicated than it seems.
+ * Some steps through the derivation can be found in this article:
+ *
+ * http://iquilezles.org/www/articles/ellipsedist/ellipsedist.htm
+ */
+
+float sdEllipse( vec2 p, in vec2 ab )
+{
+    p = abs( p ); if( p.x > p.y ){ p=p.yx; ab=ab.yx; }
+
+    float l = ab.y*ab.y - ab.x*ab.x;
+
+    float m = ab.x*p.x/l;
+    float n = ab.y*p.y/l;
+    float m2 = m*m;
+    float n2 = n*n;
+
+    float c = (m2 + n2 - 1.0)/3.0;
+    float c3 = c*c*c;
+
+    float q = c3 + m2*n2*2.0;
+    float d = c3 + m2*n2;
+    float g = m + m*n2;
+
+    float co;
+
+    if( d<0.0 )
+    {
+        float h = acos(q/c3)/3.0;
+        float s = cos(h);
+        float t = sin(h)*sqrt(3.0);
+        float rx = sqrt( -c*(s + t + 2.0) + m2 );
+        float ry = sqrt( -c*(s - t + 2.0) + m2 );
+        co = ( ry + sign(l)*rx + abs(g)/(rx*ry) - m)/2.0;
+    }
+    else
+    {
+        float h = 2.0*m*n*sqrt( d );
+        float s = sign(q+h)*pow( abs(q+h), 1.0/3.0 );
+        float u = sign(q-h)*pow( abs(q-h), 1.0/3.0 );
+        float rx = -s - u - c*4.0 + 2.0*m2;
+        float ry = (s - u)*sqrt(3.0);
+        float rm = sqrt( rx*rx + ry*ry );
+        co = (ry/sqrt(rm-rx) + 2.0*g/rm - m)/2.0;
+    }
+
+    float si = sqrt( 1.0 - co*co );
+
+    vec2 r = ab * vec2(co,si);
+
+    return length(r-p) * sign(r.y-p.y);
+}
+
+/*
+ * Copyright © 2016 Viktor Chlumsky, MIT License
+ *
+ * Signed distance calculation for Quadratic and Cubic Bézier Curves:
+ *
+ * https://github.com/Chlumsky/msdfgen
+ */
 
 int solveQuadratic(out vec3 x, float a, float b, float c)
 {
@@ -133,7 +210,7 @@ vec2 getOrthonormal(vec2 p, bool polarity, bool allowZero)
     }
 }
 
-float signedDistanceLinear(vec2 p[4], out float dir, vec2 origin, out float param)
+float sdLinear(vec2 p[4], out float dir, vec2 origin, out float param)
 {
     vec2 aq = origin-p[0];
     vec2 ab = p[1]-p[0];
@@ -151,7 +228,7 @@ float signedDistanceLinear(vec2 p[4], out float dir, vec2 origin, out float para
     return nonZeroSign(cross(aq, ab))*endpointDistance;
 }
 
-float signedDistanceQuadratic(vec2 p[4], out float dir, vec2 origin, out float param)
+float sdQuadratic(vec2 p[4], out float dir, vec2 origin, out float param)
 {
     vec2 qa = p[0]-origin;
     vec2 ab = p[1]-p[0];
@@ -199,7 +276,7 @@ float signedDistanceQuadratic(vec2 p[4], out float dir, vec2 origin, out float p
     }
 }
 
-float signedDistanceCubic(vec2 p[4], out float dir, vec2 origin, out float param)
+float sdCubic(vec2 p[4], out float dir, vec2 origin, out float param)
 {
     vec2 qa = p[0]-origin;
     vec2 ab = p[1]-p[0];
@@ -254,6 +331,49 @@ float signedDistanceCubic(vec2 p[4], out float dir, vec2 origin, out float param
     }
 }
 
+float sdRect(vec2 center, vec2 halfSize, vec2 origin)
+{
+    vec2 edgeDist = abs(origin - center) - halfSize;
+    float outsideDist = length(max(edgeDist, 0));
+    float insideDist = min(max(edgeDist.x, edgeDist.y), 0);
+    return -outsideDist - insideDist;
+}
+
+float sdRectangle(vec2 p[4], out float dir, vec2 origin, out float param)
+{
+    vec2 center = p[0], halfSize = p[1];
+    return sdRect(center, halfSize, origin);
+}
+
+float sdCircle(vec2 p[4], out float dir, vec2 origin, out float param)
+{
+    vec2 center = p[0];
+    float radius = p[1][0];
+    return radius - length(origin - center);
+}
+
+float sdEllipse(vec2 p[4], out float dir, vec2 origin, out float param)
+{
+    vec2 center = p[0], radius = p[1];
+    return sdEllipse(origin-center, radius);
+}
+
+float sdRoundedRectangle(vec2 p[4], out float dir, vec2 origin, out float param)
+{
+    vec2 center = p[0], halfSize = p[1];
+    float radius = p[2].x;
+    vec2 r1 = halfSize - vec2(radius,0);
+    vec2 r2 = halfSize - vec2(0,radius);
+    float d1 = sdRect(center, r1, origin);
+    float d2 = sdRect(center, r2, origin);
+    float c1 = radius - length(abs(origin - center) - halfSize + radius);
+    return max(max(d1,d2),c1);
+}
+
+/*
+ * Shape and Edge data structure serialization from texture buffers.
+ */
+
 void getShape(out Shape shape, int shape_num)
 {
     int o = shape_num * 8;
@@ -280,9 +400,13 @@ void getEdge(out Edge edge, int edge_num)
 float getDistanceEdge(Edge edge, vec2 origin, out float dir, out float param)
 {
     switch(edge.edge_type) {
-    case Linear:    return signedDistanceLinear   (edge.p, dir, origin, param);
-    case Quadratic: return signedDistanceQuadratic(edge.p, dir, origin, param);
-    case Cubic:     return signedDistanceCubic    (edge.p, dir, origin, param);
+    case Linear:    return sdLinear   (edge.p, dir, origin, param);
+    case Quadratic: return sdQuadratic(edge.p, dir, origin, param);
+    case Cubic:     return sdCubic    (edge.p, dir, origin, param);
+    case Rectangle: return sdRectangle(edge.p, dir, origin, param);
+    case Circle:    return sdCircle   (edge.p, dir, origin, param);
+    case Ellipse:   return sdEllipse  (edge.p, dir, origin, param);
+    case RoundedRectangle: return sdRoundedRectangle(edge.p, dir, origin, param);
     }
     return FLT_MAX; /* not reached */
 }
@@ -294,13 +418,19 @@ float getDistanceShape(Shape shape, vec2 origin, out float dir, out float param)
     for (int i = 0; i < shape.edge_count; i++) {
         getEdge(edge, shape.edge_offset + i);
         distance = getDistanceEdge(edge, origin, dir, param);
-        if (abs(distance) < abs(minDistance) || abs(distance) == abs(minDistance) && dir < minDir) {
+        if (abs(distance) < abs(minDistance) ||
+            abs(distance) == abs(minDistance) && dir < minDir)
+        {
             minDistance = distance;
             minDir = dir;
         }
     }
     return minDistance;
 }
+
+/*
+ * Signed distance field shape fragment shader main.
+ */
 
 void main()
 {
@@ -312,8 +442,11 @@ void main()
 
     float dx = dFdx( v_uv0.x );
     float dy = dFdy( v_uv0.y );
-    float ps = sqrt(dx*dx + dy*dy)/2.0;
-    float alpha = smoothstep(-ps, ps, distance);
+    float ps = sqrt(dx*dx + dy*dy);
+    float w = v_width/2.0;
+    float alpha = smoothstep(-w-ps, -w+ps, distance);
+    vec4 color = v_width == 0 ? v_color :
+        mix(v_stroke, v_color, smoothstep(w-ps, w+ps, distance));
 
-    gl_FragColor = vec4(pow(v_color.rgb, vec3(1.0/v_gamma)), alpha);
+    gl_FragColor = vec4(pow(color.rgb, vec3(1.0/v_gamma)), alpha);
 }
