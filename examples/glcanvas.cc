@@ -89,7 +89,7 @@ static Context ctx;
 static font_face *face;
 static draw_list batch;
 static std::map<int,int> glyph_map;
-static zoom_state state = { .zoom = 64.0f }, state_save;
+static zoom_state state = { 64.0f }, state_save;
 static bool mouse_left_drag = false, mouse_right_drag = false;
 
 /* display  */
