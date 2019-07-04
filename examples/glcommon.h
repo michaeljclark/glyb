@@ -234,24 +234,28 @@ static void buffer_texture_create(texture_buffer &buf, std::vector<T> vec,
 {
     GLvoid *data = vec.data();
     size_t length = vec.size() * sizeof(T);
+    bool created = false;
 
     if (!buf.tbo) {
         glGenBuffers(1, &buf.tbo);
+        created = true;
     }
     glBindBuffer(GL_TEXTURE_BUFFER, buf.tbo);
     glBufferData(GL_TEXTURE_BUFFER, length, data, GL_STATIC_DRAW);
 
     if (!buf.tex) {
         glGenTextures(1, &buf.tex);
+        created = true;
     }
     glActiveTexture(texture);
     glBindTexture(GL_TEXTURE_BUFFER, buf.tex);
     glTexBuffer(GL_TEXTURE_BUFFER, format, buf.tbo);
-
     glBindBuffer(GL_TEXTURE_BUFFER, 0);
 
-    printf("buffer texture unit = %zu tbo = %u, tex = %u, size = %zu\n",
-        (size_t)(texture - GL_TEXTURE0), buf.tbo, buf.tex, length);
+    if (created) {
+        printf("buffer texture unit = %zu tbo = %u, tex = %u, size = %zu\n",
+            (size_t)(texture - GL_TEXTURE0), buf.tbo, buf.tex, length);
+    }
 }
 
 static void image_create_texture(GLuint *tex, draw_image img)

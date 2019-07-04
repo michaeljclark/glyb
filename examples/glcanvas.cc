@@ -162,17 +162,28 @@ static void draw(double tn, double td)
     segment.x = topleft.x;
     segment.y = topleft.y - 0.10f * font_size;
 
-    /* render text to canvas as beziers, recording shape buffer size */
+    /*
+     * render text to canvas as beziers, recording shape buffer size
+     * and whether shapes have been updated. This is to minimise shape
+     * buffer transfers to the GPU.
+     */
     size_t num_shapes = ctx.shapes.size();
-
-    /* render text on top of round rect */
+    int updated = 0;
     uint32_t gray = color(0.75f,0.75f,0.75f,1.0f).rgba32();
-    rounded_rectangle(ctx, batch, vec2(width/2,height/2) + state.origin,
-        vec2(text_width/1.85f,font_size), font_size/2, 10.0f, 0, gray);
+    static int shape_num = -1;
+    if (shape_num < 0) {
+        shape_num = make_rounded_rectangle(ctx, batch,
+            vec2(width/2,height/2) + state.origin,
+            vec2(text_width/1.85f,font_size), font_size/2, 10.0f, 0, gray);
+    } else {
+        updated += update_rounded_rectangle(shape_num, ctx, batch,
+            vec2(width/2,height/2) + state.origin,
+            vec2(text_width/1.85f,font_size), font_size/2, 10.0f, 0, gray);
+    }
     canvas_renderer.render(batch, shapes, &segment);
 
-    /* update shape texture buffers only when new shapes are added */
-    if (num_shapes != ctx.shapes.size()) {
+    /* update shape texture buffers if shapes added or updated */
+    if (num_shapes != ctx.shapes.size() || updated) {
         buffer_texture_create(shape_tb, ctx.shapes, GL_TEXTURE0, GL_R32I);
         buffer_texture_create(edge_tb, ctx.edges, GL_TEXTURE1, GL_R32F);
     }

@@ -81,7 +81,7 @@ static vec2 size(FT_Glyph_Metrics *m) {
     return vec2(ceilf(m->width/64.0f), ceilf(m->height/64.0f));
 }
 
-void load_glyph(Context *ctx, FT_Face ftface, int sz, int dpi, int glyph)
+int make_glyph(Context *ctx, FT_Face ftface, int sz, int dpi, int glyph)
 {
     FT_Outline_Funcs ftfuncs = { ftMoveTo, ftLineTo, ftConicTo, ftCubicTo };
     FT_Glyph_Metrics *m = &ftface->glyph->metrics;
@@ -95,11 +95,13 @@ void load_glyph(Context *ctx, FT_Face ftface, int sz, int dpi, int glyph)
         Panic("error: FT_Load_Glyph failed: fterr=%d\n", fterr);
     }
 
-    ctx->newShape(offset(m), size(m));
+    int shape_num = ctx->newShape(offset(m), size(m));
 
     if ((fterr = FT_Outline_Decompose(&ftface->glyph->outline, &ftfuncs, ctx))) {
         Panic("error: FT_Outline_Decompose failed: fterr=%d\n", fterr);
     }
+
+    return shape_num;
 }
 
 void print_shape(Context &ctx, int shape)
@@ -136,6 +138,119 @@ void print_shape(Context &ctx, int shape)
     }
 }
 
+void Context::clear()
+{
+    shapes.clear();
+    contours.clear();
+    edges.clear();
+}
+
+int Context::newShape(vec2 offset, vec2 size)
+{
+    int shape_num = (int)shapes.size();
+    shapes.emplace_back(Shape{(float)contours.size(), 0,
+        (float)edges.size(), 0, offset, size });
+    return shape_num;
+}
+
+int Context::newContour()
+{
+    int contour_num = (int)contours.size();
+    contours.emplace_back(Contour{(float)edges.size(), 0});
+    shapes.back().contour_count++;
+    return contour_num;
+}
+
+int Context::newEdge(Edge e)
+{
+    int edge_num = (int)edges.size();
+    edges.push_back(e);
+    if (shapes.back().contour_count > 0) {
+        contours.back().edge_count++;
+    }
+    shapes.back().edge_count++;
+    return edge_num;
+}
+
+int Context::newShape(Shape *shape, Edge *edges)
+{
+    int shape_num = newShape(shape->offset, shape->size);
+    for (int i = 0; i < shape->edge_count; i++) {
+        newEdge(edges[i]);
+    }
+    return shape_num;
+}
+
+static int numPoints(int edge_type)
+{
+    switch (edge_type) {
+    case Linear:           return 2;
+    case Quadratic:        return 3;
+    case Cubic:            return 4;
+    case Rectangle:        return 2;
+    case Circle:           return 2;
+    case Ellipse:          return 2;
+    case RoundedRectangle: return 2;
+    }
+}
+
+bool Context::shapeEquals(Shape *s0, Edge *e0, Shape *s1, Edge *e1)
+{
+    if (s0->edge_count != s1->edge_count) return false;
+    if (s0->offset != s1->offset) return false;
+    if (s0->size != s1->size) return false;
+    if (e0->type != e1->type) return false;
+    for (int i = 0; i < s0->edge_count; i++) {
+        int match_points = numPoints(e0[i].type);
+        for (int j = 0; j < match_points; j++) {
+            if (e0[i].p[j] != e1[i].p[j]) return false;
+        }
+    }
+    return true;
+}
+
+int Context::findShape(Shape *s, Edge *e)
+{
+    /* this is really inefficient! */
+    for (size_t i = 0; i < shapes.size(); i++) {
+        int j = shapes[i].edge_offset;
+        if (shapeEquals(&shapes[i], &edges[j], s, e)) {
+            return (int)i;
+        }
+    }
+    return -1;
+}
+
+int Context::addShape(Shape *s, Edge *e)
+{
+    int shape_num = findShape(s, e);
+    if (shape_num == -1) {
+        shape_num = newShape(s, e);
+    }
+    return shape_num;
+}
+
+bool Context::updateShape(int shape_num, Shape *s, Edge *e)
+{
+    Shape *os = &shapes[shape_num];
+    Edge *oe = &edges[shapes[shape_num].edge_offset];
+
+    if (shapeEquals(os, oe, s, e)) {
+        return false;
+    }
+
+    s->contour_offset = os->contour_offset;
+    s->contour_count  = os->contour_count;
+    s->edge_offset    = os->edge_offset;
+
+    shapes[shape_num] = s[0];
+    for (int i = 0; i < s->edge_count; i++) {
+        edges[i] = e[i];
+    }
+
+    return true;
+}
+
 /*
  * draw list utility
  */
@@ -168,94 +283,116 @@ static void rect(draw_list &batch, vec2 A, vec2 B, float Z,
     rect(batch, tbo_iid, A, B, Z, UV0, UV1, color, (float)shape_num);
 }
 
-static int find_single_edge_shape(Context &ctx, Shape &shape, Edge &edge, int match_fields)
-{
-    /* this is really inefficient! */
-    for (size_t i = 0; i < ctx.shapes.size(); i++) {
-        int j = ctx.shapes[i].edge_offset;
-        if (ctx.shapes[i].edge_count != 1) continue;
-        if (ctx.shapes[i].offset != shape.offset) continue;
-        if (ctx.shapes[i].size != shape.size) continue;
-        if (ctx.edges[j].type != edge.type) continue;
-        if (match_fields >= 1 && ctx.edges[j].p[0] != edge.p[0]) continue;
-        if (match_fields >= 2 && ctx.edges[j].p[1] != edge.p[1]) continue;
-        if (match_fields >= 3 && ctx.edges[j].p[2] != edge.p[2]) continue;
-        if (match_fields >= 4 && ctx.edges[j].p[3] != edge.p[3]) continue;
-        return (int)i;
-    }
-    return -1;
-}
+/*
+ * shape create
+ */
 
-void rectangle(Context &ctx, draw_list &batch, vec2 pos, vec2 halfSize,
+int make_rectangle(Context &ctx, draw_list &batch, vec2 pos, vec2 halfSize,
     float padding, float z, uint32_t c)
 {
     Shape shape{0, 0, 0, 1, vec2(0), vec2((halfSize+padding)*2.0f) };
     Edge edge{Rectangle,{halfSize + padding, halfSize}};
 
-    /* search for a shaoe of the same dimensions, and create if not found */
-    int shape_num = find_single_edge_shape(ctx, shape, edge, 2);
-    if (shape_num == -1) {
-        shape_num = ctx.newShape(Rectangle, vec2(0), vec2(halfSize+padding)*2.0f,
-            halfSize+padding, halfSize);
-    }
-
-    /* emit rectangle that covers the circle plus its padding */
+    int shape_num = ctx.addShape(&shape, &edge);
     rect(batch, tbo_iid, pos - halfSize - padding, pos + halfSize + padding,
         z, vec2(0,0), (halfSize+padding)*2.0f, c, (float)shape_num);
+
+    return shape_num;
 }
 
-void rounded_rectangle(Context &ctx, draw_list &batch, vec2 pos, vec2 halfSize,
-    float radius, float padding, float z, uint32_t c)
+int make_rounded_rectangle(Context &ctx, draw_list &batch, vec2 pos,
+    vec2 halfSize, float radius, float padding, float z, uint32_t c)
 {
     Shape shape{0, 0, 0, 1, vec2(0), vec2((halfSize+padding)*2.0f) };
     Edge edge{RoundedRectangle,{halfSize + padding, halfSize, vec2(radius)}};
 
-    /* search for a shaoe of the same dimensions, and create if not found */
-    int shape_num = find_single_edge_shape(ctx, shape, edge, 3);
-    if (shape_num == -1) {
-        shape_num = ctx.newShape(RoundedRectangle, vec2(0), vec2(halfSize+padding)*2.0f,
-            halfSize+padding, halfSize, vec2(radius));
-    }
-
-    /* emit rectangle that covers the circle plus its padding */
+    int shape_num = ctx.addShape(&shape, &edge);
     rect(batch, tbo_iid, pos - halfSize - padding, pos + halfSize + padding,
         z, vec2(0,0), (halfSize+padding)*2.0f, c, (float)shape_num);
+
+    return shape_num;
 }
 
-void circle(Context &ctx, draw_list &batch, vec2 pos, float radius,
+int make_circle(Context &ctx, draw_list &batch, vec2 pos, float radius,
     float padding, float z, uint32_t c)
 {
     Shape shape{0, 0, 0, 1, vec2(0), vec2((radius + padding) * 2.0f) };
     Edge edge{Circle,{vec2(radius + padding), vec2(radius)}};
 
-    /* search for a shaoe of the same dimensions, and create if not found */
-    int shape_num = find_single_edge_shape(ctx, shape, edge, 2);
-    if (shape_num == -1) {
-        shape_num = ctx.newShape(Circle, vec2(0), vec2(radius+padding)*2.0f,
-            vec2(radius+padding), vec2(radius));
-    }
-
-    /* emit rectangle that covers the circle plus its padding */
+    int shape_num = ctx.addShape(&shape, &edge);
     rect(batch, tbo_iid, pos - radius - padding, pos + radius + padding,
         z, vec2(0,0), vec2((radius+padding)*2.0f), c, (float)shape_num);
+
+    return shape_num;
 }
 
-void ellipse(Context &ctx, draw_list &batch, vec2 pos, vec2 radius,
+int make_ellipse(Context &ctx, draw_list &batch, vec2 pos, vec2 radius,
     float padding, float z, uint32_t c)
 {
     Shape shape{0, 0, 0, 1, vec2(0), (radius + padding) * 2.0f };
     Edge edge{Ellipse,{radius + padding, radius}};
 
-    /* search for a shaoe of the same dimensions, and create if not found */
-    int shape_num = find_single_edge_shape(ctx, shape, edge, 2);
-    if (shape_num == -1) {
-        shape_num = ctx.newShape(Ellipse, vec2(0), (radius+padding)*2.0f,
-            radius + padding, radius);
-    }
-
-    /* emit rectangle that covers the circle plus its padding */
+    int shape_num = ctx.addShape(&shape, &edge);
     rect(batch, tbo_iid, pos - radius - padding, pos + radius + padding,
         z, vec2(0,0), (radius+padding)*2.0f, c, (float)shape_num);
+
+    return shape_num;
+}
+
+/*
+ * shape update
+ */
+
+int update_rectangle(int shape_num, Context &ctx, draw_list &batch, vec2 pos,
+    vec2 halfSize, float padding, float z, uint32_t c)
+{
+    Shape shape{0, 0, 0, 1, vec2(0), vec2((halfSize+padding)*2.0f) };
+    Edge edge{Rectangle,{halfSize + padding, halfSize}};
+
+    int updated = ctx.updateShape(shape_num, &shape, &edge);
+    rect(batch, tbo_iid, pos - halfSize - padding, pos + halfSize + padding,
+        z, vec2(0,0), (halfSize+padding)*2.0f, c, (float)shape_num);
+
+    return updated;
+}
+
+int update_rounded_rectangle(int shape_num, Context &ctx, draw_list &batch,
+    vec2 pos, vec2 halfSize, float radius, float padding, float z, uint32_t c)
+{
+    Shape shape{0, 0, 0, 1, vec2(0), vec2((halfSize+padding)*2.0f) };
+    Edge edge{RoundedRectangle,{halfSize + padding, halfSize, vec2(radius)}};
+
+    int updated = ctx.updateShape(shape_num, &shape, &edge);
+    rect(batch, tbo_iid, pos - halfSize - padding, pos + halfSize + padding,
+        z, vec2(0,0), (halfSize+padding)*2.0f, c, (float)shape_num);
+
+    return updated;
+}
+
+int update_circle(int shape_num, Context &ctx, draw_list &batch, vec2 pos,
+    float radius, float padding, float z, uint32_t c)
+{
+    Shape shape{0, 0, 0, 1, vec2(0), vec2((radius + padding) * 2.0f) };
+    Edge edge{Circle,{vec2(radius + padding), vec2(radius)}};
+
+    int updated = ctx.updateShape(shape_num, &shape, &edge);
+    rect(batch, tbo_iid, pos - radius - padding, pos + radius + padding,
+        z, vec2(0,0), vec2((radius+padding)*2.0f), c, (float)shape_num);
+
+    return updated;
+}
+
+int update_ellipse(int shape_num, Context &ctx, draw_list &batch, vec2 pos,
+    vec2 radius, float padding, float z, uint32_t c)
+{
+    Shape shape{0, 0, 0, 1, vec2(0), (radius + padding) * 2.0f };
+    Edge edge{Ellipse,{radius + padding, radius}};
+
+    int updated = ctx.updateShape(shape_num, &shape, &edge);
+    rect(batch, tbo_iid, pos - radius - padding, pos + radius + padding,
+        z, vec2(0,0), (radius+padding)*2.0f, c, (float)shape_num);
+
+    return updated;
 }
 
 
@@ -281,7 +418,7 @@ void text_renderer_canvas::render(draw_list &batch,
         auto gi = glyph_map.find(s.glyph);
         if (gi == glyph_map.end()) {
             shape_num = glyph_map[s.glyph] = (int)ctx.shapes.size();
-            load_glyph(&ctx, ftface, glyph_load_size << 6, font_dpi, s.glyph);
+            make_glyph(&ctx, ftface, glyph_load_size << 6, font_dpi, s.glyph);
             print_shape(ctx, shape_num);
         } else {
             shape_num = gi->second;

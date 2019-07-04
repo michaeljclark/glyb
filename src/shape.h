@@ -45,44 +45,38 @@ struct Context {
     std::vector<Edge> edges;
     vec2 pos;
 
-    int newShape(vec2 offset, vec2 size) {
-        int shape_num = (int)shapes.size();
-        shapes.emplace_back(Shape{(float)contours.size(), 0,
-            (float)edges.size(), 0, offset, size });
-        return shape_num;
-    }
-    int newContour() {
-        int contour_num = (int)contours.size();
-        contours.emplace_back(Contour{(float)edges.size(), 0});
-        shapes.back().contour_count++;
-        return contour_num;
-    }
-    int newEdge(Edge&& e) {
-        int edge_num = (int)edges.size();
-        edges.emplace_back(e);
-        contours.back().edge_count++;
-        shapes.back().edge_count++;
-        return edge_num;
-    }
-    int newShape(EdgeType edge_type, vec2 offset, vec2 size, vec2 p0,
-            vec2 p1 = vec2(0), vec2 p2 = vec2(0), vec2 p3 = vec2(0)) {
-        int shape_num = newShape(offset, size);
-        edges.emplace_back(Edge{(float)edge_type,{p0, p1, p2, p3}});
-        shapes.back().edge_count++;
-        return shape_num;
-    }
+    void clear();
+    int newShape(vec2 offset, vec2 size);
+    int newContour();
+    int newEdge(Edge e);
+    int newShape(Shape *shape, Edge *edges);
+
+    bool shapeEquals(Shape *s0, Edge *e0, Shape *s1, Edge *e1);
+    int findShape(Shape *s, Edge *e);
+    int addShape(Shape *s, Edge *e);
+    bool updateShape(int shape_num, Shape *s, Edge *e);
 };
 
-void load_glyph(Context *ctx, FT_Face ftface, int sz, int dpi, int glyph);
+int make_glyph(Context *ctx, FT_Face ftface, int sz, int dpi, int glyph);
 void print_shape(Context &ctx, int shape);
-void rectangle(Context &ctx, draw_list &batch, vec2 pos, vec2 halfSize,
+
+int make_rectangle(Context &ctx, draw_list &batch, vec2 pos, vec2 halfSize,
     float padding, float z, uint32_t c);
-void rounded_rectangle(Context &ctx, draw_list &batch, vec2 pos, vec2 halfSize,
+int make_rounded_rectangle(Context &ctx, draw_list &batch, vec2 pos,
+    vec2 halfSize, float radius, float padding, float z, uint32_t c);
+int make_circle(Context &ctx, draw_list &batch, vec2 pos, float radius,
+    float padding, float z, uint32_t c);
+int make_ellipse(Context &ctx, draw_list &batch, vec2 pos, vec2 radius,
+    float padding, float z, uint32_t c);
+
+int update_rectangle(int shape_num, Context &ctx, draw_list &batch,
+    vec2 pos, vec2 halfSize, float padding, float z, uint32_t c);
+int update_rounded_rectangle(int shape_num, Context &ctx, draw_list &batch,
+    vec2 pos, vec2 halfSize, float radius, float padding, float z, uint32_t c);
+int update_circle(int shape_num, Context &ctx, draw_list &batch, vec2 pos,
     float radius, float padding, float z, uint32_t c);
-void circle(Context &ctx, draw_list &batch, vec2 pos, float radius,
-    float padding, float z, uint32_t c);
-void ellipse(Context &ctx, draw_list &batch, vec2 pos, vec2 radius,
-    float padding, float z, uint32_t c);
+int update_ellipse(int shape_num, Context &ctx, draw_list &batch, vec2 pos,
+    vec2 radius, float padding, float z, uint32_t c);
 
 /*
  * text renderer
