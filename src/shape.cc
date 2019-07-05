@@ -221,9 +221,9 @@ int Context::findShape(Shape *s, Edge *e)
     return -1;
 }
 
-int Context::addShape(Shape *s, Edge *e)
+int Context::addShape(Shape *s, Edge *e, bool dedup)
 {
-    int shape_num = findShape(s, e);
+    int shape_num = dedup ? findShape(s, e) : -1;
     if (shape_num == -1) {
         shape_num = newShape(s, e);
     }

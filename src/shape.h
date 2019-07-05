@@ -53,7 +53,7 @@ struct Context {
 
     bool shapeEquals(Shape *s0, Edge *e0, Shape *s1, Edge *e1);
     int findShape(Shape *s, Edge *e);
-    int addShape(Shape *s, Edge *e);
+    int addShape(Shape *s, Edge *e, bool dedup = true);
     bool updateShape(int shape_num, Shape *s, Edge *e);
 };
 
