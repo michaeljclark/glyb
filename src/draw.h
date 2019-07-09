@@ -8,7 +8,7 @@ typedef struct {
     float pos[3];
     float uv[2];
     uint color;
-    float material;
+    float shape;
 } draw_vertex;
 
 enum { tbo_iid = -1 };

@@ -40,6 +40,7 @@
 
 #include "binpack.h"
 #include "image.h"
+#include "color.h"
 #include "utf8.h"
 #include "draw.h"
 #include "font.h"
@@ -55,7 +56,7 @@ using dvec2 = glm::dvec2;
 
 /* globals */
 
-static texture_buffer shape_tb, contour_tb, edge_tb;
+static texture_buffer shape_tb, edge_tb, brush_tb;
 static program simple, msdf, canvas;
 static GLuint vao, vbo, ibo;
 static std::map<int,GLuint> tex_map;
@@ -85,7 +86,7 @@ struct zoom_state {
     vec2 origin;
 };
 
-static Context ctx;
+static AContext ctx;
 static font_face *face;
 static draw_list batch;
 static std::map<int,int> glyph_map;
@@ -170,22 +171,33 @@ static void draw(double tn, double td)
     size_t num_shapes = ctx.shapes.size();
     int updated = 0;
     uint32_t gray = color(0.75f,0.75f,0.75f,1.0f).rgba32();
-    static int shape_num = -1;
+    static int shape_num = -1, brush_num = -1;
     if (shape_num < 0) {
+        brush_num = make_brush_axial_gradient(ctx,
+            vec2(0,0), vec2(0,font_size*2),
+            color(0.80f,0.80f,0.80f,1.0f), color(0.50f,0.50f,0.50f,1.0f)
+            );
         shape_num = make_rounded_rectangle(ctx, batch,
             vec2(width/2,height/2) + state.origin,
             vec2(text_width/1.85f,font_size), font_size/2, 10.0f, 0, gray);
+        print_shape(ctx, shape_num);
     } else {
+        update_brush_axial_gradient(brush_num, ctx,
+            vec2(0,0), vec2(0,font_size*2),
+            color(0.80f,0.80f,0.80f,1.0f), color(0.50f,0.50f,0.50f,1.0f)
+            );
         updated += update_rounded_rectangle(shape_num, ctx, batch,
             vec2(width/2,height/2) + state.origin,
             vec2(text_width/1.85f,font_size), font_size/2, 10.0f, 0, gray);
     }
+    brush_clear(ctx);
     canvas_renderer.render(batch, shapes, &segment);
 
     /* update shape texture buffers if shapes added or updated */
     if (num_shapes != ctx.shapes.size() || updated) {
-        buffer_texture_create(shape_tb, ctx.shapes, GL_TEXTURE0, GL_R32I);
+        buffer_texture_create(shape_tb, ctx.shapes, GL_TEXTURE0, GL_R32F);
         buffer_texture_create(edge_tb, ctx.edges, GL_TEXTURE1, GL_R32F);
+        buffer_texture_create(brush_tb, ctx.brushes, GL_TEXTURE2, GL_R32F);
     }
 
     /* render stats text */
@@ -227,6 +239,8 @@ static void draw(double tn, double td)
             glBindTexture(GL_TEXTURE_BUFFER, shape_tb.tex);
             glActiveTexture(GL_TEXTURE1);
             glBindTexture(GL_TEXTURE_BUFFER, edge_tb.tex);
+            glActiveTexture(GL_TEXTURE2);
+            glBindTexture(GL_TEXTURE_BUFFER, brush_tb.tex);
         } else {
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, tex_map[cmd.iid]);
@@ -256,6 +270,7 @@ static void update_uniforms(program *prog)
     uniform_1i(prog, "u_tex0", 0);
     uniform_1i(prog, "tb_shape", 0);
     uniform_1i(prog, "tb_edge", 1);
+    uniform_1i(prog, "tb_brush", 2);
 }
 
 static void reshape(int width, int height)
@@ -341,7 +356,7 @@ static void initialize()
     GLuint simple_fsh, msdf_fsh, canvas_fsh, vsh;
 
     std::vector<std::string> attrs = {
-        "a_pos", "a_uv0", "a_color", "a_material", "a_gamma"
+        "a_pos", "a_uv0", "a_color", "a_shape", "a_gamma"
     };
 
     /* shader program */
@@ -370,15 +385,16 @@ static void initialize()
     vertex_array_pointer(p, "a_pos", 3, GL_FLOAT, 0, &draw_vertex::pos);
     vertex_array_pointer(p, "a_uv0", 2, GL_FLOAT, 0, &draw_vertex::uv);
     vertex_array_pointer(p, "a_color", 4, GL_UNSIGNED_BYTE, 1, &draw_vertex::color);
-    vertex_array_pointer(p, "a_material", 1, GL_FLOAT, 0, &draw_vertex::material);
+    vertex_array_pointer(p, "a_shape", 1, GL_FLOAT, 0, &draw_vertex::shape);
     vertex_array_1f(p, "a_gamma", 2.0f);
     vertex_array_1f(p, "a_width", 0.0f);
     vertex_array_4f(p, "a_stroke", 0.0f, 0.0f, 0.0f, 1.0f);
     glBindVertexArray(0);
 
     /* create shape and edge buffer textures */
-    buffer_texture_create(shape_tb, ctx.shapes, GL_TEXTURE0, GL_R32I);
+    buffer_texture_create(shape_tb, ctx.shapes, GL_TEXTURE0, GL_R32F);
     buffer_texture_create(edge_tb, ctx.edges, GL_TEXTURE1, GL_R32F);
+    buffer_texture_create(brush_tb, ctx.brushes, GL_TEXTURE2, GL_R32F);
 
     /* pipeline */
     glEnable(GL_CULL_FACE);

@@ -17,10 +17,11 @@ varying vec4 v_color;
 varying vec2 v_uv0;
 varying float v_gamma;
 varying float v_width;
-varying float v_material;
+varying float v_shape;
 
 uniform samplerBuffer tb_shape;
 uniform samplerBuffer tb_edge;
+uniform samplerBuffer tb_brush;
 
 #define FLT_MAX 3.4028235e38
 #define M_PI 3.1415926535897932384626433832795
@@ -33,14 +34,28 @@ uniform samplerBuffer tb_edge;
 #define Ellipse 7
 #define RoundedRectangle 8
 
+#define Axial 1
+#define Radial 2
+
 struct Shape {
-    int contour_offset, contour_count, edge_offset, edge_count;
-    vec2 offset, size;
+    int contour_offset;
+    int contour_count;
+    int edge_offset;
+    int edge_count;
+    vec2 offset;
+    vec2 size;
+    int brush;
 };
 
 struct Edge {
     int edge_type;
     vec2 p[4];
+};
+
+struct Brush {
+    int brush_type;
+    vec2 p[4];
+    vec4 c[4];
 };
 
 /*
@@ -376,7 +391,7 @@ float sdRoundedRectangle(vec2 p[4], out float dir, vec2 origin, out float param)
 
 void getShape(out Shape shape, int shape_num)
 {
-    int o = shape_num * 8;
+    int o = shape_num * 9;
     shape.contour_offset = int(texelFetch(tb_shape, o + 0).r);
     shape.contour_count =  int(texelFetch(tb_shape, o + 1).r);
     shape.edge_offset =    int(texelFetch(tb_shape, o + 2).r);
@@ -385,6 +400,7 @@ void getShape(out Shape shape, int shape_num)
                            texelFetch(tb_shape, o + 5).r);
     shape.size =      vec2(texelFetch(tb_shape, o + 6).r,
                            texelFetch(tb_shape, o + 7).r);
+    shape.brush =      int(texelFetch(tb_shape, o + 8).r);
 }
 
 void getEdge(out Edge edge, int edge_num)
@@ -395,6 +411,32 @@ void getEdge(out Edge edge, int edge_num)
     edge.p[1] = vec2(texelFetch(tb_edge, o + 3).r, texelFetch(tb_edge, o + 4).r);
     edge.p[2] = vec2(texelFetch(tb_edge, o + 5).r, texelFetch(tb_edge, o + 6).r);
     edge.p[3] = vec2(texelFetch(tb_edge, o + 7).r, texelFetch(tb_edge, o + 8).r);
+}
+
+void getBrush(out Brush brush, int brush_num)
+{
+    int o = brush_num * 25;
+    brush.brush_type = int(texelFetch(tb_brush, o + 0).r);
+    brush.p[0] = vec2(texelFetch(tb_brush, o + 1).r, texelFetch(tb_brush, o + 2).r);
+    brush.p[1] = vec2(texelFetch(tb_brush, o + 3).r, texelFetch(tb_brush, o + 4).r);
+    brush.p[2] = vec2(texelFetch(tb_brush, o + 5).r, texelFetch(tb_brush, o + 6).r);
+    brush.p[3] = vec2(texelFetch(tb_brush, o + 7).r, texelFetch(tb_brush, o + 8).r);
+    brush.c[0] = vec4(texelFetch(tb_brush, o + 9).r,
+                      texelFetch(tb_brush, o + 10).r,
+                      texelFetch(tb_brush, o + 11).r,
+                      texelFetch(tb_brush, o + 12).r);
+    brush.c[1] = vec4(texelFetch(tb_brush, o + 13).r,
+                      texelFetch(tb_brush, o + 14).r,
+                      texelFetch(tb_brush, o + 15).r,
+                      texelFetch(tb_brush, o + 16).r);
+    brush.c[2] = vec4(texelFetch(tb_brush, o + 17).r,
+                      texelFetch(tb_brush, o + 18).r,
+                      texelFetch(tb_brush, o + 19).r,
+                      texelFetch(tb_brush, o + 20).r);
+    brush.c[3] = vec4(texelFetch(tb_brush, o + 21).r,
+                      texelFetch(tb_brush, o + 22).r,
+                      texelFetch(tb_brush, o + 23).r,
+                      texelFetch(tb_brush, o + 24).r);
 }
 
 float getDistanceEdge(Edge edge, vec2 origin, out float dir, out float param)
@@ -428,6 +470,34 @@ float getDistanceShape(Shape shape, vec2 origin, out float dir, out float param)
     return minDistance;
 }
 
+vec4 brushColorRadial(Brush brush, vec2 origin)
+{
+    return vec4(1.0,0.8,0.8,1.0);
+}
+
+vec4 brushColorAxial(Brush brush, vec2 origin)
+{
+    float x0 = brush.p[0].x, y0 = brush.p[0].y;
+    float x1 = brush.p[1].x, y1 = brush.p[1].y;
+    float t = ((x1 - x0) * (origin.x - x0) + (y1 - y0) * (origin.y - y0)) /
+        ((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0));
+    t = clamp(t, 0, 1);
+    return (1-t) * brush.c[0] + t * brush.c[1];
+}
+
+vec4 getColorBrush(Shape shape, vec2 origin)
+{
+    if (shape.brush >= 0) {
+        Brush brush;
+        getBrush(brush, shape.brush);
+        switch(brush.brush_type) {
+        case Radial: return brushColorRadial(brush, origin);
+        case Axial:  return brushColorAxial(brush, origin);
+        }
+    }
+    return v_color;
+}
+
 /*
  * Signed distance field shape fragment shader main.
  */
@@ -435,7 +505,9 @@ float getDistanceShape(Shape shape, vec2 origin, out float dir, out float param)
 void main()
 {
     Shape shape;
-    getShape(shape, int(v_material));
+    getShape(shape, int(v_shape));
+
+    vec4 b_color = getColorBrush(shape, v_uv0.xy);
 
     float dir, param;
     float distance = getDistanceShape(shape, v_uv0.xy, dir, param);
@@ -445,8 +517,8 @@ void main()
     float ps = sqrt(dx*dx + dy*dy);
     float w = v_width/2.0;
     float alpha = smoothstep(-w-ps, -w+ps, distance);
-    vec4 color = v_width == 0 ? v_color :
-        mix(v_stroke, v_color, smoothstep(w-ps, w+ps, distance));
+    vec4 color = v_width == 0 ? b_color :
+        mix(v_stroke, b_color, smoothstep(w-ps, w+ps, distance));
 
     gl_FragColor = vec4(pow(color.rgb, vec3(1.0/v_gamma)), alpha);
 }

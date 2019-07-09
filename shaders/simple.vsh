@@ -6,7 +6,7 @@ attribute vec4 a_color;
 attribute vec4 a_stroke;
 attribute float a_gamma;
 attribute float a_width;
-attribute float a_material;
+attribute float a_shape;
 
 uniform mat4 u_mvp;
 
@@ -15,7 +15,7 @@ varying vec4 v_stroke;
 varying vec2 v_uv0;
 varying float v_gamma;
 varying float v_width;
-varying float v_material;
+varying float v_shape;
 
 void main() {
     v_stroke = a_stroke;
@@ -23,6 +23,6 @@ void main() {
     v_gamma = a_gamma;
     v_width = a_width;
     v_uv0 = a_uv0;
-    v_material = a_material;
+    v_shape = a_shape;
     gl_Position = u_mvp * vec4(a_pos.xyz, 1.0);
 }

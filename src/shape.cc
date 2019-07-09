@@ -28,6 +28,7 @@
 
 #include "binpack.h"
 #include "image.h"
+#include "color.h"
 #include "utf8.h"
 #include "draw.h"
 #include "font.h"
@@ -45,7 +46,7 @@
 
 typedef const FT_Vector ftvec;
 
-static Context* uctx(void *u) { return static_cast<Context*>(u); }
+static AContext* uctx(void *u) { return static_cast<AContext*>(u); }
 static vec2 pt(ftvec *v) { return vec2(v->x/64.f, v->y/64.f); }
 
 static int ftMoveTo(ftvec *p, void *u) {
@@ -55,19 +56,19 @@ static int ftMoveTo(ftvec *p, void *u) {
 }
 
 static int ftLineTo(ftvec *p, void *u) {
-    uctx(u)->newEdge(Edge{Linear, { uctx(u)->pos, pt(p) }});
+    uctx(u)->newEdge(AEdge{Linear, { uctx(u)->pos, pt(p) }});
     uctx(u)->pos = pt(p);
     return 0;
 }
 
 static int ftConicTo(ftvec *c, ftvec *p, void *u) {
-    uctx(u)->newEdge(Edge{Quadratic, { uctx(u)->pos, pt(c), pt(p) }});
+    uctx(u)->newEdge(AEdge{Quadratic, { uctx(u)->pos, pt(c), pt(p) }});
     uctx(u)->pos = pt(p);
     return 0;
 }
 
 static int ftCubicTo(ftvec *c1, ftvec *c2, ftvec *p, void *u) {
-    uctx(u)->newEdge(Edge{Cubic, { uctx(u)->pos, pt(c1), pt(c2), pt(p) }});
+    uctx(u)->newEdge(AEdge{Cubic, { uctx(u)->pos, pt(c1), pt(c2), pt(p) }});
     uctx(u)->pos = pt(p);
     return 0;
 }
@@ -81,7 +82,7 @@ static vec2 size(FT_Glyph_Metrics *m) {
     return vec2(ceilf(m->width/64.0f), ceilf(m->height/64.0f));
 }
 
-int make_glyph(Context *ctx, FT_Face ftface, int sz, int dpi, int glyph)
+int make_glyph(AContext *ctx, FT_Face ftface, int sz, int dpi, int glyph)
 {
     FT_Outline_Funcs ftfuncs = { ftMoveTo, ftLineTo, ftConicTo, ftCubicTo };
     FT_Glyph_Metrics *m = &ftface->glyph->metrics;
@@ -104,64 +105,90 @@ int make_glyph(Context *ctx, FT_Face ftface, int sz, int dpi, int glyph)
     return shape_num;
 }
 
-void print_shape(Context &ctx, int shape)
+void print_edge(AContext &ctx, int edge)
 {
-    Shape &s = ctx.shapes[shape];
-    printf("shape %d (contour count = %d, edge count = %d, "
-        "offset = (%d,%d), size = (%d,%d))\n",
-        shape, (int)s.contour_count, (int)s.edge_count,
-        (int)s.offset.x, (int)s.offset.y, (int)s.size.x, (int)s.size.y);
-    for (size_t i = 0; i < (size_t)s.contour_count; i++) {
-        Contour &c = ctx.contours[(size_t)s.contour_offset + i];
-        printf("  contour %zu (edge count = %d)\n", i, (int)c.edge_count);
-        for (size_t j = 0; j < c.edge_count; j++) {
-            Edge &e = ctx.edges[(size_t)c.edge_offset + j];
-            switch ((int)e.type) {
-            case EdgeType::Linear:
-                printf("    edge %zu Linear (%f,%f) - (%f, %f)\n",
-                    j, e.p[0].x, e.p[0].y, e.p[1].x, e.p[1].y);
-                break;
-            case EdgeType::Quadratic:
-                printf("    edge %zu Quadratic (%f,%f) - [%f, %f]"
-                    " - (%f, %f)\n",
-                    j, e.p[0].x, e.p[0].y, e.p[1].x, e.p[1].y,
-                       e.p[2].x, e.p[2].y);
-                break;
-            case EdgeType::Cubic:
-                printf("    edge %zu Cubic (%f,%f) - [%f, %f]"
-                    " - [%f, %f] - (%f, %f)\n",
-                    j, e.p[0].x, e.p[0].y, e.p[1].x, e.p[1].y,
-                       e.p[2].x, e.p[2].y, e.p[3].x, e.p[3].y);
-                break;
-            }
-        }
+    AEdge &e = ctx.edges[edge];
+    switch ((int)e.type) {
+    case AEdgeType::Linear:
+        printf("    edge %d Linear (%f,%f) - (%f, %f)\n",
+            edge, e.p[0].x, e.p[0].y, e.p[1].x, e.p[1].y);
+        break;
+    case AEdgeType::Quadratic:
+        printf("    edge %d Quadratic (%f,%f) - [%f, %f]"
+            " - (%f, %f)\n",
+            edge, e.p[0].x, e.p[0].y, e.p[1].x, e.p[1].y,
+               e.p[2].x, e.p[2].y);
+        break;
+    case AEdgeType::Cubic:
+        printf("    edge %d Cubic (%f,%f) - [%f, %f]"
+            " - [%f, %f] - (%f, %f)\n",
+            edge, e.p[0].x, e.p[0].y, e.p[1].x, e.p[1].y,
+               e.p[2].x, e.p[2].y, e.p[3].x, e.p[3].y);
+        break;
+    case AEdgeType::Circle:
+        printf("    edge %d Circle (%f,%f), r=%f\n",
+            edge, e.p[0].x, e.p[0].y, e.p[1].x);
+        break;
+    case AEdgeType::Ellipse:
+        printf("    edge %d Ellipse (%f,%f), r=(%f, %f)\n",
+            edge, e.p[0].x, e.p[0].y, e.p[1].x, e.p[1].y);
+        break;
+    case AEdgeType::Rectangle:
+        printf("    edge %d Rectangle (%f,%f), halfSize=(%f, %f)\n",
+            edge, e.p[0].x, e.p[0].y, e.p[1].x, e.p[1].y);
+        break;
+    case AEdgeType::RoundedRectangle:
+        printf("    edge %d RoundedRectangle (%f,%f), halfSize=(%f, %f), r=%f\n",
+            edge, e.p[0].x, e.p[0].y, e.p[1].x, e.p[1].y, e.p[2].x);
+        break;
     }
 }
 
-void Context::clear()
+void print_shape(AContext &ctx, int shape)
+{
+    AShape &s = ctx.shapes[shape];
+    printf("shape %d (contour count = %d, edge count = %d, "
+        "offset = (%d,%d), size = (%d,%d), brush = %d\n",
+        shape, (int)s.contour_count, (int)s.edge_count,
+        (int)s.offset.x, (int)s.offset.y, (int)s.size.x, (int)s.size.y,
+        (int)s.brush);
+    for (size_t i = 0; i < (size_t)s.contour_count; i++) {
+        AContour &c = ctx.contours[(size_t)s.contour_offset + i];
+        printf("  contour %zu (edge count = %d)\n", i, (int)c.edge_count);
+        for (size_t j = 0; j < c.edge_count; j++) {
+            print_edge(ctx, (int)c.edge_offset + j);
+        }
+    }
+    if (s.contour_count > 0) return;
+    for (size_t i = 0; i < (size_t)s.edge_count; i++) {
+        print_edge(ctx, (int)s.edge_offset + i);
+    }
+}
+
+void AContext::clear()
 {
     shapes.clear();
     contours.clear();
     edges.clear();
 }
 
-int Context::newShape(vec2 offset, vec2 size)
+int AContext::newShape(vec2 offset, vec2 size)
 {
     int shape_num = (int)shapes.size();
-    shapes.emplace_back(Shape{(float)contours.size(), 0,
-        (float)edges.size(), 0, offset, size });
+    shapes.emplace_back(AShape{(float)contours.size(), 0,
+        (float)edges.size(), 0, offset, size, (float)currentBrush() });
     return shape_num;
 }
 
-int Context::newContour()
+int AContext::newContour()
 {
     int contour_num = (int)contours.size();
-    contours.emplace_back(Contour{(float)edges.size(), 0});
+    contours.emplace_back(AContour{(float)edges.size(), 0});
     shapes.back().contour_count++;
     return contour_num;
 }
 
-int Context::newEdge(Edge e)
+int AContext::newEdge(AEdge e)
 {
     int edge_num = (int)edges.size();
     edges.push_back(e);
@@ -172,7 +199,7 @@ int Context::newEdge(Edge e)
     return edge_num;
 }
 
-int Context::newShape(Shape *shape, Edge *edges)
+int AContext::newShape(AShape *shape, AEdge *edges)
 {
     int shape_num = newShape(shape->offset, shape->size);
     for (int i = 0; i < shape->edge_count; i++) {
@@ -194,11 +221,24 @@ static int numPoints(int edge_type)
     }
 }
 
-bool Context::shapeEquals(Shape *s0, Edge *e0, Shape *s1, Edge *e1)
+int AContext::newBrush(ABrush b)
+{
+    brush = (int)brushes.size();
+    brushes.push_back(b);
+    return brush;
+}
+
+int AContext::currentBrush()
+{
+    return brush;
+}
+
+bool AContext::shapeEquals(AShape *s0, AEdge *e0, AShape *s1, AEdge *e1)
 {
     if (s0->edge_count != s1->edge_count) return false;
     if (s0->offset != s1->offset) return false;
     if (s0->size != s1->size) return false;
+    if (s0->brush != s1->brush) return false;
     if (e0->type != e1->type) return false;
     for (int i = 0; i < s0->edge_count; i++) {
         int match_points = numPoints(e0[i].type);
@@ -209,7 +249,7 @@ bool Context::shapeEquals(Shape *s0, Edge *e0, Shape *s1, Edge *e1)
     return true;
 }
 
-int Context::findShape(Shape *s, Edge *e)
+int AContext::findShape(AShape *s, AEdge *e)
 {
     /* this is really inefficient! */
     for (size_t i = 0; i < shapes.size(); i++) {
@@ -221,7 +261,7 @@ int Context::findShape(Shape *s, Edge *e)
     return -1;
 }
 
-int Context::addShape(Shape *s, Edge *e, bool dedup)
+int AContext::addShape(AShape *s, AEdge *e, bool dedup)
 {
     int shape_num = dedup ? findShape(s, e) : -1;
     if (shape_num == -1) {
@@ -230,10 +270,10 @@ int Context::addShape(Shape *s, Edge *e, bool dedup)
     return shape_num;
 }
 
-bool Context::updateShape(int shape_num, Shape *s, Edge *e)
+bool AContext::updateShape(int shape_num, AShape *s, AEdge *e)
 {
-    Shape *os = &shapes[shape_num];
-    Edge *oe = &edges[shapes[shape_num].edge_offset];
+    AShape *os = &shapes[shape_num];
+    AEdge *oe = &edges[shapes[shape_num].edge_offset];
 
     if (shapeEquals(os, oe, s, e)) {
         return false;
@@ -270,9 +310,9 @@ static void rect(draw_list &b, uint iid, vec2 A, vec2 B, float Z,
 }
 
 static void rect(draw_list &batch, vec2 A, vec2 B, float Z,
-    Context &ctx, uint shape_num, uint color)
+    AContext &ctx, uint shape_num, uint color)
 {
-    Shape &shape = ctx.shapes[shape_num];
+    AShape &shape = ctx.shapes[shape_num];
     auto &size = shape.size;
     auto &offset = shape.offset;
     auto t = mat3(size.x,       0,        offset.x ,
@@ -284,14 +324,47 @@ static void rect(draw_list &batch, vec2 A, vec2 B, float Z,
 }
 
 /*
+ * brush
+ */
+
+void brush_clear(AContext &ctx)
+{
+    ctx.brush = -1;
+}
+
+void brush_set(AContext &ctx, int brush_num)
+{
+    ctx.brush = brush_num;
+}
+
+int make_brush_axial_gradient(AContext &ctx, vec2 p0, vec2 p1, color c0, color c1)
+{
+    vec4 C0{c0.r, c0.g, c0.b, c0.a};
+    vec4 C1{c1.r, c1.g, c1.b, c1.a};
+    return ctx.newBrush(ABrush{Axial, {p0, p1}, {C0, C1}});
+}
+
+int update_brush_axial_gradient(int brush_num, AContext &ctx, vec2 p0, vec2 p1, color c0, color c1)
+{
+    vec4 C0{c0.r, c0.g, c0.b, c0.a};
+    vec4 C1{c1.r, c1.g, c1.b, c1.a};
+    ctx.brushes[brush_num].p[0] = p0;
+    ctx.brushes[brush_num].p[1] = p1;
+    ctx.brushes[brush_num].c[0] = C0;
+    ctx.brushes[brush_num].c[1] = C1;
+    return 1; /* todo: compare brush so client can downlaod deltas to the gpu */
+}
+
+/*
  * shape create
  */
 
-int make_rectangle(Context &ctx, draw_list &batch, vec2 pos, vec2 halfSize,
+int make_rectangle(AContext &ctx, draw_list &batch, vec2 pos, vec2 halfSize,
     float padding, float z, uint32_t c)
 {
-    Shape shape{0, 0, 0, 1, vec2(0), vec2((halfSize+padding)*2.0f) };
-    Edge edge{Rectangle,{halfSize + padding, halfSize}};
+    float brush = (float)ctx.currentBrush();
+    AShape shape{0, 0, 0, 1, vec2(0), vec2((halfSize+padding)*2.0f), brush };
+    AEdge edge{Rectangle,{halfSize + padding, halfSize}};
 
     int shape_num = ctx.addShape(&shape, &edge);
     rect(batch, tbo_iid, pos - halfSize - padding, pos + halfSize + padding,
@@ -300,11 +373,12 @@ int make_rectangle(Context &ctx, draw_list &batch, vec2 pos, vec2 halfSize,
     return shape_num;
 }
 
-int make_rounded_rectangle(Context &ctx, draw_list &batch, vec2 pos,
+int make_rounded_rectangle(AContext &ctx, draw_list &batch, vec2 pos,
     vec2 halfSize, float radius, float padding, float z, uint32_t c)
 {
-    Shape shape{0, 0, 0, 1, vec2(0), vec2((halfSize+padding)*2.0f) };
-    Edge edge{RoundedRectangle,{halfSize + padding, halfSize, vec2(radius)}};
+    float brush = (float)ctx.currentBrush();
+    AShape shape{0, 0, 0, 1, vec2(0), vec2((halfSize+padding)*2.0f), brush };
+    AEdge edge{RoundedRectangle,{halfSize + padding, halfSize, vec2(radius)}};
 
     int shape_num = ctx.addShape(&shape, &edge);
     rect(batch, tbo_iid, pos - halfSize - padding, pos + halfSize + padding,
@@ -313,11 +387,12 @@ int make_rounded_rectangle(Context &ctx, draw_list &batch, vec2 pos,
     return shape_num;
 }
 
-int make_circle(Context &ctx, draw_list &batch, vec2 pos, float radius,
+int make_circle(AContext &ctx, draw_list &batch, vec2 pos, float radius,
     float padding, float z, uint32_t c)
 {
-    Shape shape{0, 0, 0, 1, vec2(0), vec2((radius + padding) * 2.0f) };
-    Edge edge{Circle,{vec2(radius + padding), vec2(radius)}};
+    float brush = (float)ctx.currentBrush();
+    AShape shape{0, 0, 0, 1, vec2(0), vec2((radius + padding) * 2.0f), brush };
+    AEdge edge{Circle,{vec2(radius + padding), vec2(radius)}};
 
     int shape_num = ctx.addShape(&shape, &edge);
     rect(batch, tbo_iid, pos - radius - padding, pos + radius + padding,
@@ -326,11 +401,12 @@ int make_circle(Context &ctx, draw_list &batch, vec2 pos, float radius,
     return shape_num;
 }
 
-int make_ellipse(Context &ctx, draw_list &batch, vec2 pos, vec2 radius,
+int make_ellipse(AContext &ctx, draw_list &batch, vec2 pos, vec2 radius,
     float padding, float z, uint32_t c)
 {
-    Shape shape{0, 0, 0, 1, vec2(0), (radius + padding) * 2.0f };
-    Edge edge{Ellipse,{radius + padding, radius}};
+    float brush = (float)ctx.currentBrush();
+    AShape shape{0, 0, 0, 1, vec2(0), (radius + padding) * 2.0f, brush };
+    AEdge edge{Ellipse,{radius + padding, radius}};
 
     int shape_num = ctx.addShape(&shape, &edge);
     rect(batch, tbo_iid, pos - radius - padding, pos + radius + padding,
@@ -343,11 +419,12 @@ int make_ellipse(Context &ctx, draw_list &batch, vec2 pos, vec2 radius,
  * shape update
  */
 
-int update_rectangle(int shape_num, Context &ctx, draw_list &batch, vec2 pos,
+int update_rectangle(int shape_num, AContext &ctx, draw_list &batch, vec2 pos,
     vec2 halfSize, float padding, float z, uint32_t c)
 {
-    Shape shape{0, 0, 0, 1, vec2(0), vec2((halfSize+padding)*2.0f) };
-    Edge edge{Rectangle,{halfSize + padding, halfSize}};
+    float brush = ctx.shapes[shape_num].brush;
+    AShape shape{0, 0, 0, 1, vec2(0), vec2((halfSize+padding)*2.0f), brush };
+    AEdge edge{Rectangle,{halfSize + padding, halfSize}};
 
     int updated = ctx.updateShape(shape_num, &shape, &edge);
     rect(batch, tbo_iid, pos - halfSize - padding, pos + halfSize + padding,
@@ -356,11 +433,12 @@ int update_rectangle(int shape_num, Context &ctx, draw_list &batch, vec2 pos,
     return updated;
 }
 
-int update_rounded_rectangle(int shape_num, Context &ctx, draw_list &batch,
+int update_rounded_rectangle(int shape_num, AContext &ctx, draw_list &batch,
     vec2 pos, vec2 halfSize, float radius, float padding, float z, uint32_t c)
 {
-    Shape shape{0, 0, 0, 1, vec2(0), vec2((halfSize+padding)*2.0f) };
-    Edge edge{RoundedRectangle,{halfSize + padding, halfSize, vec2(radius)}};
+    float brush = ctx.shapes[shape_num].brush;
+    AShape shape{0, 0, 0, 1, vec2(0), vec2((halfSize+padding)*2.0f), brush };
+    AEdge edge{RoundedRectangle,{halfSize + padding, halfSize, vec2(radius)}};
 
     int updated = ctx.updateShape(shape_num, &shape, &edge);
     rect(batch, tbo_iid, pos - halfSize - padding, pos + halfSize + padding,
@@ -369,11 +447,12 @@ int update_rounded_rectangle(int shape_num, Context &ctx, draw_list &batch,
     return updated;
 }
 
-int update_circle(int shape_num, Context &ctx, draw_list &batch, vec2 pos,
+int update_circle(int shape_num, AContext &ctx, draw_list &batch, vec2 pos,
     float radius, float padding, float z, uint32_t c)
 {
-    Shape shape{0, 0, 0, 1, vec2(0), vec2((radius + padding) * 2.0f) };
-    Edge edge{Circle,{vec2(radius + padding), vec2(radius)}};
+    float brush = ctx.shapes[shape_num].brush;
+    AShape shape{0, 0, 0, 1, vec2(0), vec2((radius + padding) * 2.0f), brush };
+    AEdge edge{Circle,{vec2(radius + padding), vec2(radius)}};
 
     int updated = ctx.updateShape(shape_num, &shape, &edge);
     rect(batch, tbo_iid, pos - radius - padding, pos + radius + padding,
@@ -382,11 +461,12 @@ int update_circle(int shape_num, Context &ctx, draw_list &batch, vec2 pos,
     return updated;
 }
 
-int update_ellipse(int shape_num, Context &ctx, draw_list &batch, vec2 pos,
+int update_ellipse(int shape_num, AContext &ctx, draw_list &batch, vec2 pos,
     vec2 radius, float padding, float z, uint32_t c)
 {
-    Shape shape{0, 0, 0, 1, vec2(0), (radius + padding) * 2.0f };
-    Edge edge{Ellipse,{radius + padding, radius}};
+    float brush = ctx.shapes[shape_num].brush;
+    AShape shape{0, 0, 0, 1, vec2(0), (radius + padding) * 2.0f, brush };
+    AEdge edge{Ellipse,{radius + padding, radius}};
 
     int updated = ctx.updateShape(shape_num, &shape, &edge);
     rect(batch, tbo_iid, pos - radius - padding, pos + radius + padding,
@@ -423,7 +503,7 @@ void text_renderer_canvas::render(draw_list &batch,
         } else {
             shape_num = gi->second;
         }
-        Shape &shape = ctx.shapes[shape_num];
+        AShape &shape = ctx.shapes[shape_num];
 
         /* figure out glyph dimensions */
         float s_scale = font_size / (float)(glyph_load_size << 6);
