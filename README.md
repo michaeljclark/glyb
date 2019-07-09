@@ -56,6 +56,7 @@ The project also contains several OpenGL examples using the library.
   - `fontdb` - _example demonstrates scanning font metadata_
   - `ftrender` - _example renders glyphs to the console_
   - `genatlas` - _example MSDF font atlas batch generator_
+  - `glcanvas` - _example GPU-acceralated Bézier font rendering_
   - `gllayout` - _example showing text layout with line breaks_
   - `glfont` - _example that displays sample text at multiple sizes_
   - `glsimple` - _simplest possible example for OpenGL_
