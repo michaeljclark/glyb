@@ -71,7 +71,9 @@ struct AContext {
     int newEdge(AEdge e);
     int newShape(AShape *shape, AEdge *edges);
 
+    bool brushEquals(ABrush *b0, ABrush *b1);
     int newBrush(ABrush b);
+    bool updateBrush(int brush_num, ABrush *b);
     int currentBrush();
 
     bool shapeEquals(AShape *s0, AEdge *e0, AShape *s1, AEdge *e1);

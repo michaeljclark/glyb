@@ -208,7 +208,7 @@ int AContext::newShape(AShape *shape, AEdge *edges)
     return shape_num;
 }
 
-static int numPoints(int edge_type)
+static int numShapePoints(int edge_type)
 {
     switch (edge_type) {
     case Linear:           return 2;
@@ -221,11 +221,39 @@ static int numPoints(int edge_type)
     }
 }
 
+static int numBrushPoints(int brush_type)
+{
+    switch (brush_type) {
+    case Axial:         return 2;
+    case Radial:        return 2;
+    }
+}
+
+bool AContext::brushEquals(ABrush *b0, ABrush *b1)
+{
+    if (b0->type != b1->type) return false;
+    int match_points = numBrushPoints(b0->type);
+    for (int i = 0; i < match_points; i++) {
+        if (b0->p[i] != b1->p[i]) return false;
+        if (b0->c[i] != b1->c[i]) return false;
+    }
+    return true;
+}
+
 int AContext::newBrush(ABrush b)
 {
     brush = (int)brushes.size();
     brushes.push_back(b);
     return brush;
+}
+
+bool AContext::updateBrush(int brush_num, ABrush *b)
+{
+    bool update = !brushEquals(&brushes[brush_num], b);
+    if (update) {
+        brushes[brush_num] = *b;
+    }
+    return update;
 }
 
 int AContext::currentBrush()
@@ -241,7 +269,7 @@ bool AContext::shapeEquals(AShape *s0, AEdge *e0, AShape *s1, AEdge *e1)
     if (s0->brush != s1->brush) return false;
     if (e0->type != e1->type) return false;
     for (int i = 0; i < s0->edge_count; i++) {
-        int match_points = numPoints(e0[i].type);
+        int match_points = numShapePoints(e0[i].type);
         for (int j = 0; j < match_points; j++) {
             if (e0[i].p[j] != e1[i].p[j]) return false;
         }
@@ -348,11 +376,8 @@ int update_brush_axial_gradient(int brush_num, AContext &ctx, vec2 p0, vec2 p1, 
 {
     vec4 C0{c0.r, c0.g, c0.b, c0.a};
     vec4 C1{c1.r, c1.g, c1.b, c1.a};
-    ctx.brushes[brush_num].p[0] = p0;
-    ctx.brushes[brush_num].p[1] = p1;
-    ctx.brushes[brush_num].c[0] = C0;
-    ctx.brushes[brush_num].c[1] = C1;
-    return 1; /* todo: compare brush so client can downlaod deltas to the gpu */
+    ABrush b{Axial, {p0, p1}, {C0, C1}};
+    return ctx.updateBrush(brush_num, &b);
 }
 
 /*
