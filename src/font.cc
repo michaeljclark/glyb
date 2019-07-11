@@ -24,6 +24,9 @@
 #include FT_GLYPH_H
 #include FT_OUTLINE_H
 
+#include <hb.h>
+#include <hb-ft.h>
+
 #include "binpack.h"
 #include "image.h"
 #include "draw.h"
@@ -626,7 +629,8 @@ glyph_entry* font_manager_ft::lookup(font_face *face, int font_size, int glyph)
 /* Font Face (FreeType) */
 
 font_face_ft::font_face_ft(font_manager_ft* manager, FT_Face ftface, int font_id, std::string path) :
-    font_face(font_id, path, FT_Get_Postscript_Name(ftface)), manager(manager), ftface(ftface)
+    font_face(font_id, path, FT_Get_Postscript_Name(ftface)), manager(manager),
+    ftface(ftface), hbfont_cache(nullptr), hbfont_size(0)
 {
     fontData = font_manager::createFontRecord(name,
         ftface->family_name, ftface->style_name);
@@ -634,6 +638,10 @@ font_face_ft::font_face_ft(font_manager_ft* manager, FT_Face ftface, int font_id
 
 font_face_ft::~font_face_ft()
 {
+    if (hbfont_cache) {
+        hb_font_destroy(hbfont_cache);
+        hbfont_cache = nullptr;
+    }
     FT_Done_Face(ftface);
 }
 
@@ -647,6 +655,18 @@ FT_Size_Metrics* font_face_ft::get_metrics(int font_size)
         FT_Set_Char_Size(ftface, 0, font_size, font_dpi, font_dpi);
     }
     return &ftface->size->metrics;
+}
+
+hb_font_t* font_face_ft::get_hbfont(int font_size)
+{
+    if (hbfont_cache && hbfont_size == font_size) {
+        return hbfont_cache;
+    } else if (hbfont_cache) {
+        hb_font_destroy(hbfont_cache);
+    }
+    hbfont_cache  = hb_ft_font_create(ftface, NULL);
+    hbfont_size = font_size;
+    return hbfont_cache;
 }
 
 int font_face_ft::get_height(int font_size)

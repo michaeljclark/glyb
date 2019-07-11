@@ -4,6 +4,7 @@
 
 /* Forward declarations. */
 
+struct hb_font_t;
 typedef struct FT_FaceRec_* FT_Face;
 typedef struct FT_LibraryRec_* FT_Library;
 typedef struct FT_GlyphSlotRec_* FT_GlyphSlot;
@@ -308,6 +309,8 @@ struct font_manager
 struct font_face_ft : font_face
 {
     FT_Face ftface;
+    hb_font_t *hbfont_cache;
+    int hbfont_size;
     font_manager_ft* manager;
 
     font_face_ft() = default;
@@ -315,6 +318,7 @@ struct font_face_ft : font_face
     virtual ~font_face_ft();
 
     FT_Size_Metrics* get_metrics(int font_size);
+    hb_font_t* get_hbfont(int font_size);
     int get_height(int font_size);
     font_face_ft* dup_thread();
 };

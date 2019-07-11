@@ -472,18 +472,17 @@ void text_shaper_hb::shape(std::vector<glyph_shape> &shapes, text_segment *segme
     hb_glyph_position_t *glyph_pos;
     unsigned glyph_count;
 
-    /* we need to set up our font metrics */
+    /* we need to set up font metrics */
     face->get_metrics(segment->font_size);
 
     /* get text to render */
     const char* text = segment->text.c_str();
     size_t text_len = segment->text.size();
-
-    /* create text buffers */
-    hbfont  = hb_ft_font_create(ftface, NULL);
+    hbfont = face->get_hbfont(segment->font_size);
     hblang = hb_language_from_string(segment->language.c_str(),
         (int)segment->language.size());
 
+    /* create text buffers */
     hb_buffer_t *buf = hb_buffer_create();
     hb_buffer_set_direction(buf, HB_DIRECTION_LTR);
     hb_buffer_set_script(buf, HB_SCRIPT_LATIN);
@@ -504,7 +503,6 @@ void text_shaper_hb::shape(std::vector<glyph_shape> &shapes, text_segment *segme
     }
 
     hb_buffer_destroy(buf);
-    hb_font_destroy(hbfont); /* todo - consider caching instance */
 }
 
 /*
