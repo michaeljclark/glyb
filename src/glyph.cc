@@ -504,6 +504,7 @@ void text_shaper_hb::shape(std::vector<glyph_shape> &shapes, text_segment *segme
     }
 
     hb_buffer_destroy(buf);
+    hb_font_destroy(hbfont); /* todo - consider caching instance */
 }
 
 /*
