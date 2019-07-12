@@ -155,12 +155,12 @@ void print_shape(AContext &ctx, int shape)
     for (size_t i = 0; i < (size_t)s.contour_count; i++) {
         AContour &c = ctx.contours[(size_t)s.contour_offset + i];
         printf("  contour %zu (edge count = %d)\n", i, (int)c.edge_count);
-        for (size_t j = 0; j < c.edge_count; j++) {
+        for (int j = 0; j < c.edge_count; j++) {
             print_edge(ctx, (int)c.edge_offset + j);
         }
     }
     if (s.contour_count > 0) return;
-    for (size_t i = 0; i < (size_t)s.edge_count; i++) {
+    for (int i = 0; i < (size_t)s.edge_count; i++) {
         print_edge(ctx, (int)s.edge_offset + i);
     }
 }
@@ -219,6 +219,7 @@ static int numShapePoints(int edge_type)
     case Ellipse:          return 2;
     case RoundedRectangle: return 2;
     }
+	return 0;
 }
 
 static int numBrushPoints(int brush_type)
@@ -227,12 +228,13 @@ static int numBrushPoints(int brush_type)
     case Axial:         return 2;
     case Radial:        return 2;
     }
+	return 0;
 }
 
 bool AContext::brushEquals(ABrush *b0, ABrush *b1)
 {
     if (b0->type != b1->type) return false;
-    int match_points = numBrushPoints(b0->type);
+    int match_points = numBrushPoints((int)b0->type);
     for (int i = 0; i < match_points; i++) {
         if (b0->p[i] != b1->p[i]) return false;
         if (b0->c[i] != b1->c[i]) return false;
@@ -269,7 +271,7 @@ bool AContext::shapeEquals(AShape *s0, AEdge *e0, AShape *s1, AEdge *e1)
     if (s0->brush != s1->brush) return false;
     if (e0->type != e1->type) return false;
     for (int i = 0; i < s0->edge_count; i++) {
-        int match_points = numShapePoints(e0[i].type);
+        int match_points = numShapePoints((int)e0[i].type);
         for (int j = 0; j < match_points; j++) {
             if (e0[i].p[j] != e1[i].p[j]) return false;
         }
@@ -281,7 +283,7 @@ int AContext::findShape(AShape *s, AEdge *e)
 {
     /* this is really inefficient! */
     for (size_t i = 0; i < shapes.size(); i++) {
-        int j = shapes[i].edge_offset;
+        int j = (int)shapes[i].edge_offset;
         if (shapeEquals(&shapes[i], &edges[j], s, e)) {
             return (int)i;
         }
@@ -301,7 +303,7 @@ int AContext::addShape(AShape *s, AEdge *e, bool dedup)
 bool AContext::updateShape(int shape_num, AShape *s, AEdge *e)
 {
     AShape *os = &shapes[shape_num];
-    AEdge *oe = &edges[shapes[shape_num].edge_offset];
+    AEdge *oe = &edges[(int)shapes[shape_num].edge_offset];
 
     if (shapeEquals(os, oe, s, e)) {
         return false;
