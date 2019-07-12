@@ -461,6 +461,12 @@ int file::getErrorCode()
     return errcode;
 }
 
+#ifdef _WIN32
+#define open _open
+#define close _close
+#define write _write
+#endif
+
 bool file::copyToPath(std::string destpath)
 {
     int destfd;
@@ -484,7 +490,7 @@ bool file::copyToPath(std::string destpath)
     }
 
     while ((len = read(buf, sizeof(buf))) > 0) {
-        if (::write(destfd, buf, len) != len) {
+        if (::write(destfd, buf, (unsigned)len) != len) {
             errcode = errno;
             errmsg = strerror(errno);
             ::close(destfd);
@@ -507,6 +513,12 @@ bool file::copyToPath(std::string destpath)
 
     return false;
 }
+
+#ifdef _WIN32
+#undef open
+#undef close
+#undef write
+#endif
 
 char* file::readLine(char *buf, size_t buflen)
 {
