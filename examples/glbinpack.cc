@@ -55,7 +55,7 @@ static int rnd_base = 16, rnd_range = 16;
 static bin_packer bp(bin_point(bin_width,bin_height));
 static bool debug = false;
 static size_t seed = 0;
-static size_t step_count = 1;
+static int step_count = 1;
 
 /* bin_packer batch mode globals */
 
@@ -219,7 +219,7 @@ static void step(step_type st)
     srand((unsigned)seed);
     bp.reset();
 
-    size_t i = 0;
+    int i = 0;
 
     switch (st) {
     case step_single:
