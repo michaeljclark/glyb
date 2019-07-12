@@ -396,14 +396,14 @@ void text_layout::style(text_segment *segment, text_part *part)
     segment->face = manager->findFontByData(fontData);
     segment->font_size = (int)ceilf(
         lookupFloat(part->tags, "font-size", font_size_default) * 64.0f);
-    segment->baseline_shift = lookupInteger(part->tags, "baseline-shift",
+    segment->baseline_shift = lookupFloat(part->tags, "baseline-shift",
         baseline_shift_default);
-    segment->tracking = lookupInteger(part->tags, "tracking",
+    segment->tracking = lookupFloat(part->tags, "tracking",
         tracking_default);
-    segment->line_spacing = lookupInteger(part->tags, "line-spacing");
+    segment->line_spacing = lookupFloat(part->tags, "line-spacing");
 
     if (segment->line_spacing == 0) {
-        segment->line_spacing = (int)roundf((float)static_cast<font_face_ft*>
+        segment->line_spacing = roundf((float)static_cast<font_face_ft*>
             (segment->face)->get_height(segment->font_size) / 64.0f);
     }
 
@@ -440,8 +440,8 @@ void text_layout::layout(std::vector<text_segment> &segments,
         style(&segment, part);
 
         /* set segment position */
-        segment.x = dx;
-        segment.y = dy + segment.line_spacing;
+        segment.x = (float)dx;
+        segment.y = (float)dy + segment.line_spacing;
 
         /* measure text, splitting over multiple lines */
         float segment_width = 0;
@@ -482,12 +482,12 @@ void text_layout::layout(std::vector<text_segment> &segments,
 
             /* advance to next line */
             dx = x;
-            dy += segment.line_spacing;
+            dy += (int)segment.line_spacing;
 
             /* loop with remaining text */
             segment.text = s2;
-            segment.x = dx;
-            segment.y = dy + segment.line_spacing;
+            segment.x = (float)dx;
+            segment.y = (float)dy + segment.line_spacing;
         }
 
         /* add segment to the list */
@@ -497,7 +497,7 @@ void text_layout::layout(std::vector<text_segment> &segments,
         dx += (int)ceilf(segment_width);
         if (dx > width) {
             dx = x;
-            dy += segment.line_spacing;
+            dy += (int)segment.line_spacing;
         }
         if (dy > y + height) {
             break;

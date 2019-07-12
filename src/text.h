@@ -81,8 +81,8 @@ struct text_layout
 
     const float font_size_default = 12.0f;
     const uint32_t color_default = 0xff000000;
-    const int baseline_shift_default = 0;
-    const int tracking_default = 0;
+    const float baseline_shift_default = 0;
+    const float tracking_default = 0;
 
     text_layout(font_manager_ft* manager,
         text_shaper* shaper, text_renderer_ft* renderer);
