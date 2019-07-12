@@ -44,11 +44,11 @@
 void span_measure::fn(int y, int count, const FT_Span* spans, void *user)
 {
     span_measure *s = static_cast<span_measure*>(user);
-    s->min_y = (std::min)(s->min_y, y);
-    s->max_y = (std::max)(s->max_y, y);
+    s->min_y = std::min(s->min_y, y);
+    s->max_y = std::max(s->max_y, y);
     for (int i = 0; i < count; i++) {
-        s->min_x = (std::min)(s->min_x, (int)spans[i].x);
-        s->max_x = (std::max)(s->max_x, (int)spans[i].x + spans[i].len);
+        s->min_x = std::min(s->min_x, (int)spans[i].x);
+        s->max_x = std::max(s->max_x, (int)spans[i].x + spans[i].len);
     }
 }
 
@@ -63,14 +63,14 @@ void span_vector::reset(int width, int height)
 void span_vector::fn(int y, int count, const FT_Span* spans, void *user)
 {
     span_vector *s = static_cast<span_vector*>(user);
-    int dy = (std::max)((std::min)(s->gy + s->oy + y, s->h - 1), 0);
-    s->min_y = (std::min)(s->min_y, y);
-    s->max_y = (std::max)(s->max_y, y);
+    int dy = std::max(std::min(s->gy + s->oy + y, s->h - 1), 0);
+    s->min_y = std::min(s->min_y, y);
+    s->max_y = std::max(s->max_y, y);
     for (int i = 0; i < count; i++) {
-        s->min_x = (std::min)(s->min_x, (int)spans[i].x);
-        s->max_x = (std::max)(s->max_x, (int)spans[i].x + spans[i].len);
-        int dx = (std::max)((std::min)(s->gx + s->ox + spans[i].x, s->w), 0);
-        int dl = (std::max)((std::min)((int)spans[i].len, s->w - dx), 0);
+        s->min_x = std::min(s->min_x, (int)spans[i].x);
+        s->max_x = std::max(s->max_x, (int)spans[i].x + spans[i].len);
+        int dx = std::max(std::min(s->gx + s->ox + spans[i].x, s->w), 0);
+        int dl = std::max(std::min((int)spans[i].len, s->w - dx), 0);
         if (dl > 0) {
             memset(&s->pixels[dy * s->w + dx], spans[i].coverage, dl);
         }
@@ -249,10 +249,10 @@ void font_atlas::expand_delta(bin_rect b)
      * This interface is called after find_region with each newly
      * allocated region, to keep track of the minimum update rectangle.
      */
-    delta.a.x = (std::min)(delta.a.x,b.a.x);
-    delta.a.y = (std::min)(delta.a.y,b.a.y);
-    delta.b.x = (std::max)(delta.b.x,b.b.x);
-    delta.b.y = (std::max)(delta.b.y,b.b.y);
+    delta.a.x = std::min(delta.a.x,b.a.x);
+    delta.a.y = std::min(delta.a.y,b.a.y);
+    delta.b.x = std::max(delta.b.x,b.b.x);
+    delta.b.y = std::max(delta.b.y,b.b.y);
 }
 
 bin_rect font_atlas::get_delta()

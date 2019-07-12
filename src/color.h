@@ -82,10 +82,10 @@ inline std::string color::to_string() const
 inline unsigned int color::rgba32() const
 {
     union { unsigned char c[4]; unsigned rgba; } tou32 = {
-        (unsigned char)(std::max)(0, (std::min)(255, (int)(r * 255.0f))),
-        (unsigned char)(std::max)(0, (std::min)(255, (int)(g * 255.0f))),
-        (unsigned char)(std::max)(0, (std::min)(255, (int)(b * 255.0f))),
-        (unsigned char)(std::max)(0, (std::min)(255, (int)(a * 255.0f)))
+        (unsigned char)std::max(0, std::min(255, (int)(r * 255.0f))),
+        (unsigned char)std::max(0, std::min(255, (int)(g * 255.0f))),
+        (unsigned char)std::max(0, std::min(255, (int)(b * 255.0f))),
+        (unsigned char)std::max(0, std::min(255, (int)(a * 255.0f)))
     };
     return tou32.rgba;
 }

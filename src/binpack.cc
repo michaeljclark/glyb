@@ -508,7 +508,7 @@ std::pair<size_t,bin_rect> bin_packer::scan_bins(bin_point sz)
         if (c.width() < sz.x || c.height() < sz.y) continue;
         std::vector<bin_rect> l = c.disjoint_subset(d);
         if (l.size() == 0) continue;
-        int ssz = (std::min)(c.width() - sz.x, c.height() - sz.y);
+        int ssz = std::min(c.width() - sz.x, c.height() - sz.y);
         if (best_idx == size_t(-1) || ssz < best_ssz) {
             best_ssz = ssz;
             best_idx = i;

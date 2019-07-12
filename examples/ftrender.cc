@@ -60,12 +60,12 @@ void render_block(span_vector *s)
     for (int y = 0; y < s->h; y += 2) {
         std::string o;
         size_t b1 = (s->h - y - 1) * s->w;
-        size_t b2 = (std::max)((s->h - y - 2), 0) * s->w;
+        size_t b2 = std::max((s->h - y - 2), 0) * s->w;
         for (int x = 0; x < s->w; x += 2) {
             uint8_t c00 = s->pixels[b1 + x];
-            uint8_t c01 = s->pixels[b1 + (std::min)(x + 1, s->w - 1)];
+            uint8_t c01 = s->pixels[b1 + std::min(x + 1, s->w - 1)];
             uint8_t c10 = s->pixels[b2 + x];
-            uint8_t c11 = s->pixels[b2 + (std::min)(x + 1, s->w - 1)];
+            uint8_t c11 = s->pixels[b2 + std::min(x + 1, s->w - 1)];
             int b00 = c00 > 128, b01 = c01 > 128;
 			int b10 = c10 > 128, b11 = c11 > 128;
             int sum = (c00 + c01 + c10 + c11) / 4;

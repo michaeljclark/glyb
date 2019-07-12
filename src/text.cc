@@ -80,8 +80,8 @@ void text_container::erase(size_t offset, size_t count)
     size_t poff = 0;
     for (auto i = parts.begin(); i != parts.end();) {
         size_t plen = i->text.size();
-        size_t pbeg = (std::min)(plen, (std::max)(poff, offset) - poff);
-        size_t pcnt = (std::min)(plen - pbeg, (size_t)(std::max)
+        size_t pbeg = std::min(plen, std::max(poff, offset) - poff);
+        size_t pcnt = std::min(plen - pbeg, (size_t)std::max
             (ptrdiff_t(offset + count - poff - pbeg), ptrdiff_t(0)));
         if (offset < poff + plen) {
             if (pbeg == 0 && pcnt == plen) {
@@ -108,7 +108,7 @@ void text_container::insert(size_t offset, std::string s)
     size_t poff = 0;
     for (auto i = parts.begin(); i != parts.end(); i++) {
         size_t plen = i->text.size();
-        size_t pbeg = (std::min)(plen, (std::max)(poff, offset) - poff);
+        size_t pbeg = std::min(plen, std::max(poff, offset) - poff);
         if (offset >= poff && offset <= poff + plen) {
             i->text.insert(pbeg, s);
             break;
@@ -126,7 +126,7 @@ void text_container::insert(size_t offset, text_part c)
     size_t poff = 0;
     for (auto i = parts.begin(); i != parts.end(); i++) {
         size_t plen = i->text.size();
-        size_t pbeg = (std::min)(plen, (std::max)(poff, offset) - poff);
+        size_t pbeg = std::min(plen, std::max(poff, offset) - poff);
         if (offset >= poff && offset <= poff + plen) {
             if (i->tags == c.tags) {
                 i->text.insert(pbeg, c.text);
@@ -174,8 +174,8 @@ void text_container::mark(size_t offset, size_t count, std::string attr,
     size_t poff = 0;
     for (auto i = parts.begin(); i != parts.end(); i++) {
         size_t plen = i->text.size();
-        size_t pbeg = (std::min)(plen, (std::max)(poff, offset) - poff);
-        size_t pcnt = (std::min)(plen - pbeg, (size_t)(std::max)
+        size_t pbeg = std::min(plen, std::max(poff, offset) - poff);
+        size_t pcnt = std::min(plen - pbeg, (size_t)std::max
             (ptrdiff_t(offset + count - poff - pbeg), ptrdiff_t(0)));
         if (pcnt == 0) {
             poff += plen;
@@ -229,8 +229,8 @@ void text_container::unmark(size_t offset, size_t count, std::string attr)
     size_t poff = 0;
     for (auto i = parts.begin(); i != parts.end(); i++) {
         size_t plen = i->text.size();
-        size_t pbeg = (std::min)(plen, (std::max)(poff, offset) - poff);
-        size_t pcnt = (std::min)(plen - pbeg, (size_t)(std::max)
+        size_t pbeg = std::min(plen, std::max(poff, offset) - poff);
+        size_t pcnt = std::min(plen - pbeg, (size_t)std::max
             (ptrdiff_t(offset + count - poff - pbeg), ptrdiff_t(0)));
         if (pcnt == 0) {
             poff += plen;
