@@ -175,8 +175,7 @@ static void draw(double tn, double td)
     if (shape_num < 0) {
         brush_num = make_brush_axial_gradient(ctx,
             vec2(0,0), vec2(0,font_size*2),
-            color(0.80f,0.80f,0.80f,1.0f), color(0.50f,0.50f,0.50f,1.0f)
-            );
+            color(0.80f,0.80f,0.80f,1.0f), color(0.50f,0.50f,0.50f,1.0f));
         shape_num = make_rounded_rectangle(ctx, batch,
             vec2(width/2,height/2) + state.origin,
             vec2(text_width/1.85f,font_size), font_size/2, 10.0f, 0, gray);
@@ -184,8 +183,7 @@ static void draw(double tn, double td)
     } else {
         update_brush_axial_gradient(brush_num, ctx,
             vec2(0,0), vec2(0,font_size*2),
-            color(0.80f,0.80f,0.80f,1.0f), color(0.50f,0.50f,0.50f,1.0f)
-            );
+            color(0.80f,0.80f,0.80f,1.0f), color(0.50f,0.50f,0.50f,1.0f));
         updated += update_rounded_rectangle(shape_num, ctx, batch,
             vec2(width/2,height/2) + state.origin,
             vec2(text_width/1.85f,font_size), font_size/2, 10.0f, 0, gray);
