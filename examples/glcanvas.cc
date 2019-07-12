@@ -125,7 +125,7 @@ static std::string format_string(const char* fmt, ...)
     return str;
 }
 
-static std::vector<std::string> get_stats(font_face *face, float td)
+static std::vector<std::string> get_stats(font_face *face, double td)
 {
     std::vector<std::string> stats;
     stats.push_back(format_string("frames-per-second: %5.2f", 1.0/td));
@@ -174,19 +174,19 @@ static void draw(double tn, double td)
     static int shape_num = -1, brush_num = -1;
     if (shape_num < 0) {
         brush_num = make_brush_axial_gradient(ctx,
-            vec2(0,0), vec2(0,font_size*2),
+            vec2(0,0), vec2(0, (float)(font_size*2)),
             color(0.80f,0.80f,0.80f,1.0f), color(0.50f,0.50f,0.50f,1.0f));
         shape_num = make_rounded_rectangle(ctx, batch,
             vec2(width/2,height/2) + state.origin,
-            vec2(text_width/1.85f,font_size), font_size/2, 10.0f, 0, gray);
+            vec2(text_width/1.85f,(float)font_size), (float)(font_size/2), 10.0f, 0, gray);
         print_shape(ctx, shape_num);
     } else {
         update_brush_axial_gradient(brush_num, ctx,
-            vec2(0,0), vec2(0,font_size*2),
+            vec2(0,0), vec2(0, (float)(font_size*2)),
             color(0.80f,0.80f,0.80f,1.0f), color(0.50f,0.50f,0.50f,1.0f));
         updated += update_rounded_rectangle(shape_num, ctx, batch,
             vec2(width/2,height/2) + state.origin,
-            vec2(text_width/1.85f,font_size), font_size/2, 10.0f, 0, gray);
+            vec2(text_width/1.85f, (float)font_size), (float)(font_size/2), 10.0f, 0, gray);
     }
     brush_clear(ctx);
     canvas_renderer.render(batch, shapes, &segment);
@@ -204,12 +204,12 @@ static void draw(double tn, double td)
     const uint32_t bg_color = 0xbfffffff;
     for (size_t i = 0; i < stats.size(); i++) {
         text_segment stats_segment(stats[i], text_lang, face,
-            (int)((float)stats_font_size * 64.0f), x, y, 0xff000000);
+            (int)((float)stats_font_size * 64.0f), (float)x, (float)y, 0xff000000);
         shapes.clear();
         shaper.shape(shapes, &stats_segment);
         font_atlas *atlas = manager.getCurrentAtlas(face);
         renderer.render(batch, shapes, &stats_segment);
-        y -= ((float)stats_font_size * 1.334f);
+        y -= (int)((float)stats_font_size * 1.334f);
     }
 
     /* update vertex and index buffers arrays (idempotent) */
@@ -339,7 +339,7 @@ static void cursor_position(GLFWwindow* window, double xpos, double ypos)
     }
     else if (mouse_right_drag) {
         dvec2 delta = state.mouse_pos - state_save.mouse_pos;
-        float zoom = state_save.zoom * powf(65.0f/64.0f,-delta.y);
+        float zoom = state_save.zoom * powf(65.0f/64.0f,(float)-delta.y);
         if (zoom != state.zoom && zoom > min_zoom && zoom < max_zoom) {
             state.zoom = zoom;
             state.origin = state_save.origin * (zoom / state_save.zoom);
