@@ -5,6 +5,7 @@
 #include <climits>
 #include <cstdlib>
 #include <climits>
+#include <cctype>
 
 #include <map>
 #include <vector>
@@ -65,8 +66,8 @@ void render_block(span_vector *s)
             uint8_t c01 = s->pixels[b1 + (std::min)(x + 1, s->w - 1)];
             uint8_t c10 = s->pixels[b2 + x];
             uint8_t c11 = s->pixels[b2 + (std::min)(x + 1, s->w - 1)];
-            bool b00 = c00 > 128, b01 = c01 > 128;
-            bool b10 = c10 > 128, b11 = c11 > 128;
+            int b00 = c00 > 128, b01 = c01 > 128;
+			int b10 = c10 > 128, b11 = c11 > 128;
             int sum = (c00 + c01 + c10 + c11) / 4;
             o.append(ansi_color(sum, sum, sum));
             o.append(shades[b00 << 1 | b01][b10 << 1 | b11]);
@@ -243,13 +244,13 @@ int main(int argc, char **argv)
     }
 
     hbfont  = hb_ft_font_create(ftface, NULL);
-    hblang = hb_language_from_string(text_lang, strlen(text_lang));
+    hblang = hb_language_from_string(text_lang, (int)strlen(text_lang));
 
     hb_buffer_t *buf = hb_buffer_create();
     hb_buffer_set_direction(buf, HB_DIRECTION_LTR);
     hb_buffer_set_script(buf, HB_SCRIPT_LATIN);
     hb_buffer_set_language(buf, hblang);
-    hb_buffer_add_utf8(buf, render_text, strlen(render_text), 0, strlen(render_text));
+    hb_buffer_add_utf8(buf, render_text, (int)strlen(render_text), 0, (int)strlen(render_text));
 
     hb_shape(hbfont, buf, NULL, 0);
     glyph_info = hb_buffer_get_glyph_infos(buf, &glyph_count);
@@ -264,7 +265,7 @@ int main(int argc, char **argv)
     rp.bit_test = 0;
     rp.gray_spans = span_vector::fn;
 
-    size_t width = 0;
+    int width = 0;
     for (size_t i = 0; i < glyph_count; i++) {
         width += glyph_pos[i].x_advance/64;
     }
