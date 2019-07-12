@@ -603,8 +603,8 @@ void text_renderer_ft::render(draw_list &batch,
 {
     font_face_ft *face = static_cast<font_face_ft*>(segment->face);
     int font_size = segment->font_size;
-    int baseline_shift = segment->baseline_shift;
-    int tracking = segment->tracking;
+    float baseline_shift = segment->baseline_shift;
+	float tracking = segment->tracking;
     bool round = false;
 
     /* lookup glyphs in font atlas, creating them if they don't exist */
