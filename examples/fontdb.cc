@@ -5,6 +5,7 @@
 #include <climits>
 #include <cstdlib>
 #include <climits>
+#include <cctype>
 
 #include <map>
 #include <vector>
@@ -15,7 +16,6 @@
 #include <mutex>
 
 #include <sys/types.h>
-#include <dirent.h>
 
 #include "binpack.h"
 #include "image.h"
