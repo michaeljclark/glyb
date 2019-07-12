@@ -526,7 +526,6 @@ void text_renderer_canvas::render(draw_list &batch,
         if (gi == glyph_map.end()) {
             shape_num = glyph_map[s.glyph] = (int)ctx.shapes.size();
             make_glyph(&ctx, ftface, glyph_load_size << 6, font_dpi, s.glyph);
-            print_shape(ctx, shape_num);
         } else {
             shape_num = gi->second;
         }
