@@ -129,7 +129,7 @@ int main(int argc, char **argv)
     double angleThreshold = 3;
     double edgeThreshold = 1.001;
     double glyphAdvance = 0;
-    uint long long coloringSeed = 0;
+    uint coloringSeed = 0;
 
     msdfgen::Shape shape;
     msdfgen::Bitmap<float, 3> msdf(width, height);
