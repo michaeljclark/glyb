@@ -8,7 +8,7 @@
  * Copyright © 2019 Michael Clark
  */
 
-#version 130
+#version 140
 
 #extension GL_EXT_gpu_shader4 : enable
 
