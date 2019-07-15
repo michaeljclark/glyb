@@ -390,12 +390,12 @@ int make_rectangle(AContext &ctx, draw_list &batch, vec2 pos, vec2 halfSize,
     float padding, float z, uint32_t c)
 {
     float brush = (float)ctx.currentBrush();
-    AShape shape{0, 0, 0, 1, vec2(0), vec2((halfSize+padding)*2.0f), brush };
-    AEdge edge{Rectangle,{halfSize + padding, halfSize}};
+    AShape shape{0, 0, 0, 1, vec2(0), vec2(halfSize*2.0f), brush };
+    AEdge edge{Rectangle, { halfSize, halfSize }};
 
     int shape_num = ctx.addShape(&shape, &edge);
     rect(batch, tbo_iid, pos - halfSize - padding, pos + halfSize + padding,
-        z, vec2(0,0), (halfSize+padding)*2.0f, c, (float)shape_num);
+        z, -vec2(padding), halfSize* 2.0f + padding, c, (float)shape_num);
 
     return shape_num;
 }
@@ -404,12 +404,12 @@ int make_rounded_rectangle(AContext &ctx, draw_list &batch, vec2 pos,
     vec2 halfSize, float radius, float padding, float z, uint32_t c)
 {
     float brush = (float)ctx.currentBrush();
-    AShape shape{0, 0, 0, 1, vec2(0), vec2((halfSize+padding)*2.0f), brush };
-    AEdge edge{RoundedRectangle,{halfSize + padding, halfSize, vec2(radius)}};
+    AShape shape{0, 0, 0, 1, vec2(0), vec2(halfSize*2.0f), brush };
+    AEdge edge{RoundedRectangle,{ halfSize, halfSize, vec2(radius) }};
 
     int shape_num = ctx.addShape(&shape, &edge);
     rect(batch, tbo_iid, pos - halfSize - padding, pos + halfSize + padding,
-        z, vec2(0,0), (halfSize+padding)*2.0f, c, (float)shape_num);
+        z, -vec2(padding), halfSize * 2.0f + padding, c, (float)shape_num);
 
     return shape_num;
 }
@@ -418,26 +418,26 @@ int make_circle(AContext &ctx, draw_list &batch, vec2 pos, float radius,
     float padding, float z, uint32_t c)
 {
     float brush = (float)ctx.currentBrush();
-    AShape shape{0, 0, 0, 1, vec2(0), vec2((radius + padding) * 2.0f), brush };
-    AEdge edge{Circle,{vec2(radius + padding), vec2(radius)}};
+    AShape shape{0, 0, 0, 1, vec2(0), vec2(radius * 2.0f), brush };
+    AEdge edge{Circle, { vec2(radius), vec2(radius) }};
 
     int shape_num = ctx.addShape(&shape, &edge);
     rect(batch, tbo_iid, pos - radius - padding, pos + radius + padding,
-        z, vec2(0,0), vec2((radius+padding)*2.0f), c, (float)shape_num);
+        z, -vec2(padding), vec2(radius) * 2.0f + padding, c, (float)shape_num);
 
     return shape_num;
 }
 
-int make_ellipse(AContext &ctx, draw_list &batch, vec2 pos, vec2 radius,
+int make_ellipse(AContext &ctx, draw_list &batch, vec2 pos, vec2 halfSize,
     float padding, float z, uint32_t c)
 {
     float brush = (float)ctx.currentBrush();
-    AShape shape{0, 0, 0, 1, vec2(0), (radius + padding) * 2.0f, brush };
-    AEdge edge{Ellipse,{radius + padding, radius}};
+    AShape shape{0, 0, 0, 1, vec2(0), halfSize * 2.0f, brush };
+    AEdge edge{Ellipse, { halfSize, halfSize }};
 
     int shape_num = ctx.addShape(&shape, &edge);
-    rect(batch, tbo_iid, pos - radius - padding, pos + radius + padding,
-        z, vec2(0,0), (radius+padding)*2.0f, c, (float)shape_num);
+    rect(batch, tbo_iid, pos - halfSize - padding, pos + halfSize + padding,
+        z, -vec2(padding), halfSize * 2.0f + padding, c, (float)shape_num);
 
     return shape_num;
 }
@@ -450,12 +450,12 @@ int update_rectangle(int shape_num, AContext &ctx, draw_list &batch, vec2 pos,
     vec2 halfSize, float padding, float z, uint32_t c)
 {
     float brush = ctx.shapes[shape_num].brush;
-    AShape shape{0, 0, 0, 1, vec2(0), vec2((halfSize+padding)*2.0f), brush };
-    AEdge edge{Rectangle,{halfSize + padding, halfSize}};
+    AShape shape{0, 0, 0, 1, vec2(0), vec2(halfSize*2.0f), brush };
+    AEdge edge{Rectangle, { halfSize, halfSize }};
 
     int updated = ctx.updateShape(shape_num, &shape, &edge);
     rect(batch, tbo_iid, pos - halfSize - padding, pos + halfSize + padding,
-        z, vec2(0,0), (halfSize+padding)*2.0f, c, (float)shape_num);
+        z, -vec2(padding), halfSize* 2.0f + padding, c, (float)shape_num);
 
     return updated;
 }
@@ -464,12 +464,12 @@ int update_rounded_rectangle(int shape_num, AContext &ctx, draw_list &batch,
     vec2 pos, vec2 halfSize, float radius, float padding, float z, uint32_t c)
 {
     float brush = ctx.shapes[shape_num].brush;
-    AShape shape{0, 0, 0, 1, vec2(0), vec2((halfSize+padding)*2.0f), brush };
-    AEdge edge{RoundedRectangle,{halfSize + padding, halfSize, vec2(radius)}};
+    AShape shape{0, 0, 0, 1, vec2(0), halfSize * 2.0f, brush };
+    AEdge edge{RoundedRectangle, { halfSize, halfSize, vec2(radius) }};
 
     int updated = ctx.updateShape(shape_num, &shape, &edge);
     rect(batch, tbo_iid, pos - halfSize - padding, pos + halfSize + padding,
-        z, vec2(0,0), (halfSize+padding)*2.0f, c, (float)shape_num);
+        z, -vec2(padding), halfSize * 2.0f + padding, c, (float)shape_num);
 
     return updated;
 }
@@ -478,26 +478,26 @@ int update_circle(int shape_num, AContext &ctx, draw_list &batch, vec2 pos,
     float radius, float padding, float z, uint32_t c)
 {
     float brush = ctx.shapes[shape_num].brush;
-    AShape shape{0, 0, 0, 1, vec2(0), vec2((radius + padding) * 2.0f), brush };
-    AEdge edge{Circle,{vec2(radius + padding), vec2(radius)}};
+    AShape shape{0, 0, 0, 1, vec2(0), vec2(radius * 2.0f), brush };
+    AEdge edge{Circle, { vec2(radius), vec2(radius) }};
 
     int updated = ctx.updateShape(shape_num, &shape, &edge);
     rect(batch, tbo_iid, pos - radius - padding, pos + radius + padding,
-        z, vec2(0,0), vec2((radius+padding)*2.0f), c, (float)shape_num);
+        z, -vec2(padding), vec2(radius) * 2.0f + padding, c, (float)shape_num);
 
     return updated;
 }
 
 int update_ellipse(int shape_num, AContext &ctx, draw_list &batch, vec2 pos,
-    vec2 radius, float padding, float z, uint32_t c)
+    vec2 halfSize, float padding, float z, uint32_t c)
 {
     float brush = ctx.shapes[shape_num].brush;
-    AShape shape{0, 0, 0, 1, vec2(0), (radius + padding) * 2.0f, brush };
-    AEdge edge{Ellipse,{radius + padding, radius}};
+    AShape shape{0, 0, 0, 1, vec2(0), halfSize * 2.0f, brush };
+    AEdge edge{Ellipse, { halfSize, halfSize }};
 
     int updated = ctx.updateShape(shape_num, &shape, &edge);
-    rect(batch, tbo_iid, pos - radius - padding, pos + radius + padding,
-        z, vec2(0,0), (radius+padding)*2.0f, c, (float)shape_num);
+    rect(batch, tbo_iid, pos - halfSize - padding, pos + halfSize + padding,
+        z, -vec2(padding), halfSize * 2.0f + padding, c, (float)shape_num);
 
     return updated;
 }
