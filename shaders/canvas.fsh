@@ -12,11 +12,9 @@
 
 #extension GL_EXT_gpu_shader4 : enable
 
-varying vec4 v_stroke;
 varying vec4 v_color;
 varying vec2 v_uv0;
 varying float v_gamma;
-varying float v_width;
 varying float v_shape;
 
 uniform samplerBuffer tb_shape;
@@ -34,8 +32,9 @@ uniform samplerBuffer tb_brush;
 #define Ellipse 7
 #define RoundedRectangle 8
 
-#define Axial 1
-#define Radial 2
+#define Solid 1
+#define Axial 2
+#define Radial 3
 
 struct Shape {
     int contour_offset;
@@ -44,7 +43,9 @@ struct Shape {
     int edge_count;
     vec2 offset;
     vec2 size;
-    int brush;
+    int fill_brush;
+    int stroke_brush;
+    float stroke_width;
 };
 
 struct Edge {
@@ -391,16 +392,18 @@ float sdRoundedRectangle(vec2 p[4], out float dir, vec2 origin, out float param)
 
 void getShape(out Shape shape, int shape_num)
 {
-    int o = shape_num * 9;
-    shape.contour_offset = int(texelFetch(tb_shape, o + 0).r);
-    shape.contour_count =  int(texelFetch(tb_shape, o + 1).r);
-    shape.edge_offset =    int(texelFetch(tb_shape, o + 2).r);
-    shape.edge_count =     int(texelFetch(tb_shape, o + 3).r);
-    shape.offset =    vec2(texelFetch(tb_shape, o + 4).r,
-                           texelFetch(tb_shape, o + 5).r);
-    shape.size =      vec2(texelFetch(tb_shape, o + 6).r,
-                           texelFetch(tb_shape, o + 7).r);
-    shape.brush =      int(texelFetch(tb_shape, o + 8).r);
+    int o = shape_num * 11;
+    shape.contour_offset =   int(texelFetch(tb_shape, o + 0).r);
+    shape.contour_count =    int(texelFetch(tb_shape, o + 1).r);
+    shape.edge_offset =      int(texelFetch(tb_shape, o + 2).r);
+    shape.edge_count =       int(texelFetch(tb_shape, o + 3).r);
+    shape.offset =      vec2(texelFetch(tb_shape, o + 4).r,
+                             texelFetch(tb_shape, o + 5).r);
+    shape.size =        vec2(texelFetch(tb_shape, o + 6).r,
+                             texelFetch(tb_shape, o + 7).r);
+    shape.fill_brush =   int(texelFetch(tb_shape, o + 8).r);
+    shape.stroke_brush = int(texelFetch(tb_shape, o + 9).r);
+    shape.stroke_width =     texelFetch(tb_shape, o + 10).r;
 }
 
 void getEdge(out Edge edge, int edge_num)
@@ -470,9 +473,18 @@ float getDistanceShape(Shape shape, vec2 origin, out float dir, out float param)
     return minDistance;
 }
 
+vec4 brushColorSolid(Brush brush, vec2 origin)
+{
+    return brush.c[0];
+}
+
 vec4 brushColorRadial(Brush brush, vec2 origin)
 {
-    return vec4(1.0,0.8,0.8,1.0);
+    float l1 = length(brush.p[0]);
+    float l2 = length(brush.p[1]);
+    float t = (length(origin) - l1)/(l2-l1);
+    t = clamp(t, 0, 1);
+    return (1-t) * brush.c[0] + t * brush.c[1];
 }
 
 vec4 brushColorAxial(Brush brush, vec2 origin)
@@ -485,17 +497,18 @@ vec4 brushColorAxial(Brush brush, vec2 origin)
     return (1-t) * brush.c[0] + t * brush.c[1];
 }
 
-vec4 getColorBrush(Shape shape, vec2 origin)
+vec4 getColorBrush(int brush_num, vec2 origin, vec4 default_color)
 {
-    if (shape.brush >= 0) {
+    if (brush_num >= 0) {
         Brush brush;
-        getBrush(brush, shape.brush);
+        getBrush(brush, brush_num);
         switch(brush.brush_type) {
+        case Solid:  return brushColorSolid(brush, origin);
         case Radial: return brushColorRadial(brush, origin);
         case Axial:  return brushColorAxial(brush, origin);
         }
     }
-    return v_color;
+    return default_color;
 }
 
 /*
@@ -507,7 +520,8 @@ void main()
     Shape shape;
     getShape(shape, int(v_shape));
 
-    vec4 b_color = getColorBrush(shape, v_uv0.xy);
+    vec4 fill_color = getColorBrush(shape.fill_brush, v_uv0.xy, v_color);
+    vec4 stroke_color = getColorBrush(shape.stroke_brush, v_uv0.xy, v_color);
 
     float dir, param;
     float distance = getDistanceShape(shape, v_uv0.xy, dir, param);
@@ -515,10 +529,10 @@ void main()
     float dx = dFdx( v_uv0.x );
     float dy = dFdy( v_uv0.y );
     float ps = sqrt(dx*dx + dy*dy);
-    float w = v_width/2.0;
+    float w = shape.stroke_width/2.0;
     float alpha = smoothstep(-w-ps, -w+ps, distance);
-    vec4 color = v_width == 0 ? b_color :
-        mix(v_stroke, b_color, smoothstep(w-ps, w+ps, distance));
+    vec4 color = shape.stroke_width == 0 ? fill_color :
+        mix(stroke_color, fill_color, smoothstep(w-ps, w+ps, distance));
 
     gl_FragColor = vec4(pow(color.rgb, vec3(1.0/v_gamma)), alpha);
 }

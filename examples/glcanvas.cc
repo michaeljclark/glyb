@@ -61,6 +61,7 @@ static program simple, msdf, canvas;
 static GLuint vao, vbo, ibo;
 static std::map<int,GLuint> tex_map;
 static font_manager_ft manager;
+static Canvas _canvas(&manager);
 
 static mat4 mvp;
 static GLFWwindow* window;
@@ -147,54 +148,51 @@ static void draw(double tn, double td)
 
     glfwGetFramebufferSize(window, &width, &height);
 
-    /* create text to render */
-    int font_size = (int)state.zoom;
-    text_segment segment(render_text, text_lang, face,
-        font_size * 64, 0, 0, 0xff000000);
+     /*
+      * todo: canvas-api get text width before emit
+      * todo: canvas-api scale the entire canvas
+      * todo: canvas-api scale objects individually
+      * todo: canvas-api set all params of object like its constructor
+      */
 
-    /* shape text and get width */
-    shaper.shape(shapes, &segment);
-    float text_width = std::accumulate(shapes.begin(), shapes.end(), 0.0f,
-        [](float t, glyph_shape& s) { return t + s.x_advance/64.0f; });
+    static Text *t = nullptr;
+    static RoundedRectangle *r = nullptr;
 
-    /* set text position */
-    vec2 screen(width, height), text_size((int)text_width, font_size);
-    vec2 topleft = vec2(screen - text_size)/2.0f + state.origin;
-    segment.x = topleft.x;
-    segment.y = topleft.y - 0.10f * font_size;
+    float text_width = state.zoom * 10.0f;
+    float font_size = state.zoom;
 
-    /*
-     * render text to canvas as beziers, recording shape buffer size
-     * and whether shapes have been updated. This is to minimise shape
-     * buffer transfers to the GPU.
-     */
-    size_t num_shapes = ctx.shapes.size();
-    int updated = 0;
-    uint32_t gray = color(0.75f,0.75f,0.75f,1.0f).rgba32();
-    static int shape_num = -1, brush_num = -1;
-    if (shape_num < 0) {
-        brush_num = make_brush_axial_gradient(ctx,
-            vec2(0,0), vec2(0, (float)(font_size*2)),
-            color(0.80f,0.80f,0.80f,1.0f), color(0.50f,0.50f,0.50f,1.0f));
-        shape_num = make_rounded_rectangle(ctx, batch,
-            vec2(width/2,height/2) + state.origin,
-            vec2(text_width/1.85f,(float)font_size), (float)(font_size/2), 10.0f, 0, gray);
-    } else {
-        update_brush_axial_gradient(brush_num, ctx,
-            vec2(0,0), vec2(0, (float)(font_size*2)),
-            color(0.80f,0.80f,0.80f,1.0f), color(0.50f,0.50f,0.50f,1.0f));
-        updated += update_rounded_rectangle(shape_num, ctx, batch,
-            vec2(width/2,height/2) + state.origin,
-            vec2(text_width/1.85f, (float)font_size), (float)(font_size/2), 10.0f, 0, gray);
+    /* create text and rounded rectangle with gradient brush */
+    if (t == nullptr) {
+        t = _canvas.new_text();
+        t->set_face(face);
+        t->set_halign(text_halign_center);
+        t->set_valign(text_valign_center);
+        t->set_text(render_text);
+        t->set_lang("en");
+        t->set_color(color(0,0,0,1));
+        _canvas.set_fill_brush(Brush{
+            BrushAxial, { vec2(0,0), vec2(0, font_size*2.0f) },
+            { color(0.80f,0.80f,0.80f,1.0f), color(0.50f,0.50f,0.50f,1.0f) }
+        });
+        r = _canvas.new_rounded_rectangle(vec2(width/2,height/2) + state.origin,
+            vec2(text_width/1.85f,font_size), font_size/2.0f);
+
+        std::swap(_canvas.objects[0], _canvas.objects[1]);
     }
-    brush_clear(ctx);
-    canvas_renderer.render(batch, shapes, &segment);
 
-    /* update shape texture buffers if shapes added or updated */
-    if (num_shapes != ctx.shapes.size() || updated) {
-        buffer_texture_create(shape_tb, ctx.shapes, GL_TEXTURE0, GL_R32F);
-        buffer_texture_create(edge_tb, ctx.edges, GL_TEXTURE1, GL_R32F);
-        buffer_texture_create(brush_tb, ctx.brushes, GL_TEXTURE2, GL_R32F);
+    /* scale text and rounded rectangle background */
+    t->set_size(state.zoom);
+    t->set_position(state.origin + vec2(width/2.0f, height/2.0f));
+    r->update_rounded_rectangle(vec2(width/2,height/2) + state.origin,
+            vec2(text_width/1.85f,font_size), font_size/2.0f);
+
+    /* emit canvas draw list */
+    _canvas.emit(batch);
+    if (_canvas.dirty) {
+        buffer_texture_create(shape_tb, _canvas.ctx->shapes, GL_TEXTURE0, GL_R32F);
+        buffer_texture_create(edge_tb, _canvas.ctx->edges, GL_TEXTURE1, GL_R32F);
+        buffer_texture_create(brush_tb, _canvas.ctx->brushes, GL_TEXTURE2, GL_R32F);
+        _canvas.dirty = false;
     }
 
     /* render stats text */
@@ -384,8 +382,6 @@ static void initialize()
     vertex_array_pointer(p, "a_color", 4, GL_UNSIGNED_BYTE, 1, &draw_vertex::color);
     vertex_array_pointer(p, "a_shape", 1, GL_FLOAT, 0, &draw_vertex::shape);
     vertex_array_1f(p, "a_gamma", 2.0f);
-    vertex_array_1f(p, "a_width", 0.0f);
-    vertex_array_4f(p, "a_stroke", 0.0f, 0.0f, 0.0f, 1.0f);
     glBindVertexArray(0);
 
     /* create shape and edge buffer textures */
