@@ -179,7 +179,6 @@ static void draw(double tn, double td)
         shape_num = make_rounded_rectangle(ctx, batch,
             vec2(width/2,height/2) + state.origin,
             vec2(text_width/1.85f,(float)font_size), (float)(font_size/2), 10.0f, 0, gray);
-        print_shape(ctx, shape_num);
     } else {
         update_brush_axial_gradient(brush_num, ctx,
             vec2(0,0), vec2(0, (float)(font_size*2)),
