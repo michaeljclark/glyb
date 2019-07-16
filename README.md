@@ -35,7 +35,7 @@ that glyphs only need to be rendered for one size. After the atlas has
 been generated, text renderering becomes extremely fast. 
 
 glyphic includes an online multi-threaded MSDF renderer. This allows
-online MSDF atlas generation with any truetrype font. Rendering signed
+online MSDF atlas generation with any truetype font. Rendering signed
 distance field font atlases from truetype contours online is typically
 prohibitive due to CPU requirements, however, when spread over 8 to 16
 cores, the latency becomes acceptable for real-time use.
