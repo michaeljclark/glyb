@@ -132,13 +132,7 @@ void image::saveToFile(std::string filename,
 image_ptr image::createBitmap(uint width, uint height, pixel_format format,
     uint8_t *pixels)
 {
-    image_ptr img;
-    if (pixels) {
-        img = image_ptr(new image(file_ptr(), width, height, format, pixels));
-    } else {
-        img = image_ptr(new image(file_ptr(), width, height, format));
-    }
-    return img;
+    return image_ptr(new image(file_ptr(), width, height, format, pixels));
 }
 
 image_ptr image::createFromFile(std::string filename, image_io *imageio,
