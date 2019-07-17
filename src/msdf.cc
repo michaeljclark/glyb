@@ -163,15 +163,7 @@ atlas_entry glyph_renderer_msdf::render(font_atlas *atlas, font_face_ft *face,
         msdfgen::msdfErrorCorrection(msdf, edgeThreshold/(scale*range));
     }
 
-    /*
-     * note: we create a template font atlas entry with font size 0,
-     * which indicates the atlas entry for for a variable size entry,
-     * which is the main reason we use signed distance fields. the
-     * atlas contains special logic to create font size specific
-     * entries from the template entry.
-     *
-     * note: we use the multithreaded interface
-	 */
+    /* create atlas entry and copy rasterized glyph into the atlas */
     ae = atlas->create(face, 0, glyph, char_height, ox, oy, w, h);
     if (ae.bin_id >= 0) {
         for (int x = 0; x < w; x++) {
