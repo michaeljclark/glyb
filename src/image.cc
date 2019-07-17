@@ -138,17 +138,13 @@ image_ptr image::createBitmap(uint width, uint height, pixel_format format,
 image_ptr image::createFromFile(std::string filename, image_io *imageio,
     pixel_format optformat)
 {    
-    file_ptr rsrc = file::getFile(filename);
-    image_ptr image = createFromResouce(rsrc, imageio, optformat);
-    return image;
+    return createFromResouce(file::getFile(filename), imageio, optformat);
 }
 
 image_ptr image::createFromResouce(std::string rsrcName, image_io *imageio,
     pixel_format optformat)
 {
-    file_ptr rsrc = file::getResource(rsrcName);
-    image_ptr image = createFromResouce(rsrc, imageio, optformat);
-    return image;
+    return createFromResouce(file::getResource(rsrcName), imageio, optformat);
 }
 
 image_ptr image::createFromResouce(file_ptr rsrc, image_io *imageio,
