@@ -256,18 +256,6 @@ glyphic contains several examples programs showing how to use its API:
 - `glbinpack` - _visualization of the bin packing algorithm_
 - `glyphic` - _scalability test for regular and MSDF font atlases_
 
-### examples/glyphic
-
-This example tests the scalability of the library by excersing shaping and
-rendering for a large number of glyphs. This example has offscreen render
-capability and can output a series of `ppm` image files to a video:
-
-- [scripts/glyphic-video-mp4.sh](scripts/glyphic-video-mp4.sh)
-
-Here is a screenshot from the `glyphic` example:
-
-![scalability](/images/scalability.png)
-
 ## Text Attributes
 
 The following attributes are supported by `text_layout`.
