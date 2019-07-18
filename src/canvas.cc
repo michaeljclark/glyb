@@ -34,7 +34,7 @@
 #include "draw.h"
 #include "font.h"
 #include "glyph.h"
-#include "shape.h"
+#include "canvas.h"
 #include "logger.h"
 
 /*

@@ -119,8 +119,8 @@ set(GLYPHIC_SOURCES
   src/msdf.h
   src/multi.cc
   src/multi.h
-  src/shape.cc
-  src/shape.h
+  src/canvas.cc
+  src/canvas.h
   src/text.cc
   src/text.h
   src/utf8.cc
