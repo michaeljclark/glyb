@@ -759,56 +759,29 @@ Brush Canvas::get_brush(int brush_num) {
     }
 }
 
-Brush Canvas::get_fill_brush() {
-    return fill_brush;
-}
+Brush Canvas::get_fill_brush() { return fill_brush; }
+Brush Canvas::get_stroke_brush() { return stroke_brush; }
+float Canvas::get_stroke_width() { return stroke_width; }
 
-void Canvas::set_fill_brush(Brush brush) {
-    fill_brush = brush;
-}
+void Canvas::set_fill_brush(Brush brush) { fill_brush = brush; }
+void Canvas::set_stroke_brush(Brush brush) { stroke_brush = brush; }
+void Canvas::set_stroke_width(float width) { stroke_width = width; }
 
-Brush Canvas::get_stroke_brush() {
-    return stroke_brush;
-}
-
-void Canvas::set_stroke_brush(Brush brush) {
-    stroke_brush = brush;
-}
-
-float Canvas::get_stroke_width() {
-    return stroke_width;
-}
-
-void Canvas::set_stroke_width(float width) {
-    stroke_width = width;
-}
-
-size_t Canvas::num_shapes() {
-    return ctx->shapes.size();
-}
+size_t Canvas::num_shapes() { return ctx->shapes.size(); }
+size_t Canvas::num_contours() { return ctx->contours.size(); }
+size_t Canvas::num_edges() { return ctx->edges.size(); }
+size_t Canvas::num_drawables() { return objects.size(); }
 
 Shape Canvas::get_shape(int shape_num) {
     return Shape{this,shape_num};
-}
-
-size_t Canvas::num_contours() {
-    return ctx->contours.size();
 }
 
 Contour Canvas::get_contour(int shape_num, int contour_num) {
     return Contour{this,shape_num,contour_num};
 }
 
-size_t Canvas::num_edges() {
-    return ctx->edges.size();
-}
-
 Edge Canvas::get_edge(int shape_num, int contour_num, int edge_num) {
     return Edge{this,shape_num,contour_num,edge_num};
-}
-
-size_t Canvas::num_drawables() {
-    return objects.size();
 }
 
 Drawable* Canvas::get_drawable(size_t offset) {
