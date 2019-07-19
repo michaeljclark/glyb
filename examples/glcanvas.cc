@@ -225,6 +225,7 @@ static void draw(double tn, double td)
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    /* draw list batch with tbo_iid canvas texture buffer special case */
     for (auto img : batch.images) {
         auto ti = tex_map.find(img.iid);
         if (ti == tex_map.end()) {
