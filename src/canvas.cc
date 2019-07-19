@@ -623,7 +623,8 @@ void Text::set_lang(std::string lang) { shapes.clear(); this->lang = lang; }
 void Text::set_color(color col) { this->col = col; }
 
 text_segment& Text::get_text_segment() {
-    segment = text_segment(text, lang, face, size * 64.0f, 0, 0, col.rgba32());
+    int font_size = (int)(size * 64.0f);
+    segment = text_segment(text, lang, face, font_size, 0, 0, col.rgba32());
     return segment;
 }
 
