@@ -408,44 +408,6 @@ static void rect(draw_list &batch, vec2 A, vec2 B, float Z,
     rect(batch, tbo_iid, A, B, Z, UV0, UV1, color, (float)shape_num);
 }
 
-/*
- * brush helper
-*/
-
-int brush_helper(AContext &ctx, Brush p)
-{
-    if (p.brush_type == BrushNone) {
-        return -1;
-    } else {
-        color *c = p.colors;
-        vec2 *P = p.points;
-        vec4 C[4] = {
-            { c[0].r, c[0].g, c[0].b, c[0].a },
-            { c[1].r, c[1].g, c[1].b, c[1].a },
-            { c[2].r, c[2].g, c[2].b, c[2].a },
-            { c[3].r, c[3].g, c[3].b, c[3].a },
-        };
-        ABrush tmpl{(float)(int)p.brush_type,
-            { P[0], P[1], P[2], P[3] }, { C[0], C[1], C[2], C[3] } };
-        return ctx.add_brush(&tmpl);
-    }
-}
-
-Brush brush_helper(AContext &ctx, int brush_num) {
-    if (brush_num == -1) {
-        return Brush{BrushNone, { vec2(0,0)}, { color(0,0,0,1) } };
-    } else {
-        ABrush &b = ctx.brushes[brush_num];
-        return Brush{(BrushType)(int)b.type,
-            { b.p[0], b.p[1], b.p[2], b.p[3]},
-            { color(b.c[0].r, b.c[0].g, b.c[0].b, b.c[0].a),
-              color(b.c[1].r, b.c[1].g, b.c[1].b, b.c[1].a),
-              color(b.c[2].r, b.c[2].g, b.c[2].b, b.c[2].a),
-              color(b.c[3].r, b.c[3].g, b.c[3].b, b.c[3].a) }
-        };
-    }
-}
-
 
 /*
  * text renderer
@@ -553,13 +515,11 @@ vec2 Shape::get_size() {
 }
 
 Brush Shape::get_fill_brush() {
-    return brush_helper(*canvas->ctx,
-        (int)canvas->ctx->shapes[shape_num].fill_brush);
+    return canvas->get_brush((int)canvas->ctx->shapes[shape_num].fill_brush);
 }
 
 Brush Shape::get_stroke_brush() {
-    return brush_helper(*canvas->ctx,
-        (int)canvas->ctx->shapes[shape_num].stroke_brush);
+    return canvas->get_brush((int)canvas->ctx->shapes[shape_num].stroke_brush);
 }
 
 float Shape::get_stroke_width() {
@@ -581,12 +541,12 @@ void Shape::set_size(vec2 size) {
 }
 
 void Shape::set_fill_brush(Brush fill_brush) {
-    int fill_brush_num = brush_helper(*canvas->ctx, fill_brush);
+    int fill_brush_num = canvas->get_brush_num(fill_brush);
     canvas->ctx->shapes[shape_num].fill_brush = (float)fill_brush_num;
 }
 
 void Shape::set_stroke_brush(Brush stroke_brush) {
-    int stroke_brush_num = brush_helper(*canvas->ctx, stroke_brush);
+    int stroke_brush_num = canvas->get_brush_num(stroke_brush);
     canvas->ctx->shapes[shape_num].stroke_brush = (float)stroke_brush_num;
 }
 
@@ -761,6 +721,40 @@ Canvas::Canvas(font_manager* manager) :
     stroke_brush{BrushSolid, {vec2(0)}, {color(0,0,0,1)}},
     stroke_width(0.0f) {}
 
+int Canvas::get_brush_num(Brush p)
+{
+    if (p.brush_type == BrushNone) {
+        return -1;
+    } else {
+        color *c = p.colors;
+        vec2 *P = p.points;
+        vec4 C[4] = {
+            { c[0].r, c[0].g, c[0].b, c[0].a },
+            { c[1].r, c[1].g, c[1].b, c[1].a },
+            { c[2].r, c[2].g, c[2].b, c[2].a },
+            { c[3].r, c[3].g, c[3].b, c[3].a },
+        };
+        ABrush tmpl{(float)(int)p.brush_type,
+            { P[0], P[1], P[2], P[3] }, { C[0], C[1], C[2], C[3] } };
+        return ctx->add_brush(&tmpl);
+    }
+}
+
+Brush Canvas::get_brush(int brush_num) {
+    if (brush_num == -1) {
+        return Brush{BrushNone, { vec2(0,0)}, { color(0,0,0,1) } };
+    } else {
+        ABrush &b = ctx->brushes[brush_num];
+        return Brush{(BrushType)(int)b.type,
+            { b.p[0], b.p[1], b.p[2], b.p[3]},
+            { color(b.c[0].r, b.c[0].g, b.c[0].b, b.c[0].a),
+              color(b.c[1].r, b.c[1].g, b.c[1].b, b.c[1].a),
+              color(b.c[2].r, b.c[2].g, b.c[2].b, b.c[2].a),
+              color(b.c[3].r, b.c[3].g, b.c[3].b, b.c[3].a) }
+        };
+    }
+}
+
 Brush Canvas::get_fill_brush() {
     return fill_brush;
 }
@@ -832,8 +826,8 @@ Text* Canvas::new_text() {
 }
 
 Circle* Canvas::new_circle(vec2 pos, float radius) {
-    int fill_brush_num = brush_helper(*ctx, fill_brush);
-    int stroke_brush_num = brush_helper(*ctx, stroke_brush);
+    int fill_brush_num = get_brush_num(fill_brush);
+    int stroke_brush_num = get_brush_num(stroke_brush);
     AShape shape{0, 0, 0, 1, vec2(0), vec2(radius * 2.0f),
         (float)fill_brush_num, (float)stroke_brush_num, stroke_width };
     AEdge edge{PrimitiveCircle,{vec2(radius), vec2(radius)}};
@@ -845,8 +839,8 @@ Circle* Canvas::new_circle(vec2 pos, float radius) {
 }
 
 Ellipse* Canvas::new_ellipse(vec2 pos, vec2 half_size) {
-    int fill_brush_num = brush_helper(*ctx, fill_brush);
-    int stroke_brush_num = brush_helper(*ctx, stroke_brush);
+    int fill_brush_num = get_brush_num(fill_brush);
+    int stroke_brush_num = get_brush_num(stroke_brush);
     AShape shape{0, 0, 0, 1, vec2(0), half_size * 2.0f,
         (float)fill_brush_num, (float)stroke_brush_num, stroke_width };
     AEdge edge{PrimitiveEllipse,{half_size, half_size}};
@@ -858,8 +852,8 @@ Ellipse* Canvas::new_ellipse(vec2 pos, vec2 half_size) {
 }
 
 Rectangle* Canvas::new_rectangle(vec2 pos, vec2 half_size) {
-    int fill_brush_num = brush_helper(*ctx, fill_brush);
-    int stroke_brush_num = brush_helper(*ctx, stroke_brush);
+    int fill_brush_num = get_brush_num(fill_brush);
+    int stroke_brush_num = get_brush_num(stroke_brush);
     AShape shape{0, 0, 0, 1, vec2(0), vec2(half_size*2.0f),
         (float)fill_brush_num, (float)stroke_brush_num, stroke_width };
     AEdge edge{PrimitiveRectangle,{half_size, half_size}};
@@ -871,8 +865,8 @@ Rectangle* Canvas::new_rectangle(vec2 pos, vec2 half_size) {
 }
 
 RoundedRectangle* Canvas::new_rounded_rectangle(vec2 pos, vec2 half_size, float radius) {
-    int fill_brush_num = brush_helper(*ctx, fill_brush);
-    int stroke_brush_num = brush_helper(*ctx, stroke_brush);
+    int fill_brush_num = get_brush_num(fill_brush);
+    int stroke_brush_num = get_brush_num(stroke_brush);
     AShape shape{0, 0, 0, 1, vec2(0), half_size * 2.0f,
         (float)fill_brush_num, (float)stroke_brush_num, stroke_width };
     AEdge edge{PrimitiveRoundedRectangle,{half_size, half_size, vec2(radius)}};
@@ -892,7 +886,7 @@ void Canvas::emit(draw_list &batch) {
             vec2 pos = shape->pos + llshape.offset * shape->scale;
             vec2 halfSize = (llshape.size * shape->scale) / 2.0f;
             float padding = ceil(llshape.stroke_width/2.0f);
-            Brush fill_brush = brush_helper(*ctx, (int)llshape.fill_brush);
+            Brush fill_brush = get_brush((int)llshape.fill_brush);
             uint32_t c = fill_brush.colors[0].rgba32();
             rect(batch, tbo_iid,
                 pos - halfSize - padding, pos + halfSize + padding,
@@ -930,7 +924,7 @@ void Canvas::emit(draw_list &batch) {
             vec2 pos = shape->get_position();
             float radius = shape->get_radius();
             float padding = ceil(llshape.stroke_width/2.0f);
-            Brush fill_brush = brush_helper(*ctx, (int)llshape.fill_brush);
+            Brush fill_brush = get_brush((int)llshape.fill_brush);
             uint32_t c = fill_brush.colors[0].rgba32();
             rect(batch, tbo_iid,
                 pos - radius - padding, pos + radius + padding,
@@ -944,7 +938,7 @@ void Canvas::emit(draw_list &batch) {
             vec2 pos = shape->get_position();
             vec2 halfSize = shape->get_halfsize();
             float padding = ceil(llshape.stroke_width/2.0f);
-            Brush fill_brush = brush_helper(*ctx, (int)llshape.fill_brush);
+            Brush fill_brush = get_brush((int)llshape.fill_brush);
             uint32_t c = fill_brush.colors[0].rgba32();
             rect(batch, tbo_iid,
                 pos - halfSize - padding, pos + halfSize + padding,
@@ -958,7 +952,7 @@ void Canvas::emit(draw_list &batch) {
             vec2 pos = shape->get_position();
             vec2 halfSize = shape->get_halfsize();
             float padding = ceil(llshape.stroke_width/2.0f);
-            Brush fill_brush = brush_helper(*ctx, (int)llshape.fill_brush);
+            Brush fill_brush = get_brush((int)llshape.fill_brush);
             uint32_t c = fill_brush.colors[0].rgba32();
             rect(batch, tbo_iid,
                 pos - halfSize - padding, pos + halfSize + padding,
@@ -972,7 +966,7 @@ void Canvas::emit(draw_list &batch) {
             vec2 pos = shape->get_position();
             vec2 halfSize = shape->get_halfsize();
             float padding = ceil(llshape.stroke_width/2.0f);
-            Brush fill_brush = brush_helper(*ctx, (int)llshape.fill_brush);
+            Brush fill_brush = get_brush((int)llshape.fill_brush);
             uint32_t c = fill_brush.colors[0].rgba32();
             rect(batch, tbo_iid,
                 pos - halfSize - padding, pos + halfSize + padding,

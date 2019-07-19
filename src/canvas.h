@@ -376,20 +376,14 @@ struct Canvas
     Canvas(font_manager* manager);
 
     /* interface to low-level objects shared with the gpu */
+    Brush get_brush(int brush_num);
+    int get_brush_num(Brush p);
     size_t num_shapes();
     Shape get_shape(int shape_num);
     size_t num_contours();
     Contour get_contour(int shape_num, int contour_num);
     size_t num_edges();
     Edge get_edge(int shape_num, int contour_num, int edge_num);
-
-    /* brushes are implicitly associated with new shapes */
-    Brush get_fill_brush();
-    void set_fill_brush(Brush brush);
-    Brush get_stroke_brush();
-    void set_stroke_brush(Brush brush);
-    float get_stroke_width();
-    void set_stroke_width(float width);
 
     /* types used by canvas drawables */
     enum drawable_type {
@@ -404,6 +398,14 @@ struct Canvas
     /* drawables are the high-evel canvas objects */
     size_t num_drawables();
     Drawable* get_drawable(size_t offset);
+
+    /* brushes are associated with new canvas objects on creation */
+    Brush get_fill_brush();
+    void set_fill_brush(Brush brush);
+    Brush get_stroke_brush();
+    void set_stroke_brush(Brush brush);
+    float get_stroke_width();
+    void set_stroke_width(float width);
 
     /* interface to create new canvas objects */
     Patch* new_patch(vec2 offset, vec2 size);
