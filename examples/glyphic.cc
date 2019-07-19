@@ -64,6 +64,7 @@ static const int font_dpi = 72;
 static const int stats_font_fize = 18;
 
 static bool help_text = false;
+static bool overlay_stats = false;
 static bool high_scalability = false;
 static int width = 1024, height = 768;
 static double tl, tn, td, tb;
@@ -136,6 +137,8 @@ static std::string format_string(const char* fmt, ...)
 static std::vector<std::string> get_stats(font_face *face, float td)
 {
     std::vector<std::string> stats;
+
+    if (!overlay_stats) return stats;
 
     size_t glyph_count = 0, memory_allocated = 0;
     size_t area_used = 0, area_total = 0;
@@ -425,8 +428,12 @@ static void resize(GLFWwindow* window, int width, int height)
 
 static void keyboard(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-    if (key == GLFW_KEY_ESCAPE) {
-        exit(0);
+    if (action == GLFW_PRESS) {
+        if (key == GLFW_KEY_ESCAPE) {
+            exit(0);
+        } else if (key == GLFW_KEY_S) {
+            overlay_stats = !overlay_stats;
+        }
     }
 }
 
@@ -589,6 +596,7 @@ void print_help(int argc, char **argv)
         "\n"
         "Common options:\n"
         "  -f, --font <ttf-file>              font file (default %s)\n"
+        "  -y, --overlay-stats                show statistics overlay\n"
         "  -m, --enable-msdf                  enable MSDF font rendering\n"
         "  -q, --quadruple                    quadruple the object count\n"
         "  -h, --help                         command line help\n",
@@ -624,6 +632,9 @@ void parse_options(int argc, char **argv)
         } else if (match_opt(argv[i], "-f","--font")) {
             if (check_param(++i == argc, "--font")) break;
             font_path = argv[i++];
+        } else if (match_opt(argv[i], "-y", "--overlay-stats")) {
+            overlay_stats = true;
+            i++;
         } else if (match_opt(argv[i], "-m", "--enable-msdf")) {
             manager.msdf_enabled = true;
             manager.msdf_autoload = true;
