@@ -149,17 +149,16 @@ static void draw(double tn, double td)
     glfwGetFramebufferSize(window, &width, &height);
 
      /*
-      * todo: canvas-api get text width before emit
       * todo: canvas-api scale the entire canvas
       * todo: canvas-api scale objects individually
+      * todo: canvas-api scale gradient brushes correctly
       * todo: canvas-api set all params of object like its constructor
       */
 
     static Text *t = nullptr;
     static RoundedRectangle *r = nullptr;
 
-    float text_width = state.zoom * 10.0f;
-    float font_size = state.zoom;
+    vec2 text_size;
 
     /* create text and rounded rectangle with gradient brush */
     if (t == nullptr) {
@@ -170,21 +169,30 @@ static void draw(double tn, double td)
         t->set_text(render_text);
         t->set_lang("en");
         t->set_color(color(0,0,0,1));
+
+        /* need text size for gradient and rounded rectangle size */
+        t->set_size(state.zoom);
+        text_size = t->get_text_size();
+
+        /* create rounded rectangle with a gradient fill */
         _canvas.set_fill_brush(Brush{
-            BrushAxial, { vec2(0,0), vec2(0, font_size*2.0f) },
+            BrushAxial, { vec2(0,0), vec2(0, text_size.y*2.0f) },
             { color(0.80f,0.80f,0.80f,1.0f), color(0.50f,0.50f,0.50f,1.0f) }
         });
         r = _canvas.new_rounded_rectangle(vec2(width/2,height/2) + state.origin,
-            vec2(text_width/1.85f,font_size), font_size/2.0f);
+            vec2(text_size.x/1.85f,text_size.y), text_size.y/2.0f);
 
+        /* trick to move the rounded rectangle behind the text */
         std::swap(_canvas.objects[0], _canvas.objects[1]);
+    } else {
+        text_size = t->get_text_size();
     }
 
     /* scale text and rounded rectangle background */
     t->set_size(state.zoom);
     t->set_position(state.origin + vec2(width/2.0f, height/2.0f));
     r->update_rounded_rectangle(vec2(width/2,height/2) + state.origin,
-            vec2(text_width/1.85f,font_size), font_size/2.0f);
+            vec2(text_size.x/1.85f,text_size.y), text_size.y/2.0f);
 
     /* emit canvas draw list */
     _canvas.emit(batch);
