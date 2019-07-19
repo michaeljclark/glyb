@@ -413,35 +413,20 @@ static void rect(draw_list &batch, vec2 A, vec2 B, float Z,
  * text renderer
  */
 
-static const int glyph_load_size = 64;
-
-void text_renderer_canvas::load_glyphs(std::vector<glyph_shape> &shapes,
-        text_segment *segment)
-{
-    font_face_ft *face = static_cast<font_face_ft*>(segment->face);
-    FT_Face ftface = face->ftface;
-    int font_dpi = font_manager::dpi;
-
-    for (auto &s : shapes) {
-        auto gi = glyph_map.find(s.glyph);
-        if (gi == glyph_map.end()) {
-            glyph_map[s.glyph] = (int)ctx.shapes.size();
-            ctx.add_glyph(ftface, glyph_load_size << 6, font_dpi, s.glyph);
-        }
-    }
-}
-
 void text_renderer_canvas::render(draw_list &batch,
         std::vector<glyph_shape> &shapes,
         text_segment *segment)
 {
-    font_face_ft *face = static_cast<font_face_ft*>(segment->face);
-    FT_Face ftface = face->ftface;
+    FT_Face ftface = static_cast<font_face_ft*>(segment->face)->ftface;
     int font_size = segment->font_size;
-    int font_dpi = font_manager::dpi;
+    int dpi = font_manager::dpi;
     float x_offset = 0;
 
-    load_glyphs(shapes, segment);
+    for (auto &s : shapes) {
+        auto gi = glyph_map.find(s.glyph);
+        if (gi != glyph_map.end()) continue;
+        glyph_map[s.glyph] = ctx.add_glyph(ftface, glyph_size, dpi, s.glyph);
+    }
 
     for (auto &s : shapes) {
         /* lookup shape num */
@@ -449,7 +434,7 @@ void text_renderer_canvas::render(draw_list &batch,
         AShape &shape = ctx.shapes[shape_num];
 
         /* figure out glyph dimensions */
-        float s_scale = font_size / (float)(glyph_load_size << 6);
+        float s_scale = (float)font_size / (float)glyph_size;
         vec2 s_size = shape.size * s_scale;
         vec2 s_offset = shape.offset * s_scale;
         float y_offset = (font_size / 64.0f) - s_size.y;

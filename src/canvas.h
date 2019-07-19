@@ -127,11 +127,10 @@ struct text_renderer_canvas : text_renderer
     AContext &ctx;
     std::map<int,int> &glyph_map;
 
+    static const int glyph_size = 4096;
+
     text_renderer_canvas(AContext &ctx, std::map<int,int> &glyph_map);
     virtual ~text_renderer_canvas() = default;
-
-    virtual void load_glyphs(std::vector<glyph_shape> &shapes,
-        text_segment *segment);
 
     virtual void render(draw_list &batch,
         std::vector<glyph_shape> &shapes,
