@@ -285,6 +285,9 @@ struct Text : Drawable
     std::string lang;
     color col;
 
+    text_segment segment;
+    std::vector<glyph_shape> shapes;
+
     float get_size();
     font_face* get_face();
     text_halign get_halign();
@@ -300,6 +303,10 @@ struct Text : Drawable
     void set_text(std::string text);
     void set_lang(std::string lang);
     void set_color(color col);
+
+    text_segment& get_text_segment();
+    std::vector<glyph_shape>& get_glyph_shapes();
+    vec2 get_text_size();
 };
 
 /*

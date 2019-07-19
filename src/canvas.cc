@@ -629,13 +629,32 @@ std::string Text::get_text() { return text; }
 std::string Text::get_lang() { return lang; }
 color Text::get_color() { return col; }
 
-void Text::set_size(float size) { this->size = size; }
-void Text::set_face(font_face *face) { this->face = face; }
+void Text::set_size(float size) { shapes.clear(); this->size = size; }
+void Text::set_face(font_face *face) { shapes.clear(); this->face = face; }
 void Text::set_halign(text_halign halign) { this->halign = halign; }
 void Text::set_valign(text_valign valign) { this->valign = valign; }
-void Text::set_text(std::string text) { this->text = text; }
-void Text::set_lang(std::string lang) { this->lang = lang; }
+void Text::set_text(std::string text) { shapes.clear(); this->text = text; }
+void Text::set_lang(std::string lang) { shapes.clear(); this->lang = lang; }
 void Text::set_color(color col) { this->col = col; }
+
+text_segment& Text::get_text_segment() {
+    segment = text_segment(text, lang, face, size * 64.0f, 0, 0, col.rgba32());
+    return segment;
+}
+
+std::vector<glyph_shape>& Text::get_glyph_shapes() {
+    if (shapes.size() == 0) {
+        canvas->text_shaper.shape(shapes, &get_text_segment());
+    }
+    return shapes;
+}
+
+vec2 Text::get_text_size() {
+    std::vector<glyph_shape> &shapes = get_glyph_shapes();
+    float text_width = std::accumulate(shapes.begin(), shapes.end(), 0.0f,
+        [](float t, glyph_shape& s) { return t + s.x_advance/64.0f; });
+    return vec2(text_width,size);
+}
 
 /*
  * Primitive subclasses are single edge shapes with no contours
@@ -897,21 +916,17 @@ void Canvas::emit(draw_list &batch) {
         case drawable_text: {
             auto shape = static_cast<Text*>(o.get());
             size_t s = glyph_map.size();
-            text_segment segment(shape->text, shape->lang, shape->face,
-                (int)(shape->size * 64.0f), 0.0f, 0.0f, shape->col.rgba32());
-            std::vector<glyph_shape> shapes;
-            text_shaper.shape(shapes, &segment);
-            float text_width = std::accumulate(shapes.begin(), shapes.end(), 0.0f,
-                [](float t, glyph_shape& s) { return t + s.x_advance/64.0f; });
-            float text_height = shape->size;
+            text_segment &segment = shape->get_text_segment();
+            std::vector<glyph_shape> &shapes = shape->get_glyph_shapes();
+            vec2 text_size = shape->get_text_size();
             switch (shape->halign) {
             case text_halign_left:   segment.x = shape->pos.x; break;
-            case text_halign_center: segment.x = shape->pos.x - text_width/2.0f; break;
-            case text_halign_right:  segment.x = shape->pos.x - text_width; break;
+            case text_halign_center: segment.x = shape->pos.x - text_size.x/2.0f; break;
+            case text_halign_right:  segment.x = shape->pos.x - text_size.x; break;
             }
             switch (shape->valign) {
-            case text_valign_top:    segment.y = shape->pos.y - text_height; break;
-            case text_valign_center: segment.y = shape->pos.y - text_height/2.0f; break;
+            case text_valign_top:    segment.y = shape->pos.y - text_size.y; break;
+            case text_valign_center: segment.y = shape->pos.y - text_size.y/2.0f; break;
             case text_valign_bottom: segment.y = shape->pos.y; break;
             }
             text_renderer.render(batch, shapes, &segment);
