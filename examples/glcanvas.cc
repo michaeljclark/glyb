@@ -18,6 +18,7 @@
 #include <set>
 #include <string>
 #include <algorithm>
+#include <functional>
 #include <atomic>
 #include <mutex>
 #include <chrono>
@@ -199,6 +200,14 @@ static void populate_canvas()
     }
 }
 
+static void update_texture_buffers()
+{
+    /* synchronize canvas texture buffers */
+    buffer_texture_create(shape_tb, canvas.ctx->shapes, GL_TEXTURE0, GL_R32F);
+    buffer_texture_create(edge_tb, canvas.ctx->edges, GL_TEXTURE1, GL_R32F);
+    buffer_texture_create(brush_tb, canvas.ctx->brushes, GL_TEXTURE2, GL_R32F);
+}
+
 static void draw(double tn, double td)
 {
     std::vector<glyph_shape> shapes;
@@ -227,14 +236,7 @@ static void draw(double tn, double td)
 
     /* emit canvas draw list */
     canvas.emit(batch, m);
-
-    /* synchronize canvas texture buffers */
-    if (canvas.dirty) {
-        buffer_texture_create(shape_tb, canvas.ctx->shapes, GL_TEXTURE0, GL_R32F);
-        buffer_texture_create(edge_tb, canvas.ctx->edges, GL_TEXTURE1, GL_R32F);
-        buffer_texture_create(brush_tb, canvas.ctx->brushes, GL_TEXTURE2, GL_R32F);
-        canvas.dirty = false;
-    }
+    canvas.sync(update_texture_buffers);
 
     /* render stats text */
     float x = 10, y = height - 10;

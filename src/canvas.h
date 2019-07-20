@@ -428,4 +428,5 @@ struct Canvas
 
     /* emit canvas to draw list */
     void emit(draw_list &batch, mat3 matrix);
+    void sync(std::function<void(void)> dirty_cb);
 };

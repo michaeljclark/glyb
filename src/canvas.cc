@@ -15,6 +15,7 @@
 #include <map>
 #include <tuple>
 #include <algorithm>
+#include <functional>
 #include <numeric>
 #include <atomic>
 #include <mutex>
@@ -990,5 +991,13 @@ void Canvas::emit(draw_list &batch, mat3 matrix) {
             break;
         }
         }
+    }
+}
+
+void Canvas::sync(std::function<void(void)> dirty_cb)
+{
+    if (dirty) {
+        dirty_cb();
+        dirty = false;
     }
 }
