@@ -80,6 +80,11 @@ static int codepoint = 'g';
 
 /* canvas state */
 
+enum example {
+    example_text1,
+    example_circle1,
+};
+
 struct zoom_state {
     float zoom;
     dvec2 mouse_pos;
@@ -91,6 +96,7 @@ static font_face *face;
 static draw_list batch;
 static zoom_state state = { 64.0f }, state_save;
 static bool mouse_left_drag = false, mouse_right_drag = false;
+static example current_example;
 
 /* display  */
 
@@ -132,6 +138,67 @@ static std::vector<std::string> get_stats(font_face *face, double td)
     return stats;
 }
 
+static void do_example_text1()
+{
+    canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0,0,0,1) }});
+    Text *t = canvas.new_text();
+    t->set_face(face);
+    t->set_halign(text_halign_center);
+    t->set_valign(text_valign_center);
+    t->set_text(render_text);
+    t->set_lang("en");
+    t->set_color(color(0,0,0,1));
+    t->set_position(vec2(0));
+    t->set_size(64.0f);
+
+    /* need text size for gradient and rounded rectangle size */
+    vec2 text_size = t->get_text_size();
+
+    /* create rounded rectangle with a gradient fill */
+    canvas.set_fill_brush(Brush{
+        BrushAxial, { vec2(0,0), vec2(0, text_size.y*2.0f) },
+        { color(0.80f,0.80f,0.80f,1.0f), color(0.50f,0.50f,0.50f,1.0f) }
+    });
+    RoundedRectangle *r = canvas.new_rounded_rectangle(vec2(0),
+        vec2(text_size.x/1.85f,text_size.y), text_size.y/2.0f);
+
+    /* trick to move the rounded rectangle behind the text */
+    std::swap(canvas.objects[0], canvas.objects[1]);
+}
+
+static void do_example_circle1()
+{
+    color colors[] = {
+        color("#251F39"),
+        color("#51413A"),
+        color("#9D6F7D"),
+        color("#ECB188"),
+        color("#CE552F")
+    };
+
+    float l = 200.0f, r = 90.0f;
+
+    canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0.5,0.5,0.5,1) }});
+    canvas.set_stroke_brush(Brush{BrushSolid, { }, { color(0.3,0.3,0.3,1) }});
+    canvas.set_stroke_width(5.0f);
+    canvas.new_circle(vec2(0), r);
+
+    for (size_t i = 0; i < 5; i++) {
+        float phi = (float)i * M_PI * (2.0f/5.0f);
+        canvas.set_fill_brush(Brush{BrushSolid, { }, { colors[i] }});
+        canvas.set_stroke_brush(Brush{BrushSolid, { }, { colors[i].brighten(0.5) }});
+        canvas.new_circle(vec2(sinf(phi) * l, cosf(phi) * l), r);
+    }
+}
+
+static void populate_canvas()
+{
+    switch (current_example) {
+        case example_text1:   do_example_text1(); break;
+        case example_circle1: do_example_circle1(); break;
+    }
+}
+
 static void draw(double tn, double td)
 {
     std::vector<glyph_shape> shapes;
@@ -144,31 +211,9 @@ static void draw(double tn, double td)
 
     draw_list_clear(batch);
 
-    /* create text and rounded rectangle with gradient brush */
+    /* create test canvas */
     if (canvas.num_drawables() == 0) {
-        Text *t = canvas.new_text();
-        t->set_face(face);
-        t->set_halign(text_halign_center);
-        t->set_valign(text_valign_center);
-        t->set_text(render_text);
-        t->set_lang("en");
-        t->set_color(color(0,0,0,1));
-        t->set_position(vec2(0));
-        t->set_size(64.0f);
-
-        /* need text size for gradient and rounded rectangle size */
-        vec2 text_size = t->get_text_size();
-
-        /* create rounded rectangle with a gradient fill */
-        canvas.set_fill_brush(Brush{
-            BrushAxial, { vec2(0,0), vec2(0, text_size.y*2.0f) },
-            { color(0.80f,0.80f,0.80f,1.0f), color(0.50f,0.50f,0.50f,1.0f) }
-        });
-        RoundedRectangle *r = canvas.new_rounded_rectangle(vec2(0),
-            vec2(text_size.x/1.85f,text_size.y), text_size.y/2.0f);
-
-        /* trick to move the rounded rectangle behind the text */
-        std::swap(canvas.objects[0], canvas.objects[1]);
+        populate_canvas();
     }
 
     /* set up scale/translate matrix */
@@ -283,10 +328,19 @@ static void reshape(int width, int height)
 
 /* keyboard callback */
 
+static void set_example(example next_example)
+{
+    current_example = next_example;
+    canvas.clear();
+}
+
 static void keyboard(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-    if (key == GLFW_KEY_ESCAPE) {
-        exit(0);
+    if (action != GLFW_PRESS) return;
+    switch(key) {
+    case GLFW_KEY_ESCAPE: exit(0); break;
+    case GLFW_KEY_1: set_example(example_text1); break;
+    case GLFW_KEY_2: set_example(example_circle1); break;
     }
 }
 
