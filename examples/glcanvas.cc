@@ -143,56 +143,45 @@ static void draw(double tn, double td)
 
     draw_list_clear(batch);
 
-    glfwGetFramebufferSize(window, &width, &height);
-
-     /*
-      * todo: canvas-api scale the entire canvas
-      * todo: canvas-api scale objects individually
-      * todo: canvas-api scale gradient brushes correctly
-      * todo: canvas-api set all params of object like its constructor
-      */
-
-    static Text *t = nullptr;
-    static RoundedRectangle *r = nullptr;
-
-    vec2 text_size;
-
     /* create text and rounded rectangle with gradient brush */
-    if (t == nullptr) {
-        t = _canvas.new_text();
+    if (_canvas.num_drawables() == 0) {
+        Text *t = _canvas.new_text();
         t->set_face(face);
         t->set_halign(text_halign_center);
         t->set_valign(text_valign_center);
         t->set_text(render_text);
         t->set_lang("en");
         t->set_color(color(0,0,0,1));
+        t->set_position(vec2(0));
+        t->set_size(64.0f);
 
         /* need text size for gradient and rounded rectangle size */
-        t->set_size(state.zoom);
-        text_size = t->get_text_size();
+        vec2 text_size = t->get_text_size();
 
         /* create rounded rectangle with a gradient fill */
         _canvas.set_fill_brush(Brush{
             BrushAxial, { vec2(0,0), vec2(0, text_size.y*2.0f) },
             { color(0.80f,0.80f,0.80f,1.0f), color(0.50f,0.50f,0.50f,1.0f) }
         });
-        r = _canvas.new_rounded_rectangle(vec2(width/2,height/2) + state.origin,
+        RoundedRectangle *r = _canvas.new_rounded_rectangle(vec2(0),
             vec2(text_size.x/1.85f,text_size.y), text_size.y/2.0f);
 
         /* trick to move the rounded rectangle behind the text */
         std::swap(_canvas.objects[0], _canvas.objects[1]);
-    } else {
-        text_size = t->get_text_size();
     }
 
-    /* scale text and rounded rectangle background */
-    t->set_size(state.zoom);
-    t->set_position(state.origin + vec2(width/2.0f, height/2.0f));
-    r->update_rounded_rectangle(vec2(width/2,height/2) + state.origin,
-            vec2(text_size.x/1.85f,text_size.y), text_size.y/2.0f);
+    /* set up scale/translate matrix */
+    glfwGetFramebufferSize(window, &width, &height);
+    float s = state.zoom / 64.0f;
+    float tx = state.origin.x + width/2.0f;
+    float ty = state.origin.y + height/2.0f;
+    mat3 m(s, 0, tx,
+           0, s, ty,
+           0, 0, 1);
 
     /* emit canvas draw list */
-    _canvas.emit(batch);
+    _canvas.emit(batch, m);
+
     if (_canvas.dirty) {
         buffer_texture_create(shape_tb, _canvas.ctx->shapes, GL_TEXTURE0, GL_R32F);
         buffer_texture_create(edge_tb, _canvas.ctx->edges, GL_TEXTURE1, GL_R32F);

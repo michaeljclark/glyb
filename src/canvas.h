@@ -135,6 +135,9 @@ struct text_renderer_canvas : text_renderer
     virtual void render(draw_list &batch,
         std::vector<glyph_shape> &shapes,
         text_segment *segment);
+    virtual void render(draw_list &batch,
+        std::vector<glyph_shape> &shapes,
+        text_segment *segment, mat3 matrix);
 };
 
 inline text_renderer_canvas::text_renderer_canvas(AContext &ctx,
@@ -422,5 +425,5 @@ struct Canvas
     RoundedRectangle* new_rounded_rectangle(vec2 pos, vec2 half_size, float radius);
 
     /* emit canvas to draw list */
-    void emit(draw_list &batch);
+    void emit(draw_list &batch, mat3 matrix);
 };

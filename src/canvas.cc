@@ -380,22 +380,31 @@ bool AContext::update_shape(int shape_num, AShape *s, AEdge *e)
  * draw list utility
  */
 
+static vec2 transform(vec2 pos, mat3 matrix)
+{
+    vec3 v = vec3(pos, 1.0f) * matrix;
+    return vec2(v.x / v.z, v.y / v.z);
+}
+
 static void rect(draw_list &b, uint iid, vec2 A, vec2 B, float Z,
-    vec2 UV0, vec2 UV1, uint c, float m)
+    vec2 UV0, vec2 UV1, uint c, float s, mat3 m = mat3(1))
 {
     uint o = static_cast<uint>(b.vertices.size());
 
-    uint o0 = draw_list_vertex(b, {{A.x, A.y, Z}, {UV0.x, UV0.y}, c, m});
-    uint o1 = draw_list_vertex(b, {{B.x, A.y, Z}, {UV1.x, UV0.y}, c, m});
-    uint o2 = draw_list_vertex(b, {{B.x, B.y, Z}, {UV1.x, UV1.y}, c, m});
-    uint o3 = draw_list_vertex(b, {{A.x, B.y, Z}, {UV0.x, UV1.y}, c, m});
+    auto v1 = transform(A,m);
+    auto v2 = transform(B,m);
+
+    uint o0 = draw_list_vertex(b, {{v1.x, v1.y, Z}, {UV0.x, UV0.y}, c, s});
+    uint o1 = draw_list_vertex(b, {{v2.x, v1.y, Z}, {UV1.x, UV0.y}, c, s});
+    uint o2 = draw_list_vertex(b, {{v2.x, v2.y, Z}, {UV1.x, UV1.y}, c, s});
+    uint o3 = draw_list_vertex(b, {{v1.x, v2.y, Z}, {UV0.x, UV1.y}, c, s});
 
     draw_list_indices(b, iid, mode_triangles, shader_canvas,
         {o0, o3, o1, o1, o3, o2});
 }
 
 static void rect(draw_list &batch, vec2 A, vec2 B, float Z,
-    AContext &ctx, uint shape_num, uint color)
+    AContext &ctx, uint shape_num, uint color, mat3 m = mat3(1))
 {
     AShape &shape = ctx.shapes[shape_num];
     auto &size = shape.size;
@@ -405,7 +414,7 @@ static void rect(draw_list &batch, vec2 A, vec2 B, float Z,
                        0,       0,        1);
     auto UV0 = vec3(0,0,1) * t;
     auto UV1 = vec3(1,1,1) * t;
-    rect(batch, tbo_iid, A, B, Z, UV0, UV1, color, (float)shape_num);
+    rect(batch, tbo_iid, A, B, Z, UV0, UV1, color, (float)shape_num, m);
 }
 
 
@@ -416,6 +425,13 @@ static void rect(draw_list &batch, vec2 A, vec2 B, float Z,
 void text_renderer_canvas::render(draw_list &batch,
         std::vector<glyph_shape> &shapes,
         text_segment *segment)
+{
+    return render(batch, shapes, segment, mat3(1));
+}
+
+void text_renderer_canvas::render(draw_list &batch,
+        std::vector<glyph_shape> &shapes,
+        text_segment *segment, mat3 matrix)
 {
     FT_Face ftface = static_cast<font_face_ft*>(segment->face)->ftface;
     int font_size = segment->font_size;
@@ -443,7 +459,7 @@ void text_renderer_canvas::render(draw_list &batch,
         vec2 p2 = p1 + vec2(s_size.x,s_size.y);
 
         /* emit geometry and advance */
-        rect(batch, p1, p2, 0, ctx, shape_num, segment->color);
+        rect(batch, p1, p2, 0, ctx, shape_num, segment->color, matrix);
         x_offset += s.x_advance/64.0f + segment->tracking;
     }
 }
@@ -855,7 +871,7 @@ RoundedRectangle* Canvas::new_rounded_rectangle(vec2 pos, vec2 half_size, float 
     return o;
 }
 
-void Canvas::emit(draw_list &batch) {
+void Canvas::emit(draw_list &batch, mat3 matrix) {
     for (auto &o : objects) {
         switch (o->drawable_type) {
         case drawable_patch: {
@@ -869,7 +885,7 @@ void Canvas::emit(draw_list &batch) {
             rect(batch, tbo_iid,
                 pos - halfSize - padding, pos + halfSize + padding,
                 shape->get_z(), -vec2(padding), halfSize * 2.0f + padding, c,
-                (float)o->ll_shape_num);
+                (float)o->ll_shape_num, matrix);
             break;
         }
         case drawable_text: {
@@ -888,7 +904,7 @@ void Canvas::emit(draw_list &batch) {
             case text_valign_center: segment.y = shape->pos.y - text_size.y/2.0f; break;
             case text_valign_bottom: segment.y = shape->pos.y; break;
             }
-            text_renderer.render(batch, shapes, &segment);
+            text_renderer.render(batch, shapes, &segment, matrix);
             dirty |= (s != glyph_map.size());
             break;
         }
@@ -903,7 +919,7 @@ void Canvas::emit(draw_list &batch) {
             rect(batch, tbo_iid,
                 pos - radius - padding, pos + radius + padding,
                 shape->get_z(), -vec2(padding), vec2(radius) * 2.0f + padding, c,
-                (float)o->ll_shape_num);
+                (float)o->ll_shape_num, matrix);
             break;
         }
         case drawable_ellipse: {
@@ -917,7 +933,7 @@ void Canvas::emit(draw_list &batch) {
             rect(batch, tbo_iid,
                 pos - halfSize - padding, pos + halfSize + padding,
                 shape->get_z(), -vec2(padding), halfSize * 2.0f + padding, c,
-                (float)o->ll_shape_num);
+                (float)o->ll_shape_num, matrix);
             break;
         }
         case drawable_rectangle: {
@@ -931,7 +947,7 @@ void Canvas::emit(draw_list &batch) {
             rect(batch, tbo_iid,
                 pos - halfSize - padding, pos + halfSize + padding,
                 shape->get_z(), -vec2(padding), halfSize * 2.0f + padding, c,
-                (float)o->ll_shape_num);
+                (float)o->ll_shape_num, matrix);
             break;
         }
         case drawable_rounded_rectangle: {
@@ -945,7 +961,7 @@ void Canvas::emit(draw_list &batch) {
             rect(batch, tbo_iid,
                 pos - halfSize - padding, pos + halfSize + padding,
                 shape->get_z(), -vec2(padding), halfSize * 2.0f + padding, c,
-                (float)o->ll_shape_num);
+                (float)o->ll_shape_num, matrix);
             break;
         }
         }
