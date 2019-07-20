@@ -192,12 +192,12 @@ static void draw(double tn, double td)
     }
 
     /* render stats text */
-    int x = 10, y = height - 10;
+    float x = 10, y = height - 10;
     std::vector<std::string> stats = get_stats(face, td);
     const uint32_t bg_color = 0xbfffffff;
     for (size_t i = 0; i < stats.size(); i++) {
         text_segment stats_segment(stats[i], text_lang, face,
-            (int)((float)stats_font_size * 64.0f), (float)x, (float)y, 0xff000000);
+            (int)((float)stats_font_size * 64.0f), x, y, 0xff000000);
         shapes.clear();
         shaper.shape(shapes, &stats_segment);
         font_atlas *atlas = manager.getCurrentAtlas(face);
