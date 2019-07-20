@@ -73,7 +73,6 @@ static const int font_dpi = 72;
 static const int stats_font_size = 18;
 
 static const float min_zoom = 16.0f, max_zoom = 32768.0f;
-static const int glyph_load_size = 64;
 static int width = 1024, height = 768;
 static double tl, tn, td;
 static bool help_text = false;
@@ -90,7 +89,6 @@ struct zoom_state {
 static AContext ctx;
 static font_face *face;
 static draw_list batch;
-static std::map<int,int> glyph_map;
 static zoom_state state = { 64.0f }, state_save;
 static bool mouse_left_drag = false, mouse_right_drag = false;
 
@@ -138,7 +136,6 @@ static void draw(double tn, double td)
     std::vector<glyph_shape> shapes;
     text_shaper_hb shaper;
     text_renderer_ft renderer(&manager);
-    text_renderer_canvas canvas_renderer(ctx, glyph_map);
 
     if (!face) {
         face = manager.findFontByPath(font_path);
