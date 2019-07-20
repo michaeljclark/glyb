@@ -57,11 +57,11 @@ using dvec2 = glm::dvec2;
 /* globals */
 
 static texture_buffer shape_tb, edge_tb, brush_tb;
-static program simple, msdf, canvas;
+static program prog_simple, prog_msdf, prog_canvas;
 static GLuint vao, vbo, ibo;
 static std::map<int,GLuint> tex_map;
 static font_manager_ft manager;
-static Canvas _canvas(&manager);
+static Canvas canvas(&manager);
 
 static mat4 mvp;
 static GLFWwindow* window;
@@ -97,8 +97,9 @@ static bool mouse_left_drag = false, mouse_right_drag = false;
 static program* cmd_shader_gl(int cmd_shader)
 {
     switch (cmd_shader) {
-    case shader_simple:  return &simple;
-    case shader_canvas:  return &canvas;
+    case shader_simple:  return &prog_simple;
+    case shader_msdf:    return &prog_msdf;
+    case shader_canvas:  return &prog_canvas;
     default: return nullptr;
     }
 }
@@ -144,8 +145,8 @@ static void draw(double tn, double td)
     draw_list_clear(batch);
 
     /* create text and rounded rectangle with gradient brush */
-    if (_canvas.num_drawables() == 0) {
-        Text *t = _canvas.new_text();
+    if (canvas.num_drawables() == 0) {
+        Text *t = canvas.new_text();
         t->set_face(face);
         t->set_halign(text_halign_center);
         t->set_valign(text_valign_center);
@@ -159,15 +160,15 @@ static void draw(double tn, double td)
         vec2 text_size = t->get_text_size();
 
         /* create rounded rectangle with a gradient fill */
-        _canvas.set_fill_brush(Brush{
+        canvas.set_fill_brush(Brush{
             BrushAxial, { vec2(0,0), vec2(0, text_size.y*2.0f) },
             { color(0.80f,0.80f,0.80f,1.0f), color(0.50f,0.50f,0.50f,1.0f) }
         });
-        RoundedRectangle *r = _canvas.new_rounded_rectangle(vec2(0),
+        RoundedRectangle *r = canvas.new_rounded_rectangle(vec2(0),
             vec2(text_size.x/1.85f,text_size.y), text_size.y/2.0f);
 
         /* trick to move the rounded rectangle behind the text */
-        std::swap(_canvas.objects[0], _canvas.objects[1]);
+        std::swap(canvas.objects[0], canvas.objects[1]);
     }
 
     /* set up scale/translate matrix */
@@ -180,14 +181,14 @@ static void draw(double tn, double td)
            0, 0, 1);
 
     /* emit canvas draw list */
-    _canvas.emit(batch, m);
+    canvas.emit(batch, m);
 
     /* synchronize canvas texture buffers */
-    if (_canvas.dirty) {
-        buffer_texture_create(shape_tb, _canvas.ctx->shapes, GL_TEXTURE0, GL_R32F);
-        buffer_texture_create(edge_tb, _canvas.ctx->edges, GL_TEXTURE1, GL_R32F);
-        buffer_texture_create(brush_tb, _canvas.ctx->brushes, GL_TEXTURE2, GL_R32F);
-        _canvas.dirty = false;
+    if (canvas.dirty) {
+        buffer_texture_create(shape_tb, canvas.ctx->shapes, GL_TEXTURE0, GL_R32F);
+        buffer_texture_create(edge_tb, canvas.ctx->edges, GL_TEXTURE1, GL_R32F);
+        buffer_texture_create(brush_tb, canvas.ctx->brushes, GL_TEXTURE2, GL_R32F);
+        canvas.dirty = false;
     }
 
     /* render stats text */
@@ -270,14 +271,14 @@ static void reshape(int width, int height)
 
     glViewport(0, 0, width, height);
 
-    glUseProgram(canvas.pid);
-    update_uniforms(&canvas);
+    glUseProgram(prog_canvas.pid);
+    update_uniforms(&prog_canvas);
 
-    glUseProgram(msdf.pid);
-    update_uniforms(&msdf);
+    glUseProgram(prog_msdf.pid);
+    update_uniforms(&prog_msdf);
 
-    glUseProgram(simple.pid);
-    update_uniforms(&simple);
+    glUseProgram(prog_simple.pid);
+    update_uniforms(&prog_simple);
 }
 
 /* keyboard callback */
@@ -355,9 +356,9 @@ static void initialize()
     simple_fsh = compile_shader(GL_FRAGMENT_SHADER, "shaders/simple.fsh");
     msdf_fsh = compile_shader(GL_FRAGMENT_SHADER, "shaders/msdf.fsh");
     canvas_fsh = compile_shader(GL_FRAGMENT_SHADER, "shaders/canvas.fsh");
-    link_program(&simple, vsh, simple_fsh, attrs);
-    link_program(&msdf, vsh, msdf_fsh, attrs);
-    link_program(&canvas, vsh, canvas_fsh, attrs);
+    link_program(&prog_simple, vsh, simple_fsh, attrs);
+    link_program(&prog_msdf, vsh, msdf_fsh, attrs);
+    link_program(&prog_canvas, vsh, canvas_fsh, attrs);
     glDeleteShader(vsh);
     glDeleteShader(simple_fsh);
     glDeleteShader(msdf_fsh);
@@ -372,7 +373,7 @@ static void initialize()
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
-    program *p = &canvas; /* use any program to get attribute locations */
+    program *p = &prog_canvas; /* use any program to get attribute locations */
     vertex_array_pointer(p, "a_pos", 3, GL_FLOAT, 0, &draw_vertex::pos);
     vertex_array_pointer(p, "a_uv0", 2, GL_FLOAT, 0, &draw_vertex::uv);
     vertex_array_pointer(p, "a_color", 4, GL_UNSIGNED_BYTE, 1, &draw_vertex::color);
