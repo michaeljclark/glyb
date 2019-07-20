@@ -361,19 +361,15 @@ static void scroll(GLFWwindow* window, double xoffset, double yoffset)
 
 static void mouse_button(GLFWwindow* window, int button, int action, int mods)
 {
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-        mouse_left_drag = true;
+    switch (button) {
+    case GLFW_MOUSE_BUTTON_LEFT:
+        mouse_left_drag = (action == GLFW_PRESS);
         state_save = state;
-    }
-    else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
-        mouse_left_drag = false;
-    }
-    else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
-        mouse_right_drag = true;
+        break;
+    case GLFW_MOUSE_BUTTON_RIGHT:
+        mouse_right_drag = (action == GLFW_PRESS);
         state_save = state;
-    }
-    else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE) {
-        mouse_right_drag = false;
+        break;
     }
 }
 
