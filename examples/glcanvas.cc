@@ -182,6 +182,7 @@ static void draw(double tn, double td)
     /* emit canvas draw list */
     _canvas.emit(batch, m);
 
+    /* synchronize canvas texture buffers */
     if (_canvas.dirty) {
         buffer_texture_create(shape_tb, _canvas.ctx->shapes, GL_TEXTURE0, GL_R32F);
         buffer_texture_create(edge_tb, _canvas.ctx->edges, GL_TEXTURE1, GL_R32F);
