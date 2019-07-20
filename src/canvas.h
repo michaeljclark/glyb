@@ -57,7 +57,7 @@ struct AEdge {
     float type;
     vec2 p[4];
 
-    static int numPoints(int edge_type);
+    static int num_points(int edge_type);
 };
 
 struct AContour {
@@ -82,7 +82,8 @@ struct ABrush {
     vec2 p[4];
     vec4 c[4];
 
-    static int numPoints(int brush_type);
+    static int num_points(int brush_type);
+    static int num_colors(int brush_type);
 };
 
 struct AContext {
@@ -407,6 +408,7 @@ struct Canvas
     /* drawables are the high-evel canvas objects */
     size_t num_drawables();
     Drawable* get_drawable(size_t offset);
+    void clear();
 
     /* brushes are associated with new canvas objects on creation */
     Brush get_fill_brush();

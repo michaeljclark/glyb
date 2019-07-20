@@ -199,7 +199,7 @@ void AContext::print_brush(int brush_num)
     }
 }
 
-int AEdge::numPoints(int edge_type)
+int AEdge::num_points(int edge_type)
 {
     switch (edge_type) {
     case EdgeLinear:                return 2;
@@ -213,14 +213,26 @@ int AEdge::numPoints(int edge_type)
     return 0;
 }
 
-int ABrush::numPoints(int brush_type)
+int ABrush::num_points(int brush_type)
 {
     switch (brush_type) {
+    case BrushSolid:         return 0;
     case BrushAxial:         return 2;
     case BrushRadial:        return 2;
     }
     return 0;
 }
+
+int ABrush::num_colors(int brush_type)
+{
+    switch (brush_type) {
+    case BrushSolid:         return 1;
+    case BrushAxial:         return 2;
+    case BrushRadial:        return 2;
+    }
+    return 0;
+}
+
 
 void AContext::clear()
 {
@@ -272,9 +284,12 @@ int AContext::copy_shape(AShape *shape, AEdge *edges)
 bool AContext::brush_equals(ABrush *b0, ABrush *b1)
 {
     if (b0->type != b1->type) return false;
-    int match_points = ABrush::numPoints((int)b0->type);
+    int match_points = ABrush::num_points((int)b0->type);
+    int match_colors = ABrush::num_colors((int)b0->type);
     for (int i = 0; i < match_points; i++) {
         if (b0->p[i] != b1->p[i]) return false;
+    }
+    for (int i = 0; i < match_colors; i++) {
         if (b0->c[i] != b1->c[i]) return false;
     }
     return true;
@@ -290,7 +305,7 @@ bool AContext::shape_equals(AShape *s0, AEdge *e0, AShape *s1, AEdge *e1)
     if (s0->stroke_width != s1->stroke_width) return false;
     if (e0->type != e1->type) return false;
     for (int i = 0; i < s0->edge_count; i++) {
-        int match_points = AEdge::numPoints((int)e0[i].type);
+        int match_points = AEdge::num_points((int)e0[i].type);
         for (int j = 0; j < match_points; j++) {
             if (e0[i].p[j] != e1[i].p[j]) return false;
         }
@@ -476,7 +491,7 @@ EdgeType Edge::type() {
 }
 
 size_t Edge::num_points() {
-    return AEdge::numPoints(type());
+    return AEdge::num_points(type());
 }
 
 vec2 Edge::get_point(size_t offset) {
@@ -803,6 +818,16 @@ Edge Canvas::get_edge(int shape_num, int contour_num, int edge_num) {
 
 Drawable* Canvas::get_drawable(size_t offset) {
     return objects[offset].get();
+}
+
+void Canvas::clear() {
+    dirty = true;
+    glyph_map.clear();
+    objects.clear();
+    ctx->clear();
+    fill_brush = Brush{BrushSolid, {vec2(0)}, {color(0,0,0,1)}};
+    stroke_brush = Brush{BrushSolid, {vec2(0)}, {color(0,0,0,1)}};
+    stroke_width = 0;
 }
 
 Patch* Canvas::new_patch(vec2 offset, vec2 size) {
