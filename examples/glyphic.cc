@@ -315,9 +315,7 @@ static void draw(double tn, double td)
     for (auto img : batch.images) {
         auto ti = tex_map.find(img.iid);
         if (ti == tex_map.end()) {
-            GLuint tex;
-            image_create_texture(&tex, img);
-            tex_map[img.iid] = tex;
+            tex_map[img.iid] = image_create_texture(img);
         } else {
             image_update_texture(tex_map[img.iid], img);
         }

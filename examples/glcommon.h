@@ -258,16 +258,18 @@ static void buffer_texture_create(texture_buffer &buf, std::vector<T> vec,
     }
 }
 
-static void image_create_texture(GLuint *tex, draw_image img)
+static GLuint image_create_texture(draw_image img)
 {
     static const GLint swizzleMask[] = {GL_ONE, GL_ONE, GL_ONE, GL_RED};
+
+    GLuint tex;
 
     GLsizei width = (GLsizei)img.size[0];
     GLsizei height = (GLsizei)img.size[1];
     GLsizei depth = (GLsizei)img.size[2];
 
-    glGenTextures(1, tex);
-    glBindTexture(GL_TEXTURE_2D, *tex);
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
 
     if (img.flags & filter_nearest) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -291,7 +293,9 @@ static void image_create_texture(GLuint *tex, draw_image img)
     }
     glActiveTexture(GL_TEXTURE0);
 
-    Debug("image %u = %u x %u x %u\n", *tex, width, height, depth);
+    Debug("image %u = %u x %u x %u\n", tex, width, height, depth);
+
+    return tex;
 }
 
 static void image_update_texture(GLuint tex, draw_image img)
