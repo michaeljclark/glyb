@@ -18,6 +18,9 @@ public:
     std::string to_string() const;
     unsigned int rgba32() const;
 
+    color saturate(float f) const;
+    color brighten(float f) const;
+
     bool operator==(const color &o);
     bool operator!=(const color &o);
 };
@@ -88,6 +91,19 @@ inline unsigned int color::rgba32() const
         (unsigned char)std::max(0, std::min(255, (int)(a * 255.0f)))
     };
     return tou32.rgba;
+}
+
+inline color color::saturate(float f) const
+{
+    float l = 0.299f * r + 0.587f * g + 0.114f * b; // CCIR601 perceived luminance
+    return color(f * r + (1.0f-f) * l, f * g + (1.0f-f) * l, f * b + (1.0f-f) * l, a);
+}
+
+inline color color::brighten(float f) const
+{
+    return color(r * f > 1.0f ? 1.0f : r * f,
+                 g * f > 1.0f ? 1.0f : g * f,
+                 b * f > 1.0f ? 1.0f : b * f, a);
 }
 
 inline bool color::operator==(const color &o)
