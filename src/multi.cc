@@ -33,6 +33,7 @@
 #include "font.h"
 #include "glyph.h"
 #include "multi.h"
+#include "logger.h"
 
 /*
  * glyph_renderer_worker
@@ -63,7 +64,7 @@ void glyph_renderer_worker::mainloop()
         processed = master->processed.fetch_add(1, std::memory_order_seq_cst);
 
         if (debug) {
-            printf("%s-%02zu workitem=%zu\t[font=%s, glyph=%d]\n",
+            Debug("%s-%02zu workitem=%zu\t[font=%s, glyph=%d]\n",
                 log_name, worker_num, workitem, r.face->name.c_str(),
                 r.glyph);
         }
@@ -71,7 +72,7 @@ void glyph_renderer_worker::mainloop()
         total = master->total.load(std::memory_order_acquire);
         if (processed == total - 1) {
             if (debug) {
-                printf("%s-%02zu notify-master\n", log_name, worker_num);
+                Debug("%s-%02zu notify-master\n", log_name, worker_num);
             }
             master->response.notify_one();
         }
