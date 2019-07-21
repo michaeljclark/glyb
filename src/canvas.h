@@ -94,6 +94,7 @@ struct AContext {
     vec2 pos;
 
     void clear();
+
     int new_brush(ABrush b);
     int new_shape(vec2 offset, vec2 size);
     int new_contour();
