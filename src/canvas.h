@@ -112,10 +112,6 @@ struct AContext {
     bool update_shape(int shape_num, AShape *s, AEdge *e);
 
     int add_glyph(FT_Face ftface, int sz, int dpi, int glyph);
-
-    void print_shape(int shape_num);
-    void print_edge(int edge_num);
-    void print_brush(int brush_num);
 };
 
 
