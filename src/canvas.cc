@@ -527,20 +527,24 @@ Contour Patch::get_contour(size_t contour_num) {
     return Contour{canvas,ll_shape_num,(int)contour_num};
 }
 
-void Patch::new_contour() {
+Patch* Patch::new_contour() {
     canvas->ctx->new_contour();
+    return this;
 }
 
-void Patch::new_line(vec2 p1, vec2 p2) {
+Patch* Patch::new_line(vec2 p1, vec2 p2) {
     canvas->ctx->new_edge(AEdge{EdgeLinear, { p1, p2 }});
+    return this;
 }
 
-void Patch::new_quadratic_curve(vec2 p1, vec2 c1, vec2 p2) {
+Patch* Patch::new_quadratic_curve(vec2 p1, vec2 c1, vec2 p2) {
     canvas->ctx->new_edge(AEdge{EdgeQuadratic, { p1, c1, p2 }});
+    return this;
 }
 
-void Patch::new_cubic_curve(vec2 p1, vec2 c1, vec2 c2, vec2 p2) {
+Patch* Patch::new_cubic_curve(vec2 p1, vec2 c1, vec2 c2, vec2 p2) {
     canvas->ctx->new_edge(AEdge{EdgeCubic, { p1, c1, c2, p2 }});
+    return this;
 }
 
 /* Text */

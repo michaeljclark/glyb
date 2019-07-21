@@ -253,10 +253,10 @@ struct Patch : Drawable
     size_t num_contours();
     Contour get_contour(size_t contour_num);
 
-    void new_contour();
-    void new_line(vec2 p1, vec2 p2);
-    void new_quadratic_curve(vec2 p1, vec2 c1, vec2 p2);
-    void new_cubic_curve(vec2 p1, vec2 c1, vec2 c2, vec2 p2);
+    Patch* new_contour();
+    Patch* new_line(vec2 p1, vec2 p2);
+    Patch* new_quadratic_curve(vec2 p1, vec2 c1, vec2 p2);
+    Patch* new_cubic_curve(vec2 p1, vec2 c1, vec2 c2, vec2 p2);
 };
 
 /*
