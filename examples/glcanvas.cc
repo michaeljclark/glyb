@@ -2,6 +2,10 @@
  * glfw3 gpu canvas
  */
 
+#ifdef _WIN32
+#define _USE_MATH_DEFINES /* required to get the M_PI definition */
+#endif
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
