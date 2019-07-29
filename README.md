@@ -95,20 +95,34 @@ and the examples link to:
 glyphic requires cmake to build. The remaining dependencies for
 the library and examples are included as submodules.
 
-_**Windows:**_
-
-To create Visual Studio 2017 project, open _Visual Studio 2017 x64
-Native Tools command prompt_, and run:
+_**Source code**_
 
 ```
 git clone --recursive https://github.com/michaeljclark/glyphic.git
 cd glyphic
 mkdir build
 cd build
+```
+
+_**Windows - Visual Studio 2017 Community**_
+
+To create Visual Studio 2017 project, open _Visual Studio 2017 x64
+Native Tools command prompt_, and run:
+
+```
 cmake -G "Visual Studio 15 2017 Win64" ..
 ```
 
-_**Linux:**_
+_**Windows - Visual Studio 2019 Community**_
+
+To create Visual Studio 2019 project, open _Visual Studio 2019 x64
+Native Tools command prompt_, and run:
+
+```
+cmake -G "Visual Studio 16 2019" -A x64 ..
+```
+
+_**Linux**_
 
 The Linux cmake build is set up by default to locate FreeType,
 HarfBuzz and GLFW3 system packages. To install these dependencies
