@@ -39,6 +39,7 @@ list(APPEND LIBS Threads::Threads)
 include_directories(third_party/include)
 
 add_subdirectory(third_party/glad)
+include_directories(${PROJECT_BINARY_DIR}/third_party/glad/include)
 
 if(USE_BUNDLED_LIBS)
   add_subdirectory(third_party/glfw)
@@ -91,6 +92,19 @@ else()
   list(INSERT LIBS 0 ${HARFBUZZ_LDFLAGS} ${FREETYPE2_LDFLAGS} ${GLFW3_LDFLAGS} ${PNG_LDFLAGS})
 endif()
 
+set(IMGUI_SOURCES
+  third_party/imgui/examples/imgui_impl_glfw.cpp
+  third_party/imgui/examples/imgui_impl_opengl3.cpp
+  third_party/imgui/imgui.cpp
+  third_party/imgui/imgui_demo.cpp
+  third_party/imgui/imgui_draw.cpp
+  third_party/imgui/imgui_widgets.cpp)
+include_directories(third_party/imgui)
+include_directories(third_party/imgui/examples)
+include_directories(third_party/imgui/examples/libs/gl3w)
+add_definitions(-DIMGUI_IMPL_OPENGL_LOADER_GLAD)
+add_library(imgui STATIC ${IMGUI_SOURCES})
+
 add_subdirectory(third_party/msdfgen)
 include_directories(third_party/msdfgen)
 list(APPEND LIBS lib_msdfgen)
@@ -142,7 +156,7 @@ add_executable(glbinpack examples/glbinpack.cc)
 target_link_libraries(glbinpack libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})
 
 add_executable(glcanvas examples/glcanvas.cc)
-target_link_libraries(glcanvas libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})
+target_link_libraries(glcanvas libglyphic ${LIBS} glad ${CMAKE_DL_LIBS} imgui)
 
 add_executable(glfont examples/glfont.cc)
 target_link_libraries(glfont libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})

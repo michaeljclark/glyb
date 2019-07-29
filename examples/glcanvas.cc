@@ -38,10 +38,14 @@
 #include <GLFW/glfw3.h>
 
 #define CTX_OPENGL_MAJOR 3
-#define CTX_OPENGL_MINOR 2
+#define CTX_OPENGL_MINOR 0
 
 #include "glm/glm.hpp"
 #include "glm/ext/matrix_clip_space.hpp"
+
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
 
 #include "binpack.h"
 #include "image.h"
@@ -171,6 +175,8 @@ static void do_example_text1()
     std::swap(canvas.objects[0], canvas.objects[1]);
 }
 
+static float val = 0.0f;
+
 static void do_example_circle1()
 {
     color colors[] = {
@@ -189,7 +195,7 @@ static void do_example_circle1()
     canvas.new_circle(vec2(0), r);
 
     for (size_t i = 0; i < 5; i++) {
-        float phi = (float)i * M_PI * (2.0f/5.0f);
+        float phi = (float)i * M_PI * (2.0f/5.0f) + val * M_PI * 2.0f;
         canvas.set_fill_brush(Brush{BrushSolid, { }, { colors[i] }});
         canvas.set_stroke_brush(Brush{BrushSolid, { }, { colors[i].brighten(0.5) }});
         canvas.new_circle(vec2(sinf(phi) * l, cosf(phi) * l), r);
@@ -290,8 +296,6 @@ static void draw(double tn, double td)
         glDrawElements(cmd_mode_gl(cmd.mode), cmd.count, GL_UNSIGNED_INT,
             (void*)(cmd.offset * sizeof(uint)));
     }
-
-    glfwSwapBuffers(window);
 }
 
 static void display()
@@ -365,6 +369,9 @@ static void scroll(GLFWwindow* window, double xoffset, double yoffset)
 
 static void mouse_button(GLFWwindow* window, int button, int action, int mods)
 {
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.WantCaptureMouse) return;
+
     switch (button) {
     case GLFW_MOUSE_BUTTON_LEFT:
         mouse_left_drag = (action == GLFW_PRESS);
@@ -456,6 +463,28 @@ static void resize(GLFWwindow* window, int width, int height)
     reshape(width, height);
 }
 
+static void display_imgui()
+{
+    /* create new frame */
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+    /* create ui */
+    ImGui::Begin("Controller");
+    float oldval = val;
+    ImGui::SliderFloat("val", &val, 0.0f, 1.0f);
+    ImGui::End();
+    if (val != oldval) canvas.clear();
+
+    /* render */
+    ImGui::Render();
+    int display_w, display_h;
+    glfwGetFramebufferSize(window, &display_w, &display_h);
+    glViewport(0, 0, display_w, display_h);
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
+
 static void glcanvas(int argc, char **argv)
 {
     glfwInit();
@@ -473,12 +502,24 @@ static void glcanvas(int argc, char **argv)
     glfwSetFramebufferSizeCallback(window, resize);
     glfwGetFramebufferSize(window, &width, &height);
 
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGui::StyleColorsDark();
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 130");
+
     initialize();
     reshape(width, height);
     while (!glfwWindowShouldClose(window)) {
         display();
+        display_imgui();
+        glfwSwapBuffers(window);
         glfwPollEvents();
     }
+
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
 
     glfwDestroyWindow(window);
     glfwTerminate();
