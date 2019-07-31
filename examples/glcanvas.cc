@@ -89,11 +89,6 @@ static int codepoint = 'g';
 
 /* canvas state */
 
-enum example {
-    example_text1,
-    example_circle1,
-};
-
 struct zoom_state {
     float zoom;
     dvec2 mouse_pos;
@@ -204,9 +199,9 @@ static void do_example_text1()
 
 static void do_example_circle1()
 {
-    static float val = 0.0f;
+    static float rot = 0.0f;
 
-    if (ImGui::SliderFloat("val", &val, 0.0f, 1.0f)) {
+    if (ImGui::SliderFloat("rotation", &rot, 0.0f, 360.0f)) {
         canvas.clear();
     }
 
@@ -228,7 +223,7 @@ static void do_example_circle1()
     canvas.new_circle(vec2(0), r);
 
     for (size_t i = 0; i < 5; i++) {
-        float phi = (float)i * M_PI * (2.0f/5.0f) + val * M_PI * 2.0f;
+        float phi = (float)i * M_PI * (2.0f/5.0f) - rot * M_PI / 180.0f;
         canvas.set_fill_brush(Brush{BrushSolid, { }, { colors[i] }});
         canvas.set_stroke_brush(Brush{BrushSolid, { }, { colors[i].brighten(0.5) }});
         canvas.new_circle(vec2(sinf(phi) * l, cosf(phi) * l), r);
@@ -240,13 +235,13 @@ static void populate_canvas()
     ImGui::Begin("Controller");
 
     const char* items[] = { "text1", "circle1" };
-    if (ImGui::Combo("combo", &current_example, items, IM_ARRAYSIZE(items))) {
+    if (ImGui::Combo("example", &current_example, items, IM_ARRAYSIZE(items))) {
         canvas.clear();
     }
 
     switch (current_example) {
-        case example_text1:   do_example_text1(); break;
-        case example_circle1: do_example_circle1(); break;
+        case 0: do_example_text1(); break;
+        case 1: do_example_circle1(); break;
     }
 
     ImGui::End();
@@ -383,19 +378,13 @@ static void reshape(int width, int height)
 
 /* keyboard callback */
 
-static void set_example(example next_example)
-{
-    current_example = next_example;
-    canvas.clear();
-}
-
 static void keyboard(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
     if (action != GLFW_PRESS) return;
     switch(key) {
     case GLFW_KEY_ESCAPE: exit(0); break;
-    case GLFW_KEY_1: set_example(example_text1); break;
-    case GLFW_KEY_2: set_example(example_circle1); break;
+    case GLFW_KEY_1: current_example = 0; canvas.clear(); break;
+    case GLFW_KEY_2: current_example = 1; canvas.clear(); break;
     }
 }
 
