@@ -105,7 +105,7 @@ static font_face *face;
 static draw_list batch;
 static zoom_state state = { 64.0f }, state_save;
 static bool mouse_left_drag = false, mouse_right_drag = false;
-static example current_example;
+static int current_example;
 
 /* display  */
 
@@ -149,6 +149,32 @@ static std::vector<std::string> get_stats(font_face *face, double td)
 
 static void do_example_text1()
 {
+    static size_t item_current = 0;
+    static font_face *face = nullptr;
+    static const auto &font_list = manager.getFontList();
+
+    /* controller - cl */
+
+    if (ImGui::BeginCombo("font", font_list[item_current]->name.c_str(), 0)) {
+        for (size_t i = 0; i < font_list.size(); i++) {
+            bool is_selected = (item_current == i);
+            if (ImGui::Selectable(font_list[i]->name.c_str(), is_selected)) {
+                item_current = i;
+            }
+            if (is_selected) {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+        ImGui::EndCombo();
+    }
+    if (face != font_list[item_current].get()) {
+        face = font_list[item_current].get();
+        canvas.clear();
+    }
+
+    /* return */
+    if (canvas.num_drawables() > 0) return;
+
     canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0,0,0,1) }});
     Text *t = canvas.new_text();
     t->set_face(face);
@@ -175,10 +201,17 @@ static void do_example_text1()
     std::swap(canvas.objects[0], canvas.objects[1]);
 }
 
-static float val = 0.0f;
 
 static void do_example_circle1()
 {
+    static float val = 0.0f;
+
+    if (ImGui::SliderFloat("val", &val, 0.0f, 1.0f)) {
+        canvas.clear();
+    }
+
+    if (canvas.num_drawables() > 0) return;
+
     color colors[] = {
         color("#251F39"),
         color("#51413A"),
@@ -204,10 +237,19 @@ static void do_example_circle1()
 
 static void populate_canvas()
 {
+    ImGui::Begin("Controller");
+
+    const char* items[] = { "text1", "circle1" };
+    if (ImGui::Combo("combo", &current_example, items, IM_ARRAYSIZE(items))) {
+        canvas.clear();
+    }
+
     switch (current_example) {
         case example_text1:   do_example_text1(); break;
         case example_circle1: do_example_circle1(); break;
     }
+
+    ImGui::End();
 }
 
 static void update_texture_buffers()
@@ -218,7 +260,7 @@ static void update_texture_buffers()
     buffer_texture_create(brush_tb, canvas.ctx->brushes, GL_TEXTURE2, GL_R32F);
 }
 
-static void draw(double tn, double td)
+static void display()
 {
     std::vector<glyph_shape> shapes;
     text_shaper_hb shaper;
@@ -228,12 +270,21 @@ static void draw(double tn, double td)
         face = manager.findFontByPath(font_path);
     }
 
+    auto t = high_resolution_clock::now();
+
+    tl = tn;
+    tn = (double)duration_cast<nanoseconds>(t.time_since_epoch()).count()/1e9;
+    td = tn - tl;
+
     draw_list_clear(batch);
 
-    /* create test canvas */
-    if (canvas.num_drawables() == 0) {
-        populate_canvas();
-    }
+    /* create new frame */
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+    /* create canvas and overlay */
+    populate_canvas();
 
     /* set up scale/translate matrix */
     glfwGetFramebufferSize(window, &width, &height);
@@ -296,17 +347,13 @@ static void draw(double tn, double td)
         glDrawElements(cmd_mode_gl(cmd.mode), cmd.count, GL_UNSIGNED_INT,
             (void*)(cmd.offset * sizeof(uint)));
     }
-}
 
-static void display()
-{
-    auto t = high_resolution_clock::now();
-
-    tl = tn;
-    tn = (double)duration_cast<nanoseconds>(t.time_since_epoch()).count()/1e9;
-    td = tn - tl;
-
-    draw(tn, td);
+    /* render overlay */
+    ImGui::Render();
+    int display_w, display_h;
+    glfwGetFramebufferSize(window, &display_w, &display_h);
+    glViewport(0, 0, display_w, display_h);
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
 static void update_uniforms(program *prog)
@@ -442,6 +489,9 @@ static void initialize()
     vertex_array_1f(p, "a_gamma", 2.0f);
     glBindVertexArray(0);
 
+    /* get font list */
+    manager.scanFontDir("fonts");
+
     /* create shape and edge buffer textures */
     buffer_texture_create(shape_tb, ctx.shapes, GL_TEXTURE0, GL_R32F);
     buffer_texture_create(edge_tb, ctx.edges, GL_TEXTURE1, GL_R32F);
@@ -461,28 +511,6 @@ static void initialize()
 static void resize(GLFWwindow* window, int width, int height)
 {
     reshape(width, height);
-}
-
-static void display_imgui()
-{
-    /* create new frame */
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
-
-    /* create ui */
-    ImGui::Begin("Controller");
-    float oldval = val;
-    ImGui::SliderFloat("val", &val, 0.0f, 1.0f);
-    ImGui::End();
-    if (val != oldval) canvas.clear();
-
-    /* render */
-    ImGui::Render();
-    int display_w, display_h;
-    glfwGetFramebufferSize(window, &display_w, &display_h);
-    glViewport(0, 0, display_w, display_h);
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
 static void glcanvas(int argc, char **argv)
@@ -513,7 +541,6 @@ static void glcanvas(int argc, char **argv)
     reshape(width, height);
     while (!glfwWindowShouldClose(window)) {
         display();
-        display_imgui();
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
