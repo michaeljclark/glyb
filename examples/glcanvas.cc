@@ -38,7 +38,7 @@
 #include <GLFW/glfw3.h>
 
 #define CTX_OPENGL_MAJOR 3
-#define CTX_OPENGL_MINOR 0
+#define CTX_OPENGL_MINOR 3
 
 #include "glm/glm.hpp"
 #include "glm/ext/matrix_clip_space.hpp"
