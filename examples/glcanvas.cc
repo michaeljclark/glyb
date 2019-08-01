@@ -217,13 +217,13 @@ static void do_example_circle1()
 
     float l = 200.0f, r = 90.0f;
 
-    canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0.5,0.5,0.5,1) }});
-    canvas.set_stroke_brush(Brush{BrushSolid, { }, { color(0.3,0.3,0.3,1) }});
+    canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0.5f,0.5f,0.5f,1.0f) }});
+    canvas.set_stroke_brush(Brush{BrushSolid, { }, { color(0.3f,0.3f,0.3f,1.0f) }});
     canvas.set_stroke_width(5.0f);
     canvas.new_circle(vec2(0), r);
 
     for (size_t i = 0; i < 5; i++) {
-        float phi = (float)i * M_PI * (2.0f/5.0f) - rot * M_PI / 180.0f;
+        float phi = (float)i * (float)M_PI * (2.0f/5.0f) - rot * (float)M_PI / 180.0f;
         canvas.set_fill_brush(Brush{BrushSolid, { }, { colors[i] }});
         canvas.set_stroke_brush(Brush{BrushSolid, { }, { colors[i].brighten(0.5) }});
         canvas.new_circle(vec2(sinf(phi) * l, cosf(phi) * l), r);
@@ -297,7 +297,7 @@ static void display()
     canvas.sync(update_texture_buffers);
 
     /* render stats text */
-    float x = 10, y = height - 10;
+    float x = 10.0f, y = height - 10.0f;
     std::vector<std::string> stats = get_stats(face, td);
     const uint32_t bg_color = 0xbfffffff;
     for (size_t i = 0; i < stats.size(); i++) {
