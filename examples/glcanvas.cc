@@ -232,7 +232,9 @@ static void do_example_circle1()
 
 static void populate_canvas()
 {
-    ImGui::Begin("Controller");
+    ImGui::SetNextWindowPos(ImVec2(10.0f,10.0f));
+    ImGui::Begin("Controller", nullptr,
+        ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings);
 
     const char* items[] = { "text1", "circle1" };
     if (ImGui::Combo("example", &current_example, items, IM_ARRAYSIZE(items))) {
