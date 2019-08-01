@@ -46,11 +46,11 @@ The project also contains several OpenGL examples using the library.
 ## Project Structure
 
 - `src`
-  - `binpack` - _bin packing algorithm_
+  - `binpack` - _bin packing algorithm use by the font atlas_
+  - `canvas` - _gpu-accelerated distance field based 2D canvas_
   - `file` - _simple filesystem abstraction_
   - `font` - _font manager, font face and font attributes_
   - `glyph` - _font atlas, text shaper and text renderer_
-  - `canvas` - _gpu-accelerated distance field based 2D canvas_
   - `image` - _image with support for PNG loading and saving_
   - `text` - _text container, text layout and text part_
   - `utf8` - _UTF-8 <-> UTF-32 conversion_
@@ -58,20 +58,21 @@ The project also contains several OpenGL examples using the library.
   - `fontdb` - _example demonstrates scanning font metadata_
   - `ftrender` - _example renders glyphs to the console_
   - `genatlas` - _example MSDF font atlas batch generator_
-  - `glcanvas` - _example GPU-acceralated Bézier font rendering_
-  - `gllayout` - _example showing text layout with line breaks_
-  - `glfont` - _example that displays sample text at multiple sizes_
-  - `glsimple` - _simplest possible example for OpenGL_
   - `glbinpack` - _visualization of the bin packing algorithm_
+  - `glcanvas` - _example GPU-acceralated Bézier font rendering_
+  - `glfont` - _example that displays sample text at multiple sizes_
+  - `gllayout` - _example showing text layout with line breaks_
+  - `glsimple` - _simplest possible example for OpenGL_
   - `glyphic` - _scalability test for regular and MSDF font atlases_
 - `third_party`
   - `freetype` - _font rendering engine_
-  - `harfbuzz` - _text shaping engine_
-  - `msdfgen` - _multi-channel signed distance field generator_
-  - `zlib` - _massively spiffy yet delicately unobtrusive compression library_
-  - `libpng` - _the official PNG reference library_
   - `glad` - _OpenGL extension loader used by examples_
   - `glfw` - _OpenGL window library used by examples_
+  - `harfbuzz` - _text shaping engine_
+  - `imgui` - _immediate Mode Graphical User interface for C++_
+  - `libpng` - _the official PNG reference library_
+  - `msdfgen` - _multi-channel signed distance field generator_
+  - `zlib` - _massively spiffy yet delicately unobtrusive compression library_
 
 ### Dependencies
 
@@ -89,6 +90,7 @@ glyphic links to:
 and the examples link to:
 [GLAD](https://github.com/Dav1dde/glad) [†](https://glad.dav1d.de/),
 [GLFW](https://github.com/glfw/glfw) [†](https://www.glfw.org/).
+[ImGui](https://github.com/ocornut/imgui) [†](https://www.patreon.com/imgui),
 
 ## Building
 
@@ -262,10 +264,11 @@ glyphic contains several examples programs showing how to use its API:
 - `fontdb` - _example demonstrates scanning font metadata_
 - `ftrender` - _example renders glyphs to the console_
 - `genatlas` - _example MSDF font atlas batch generator_
-- `gllayout` - _example showing text layout with line breaks_
-- `glfont` - _example that displays sample text at multiple sizes_
-- `glsimple` - _simplest possible example for OpenGL_
 - `glbinpack` - _visualization of the bin packing algorithm_
+- `glcanvas` - _example GPU-acceralated Bézier font rendering_
+- `glfont` - _example that displays sample text at multiple sizes_
+- `gllayout` - _example showing text layout with line breaks_
+- `glsimple` - _simplest possible example for OpenGL_
 - `glyphic` - _scalability test for regular and MSDF font atlases_
 
 ## Text Attributes
