@@ -448,10 +448,10 @@ static void display()
     /* render stats text */
     float x = 10.0f, y = height - 10.0f;
     std::vector<std::string> stats = get_stats(sans_norm, td);
-    const uint32_t bg_color = 0xbfffffff;
+    uint32_t c = clear_color[0] == 1.0 ? 0xff404040 : 0xffc0c0c0;
     for (size_t i = 0; i < stats.size(); i++) {
         text_segment stats_segment(stats[i], text_lang, sans_norm,
-            (int)((float)stats_font_size * 64.0f), x, y, 0xff000000);
+            (int)((float)stats_font_size * 64.0f), x, y, c);
         shapes.clear();
         shaper.shape(shapes, &stats_segment);
         font_atlas *atlas = manager.getCurrentAtlas(sans_norm);
