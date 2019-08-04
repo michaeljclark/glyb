@@ -511,11 +511,9 @@ Shape Drawable::get_shape() { return Shape{canvas,ll_shape_num}; }
 
 float Drawable::get_z() { return z; }
 vec2 Drawable::get_position() { return pos; }
-float Drawable::get_scale() { return scale; }
 
 void Drawable::set_z(float z) { this->z = z; }
 void Drawable::set_position(vec2 pos) { this->pos = pos; }
-void Drawable::set_scale(float scale) { this->scale = scale; }
 
 /* Patch */
 
@@ -848,7 +846,7 @@ Circle* Canvas::new_circle(vec2 pos, float radius) {
         (float)fill_brush_num, (float)stroke_brush_num, stroke_width };
     AEdge edge{PrimitiveCircle,{vec2(radius), vec2(radius)}};
     auto o = new Circle{this, drawable_circle,
-        (int)objects.size(), ctx->add_shape(&shape, &edge), pos, 0.0f, 0.0f};
+        (int)objects.size(), ctx->add_shape(&shape, &edge), pos, 0.0f};
     objects.push_back(std::unique_ptr<Drawable>(o));
     dirty = true;
     return o;
@@ -861,7 +859,7 @@ Ellipse* Canvas::new_ellipse(vec2 pos, vec2 half_size) {
         (float)fill_brush_num, (float)stroke_brush_num, stroke_width };
     AEdge edge{PrimitiveEllipse,{half_size, half_size}};
     auto o = new Ellipse{this, drawable_ellipse,
-        (int)objects.size(), ctx->add_shape(&shape, &edge), pos, 0.0f, 0.0f};
+        (int)objects.size(), ctx->add_shape(&shape, &edge), pos, 0.0f};
     objects.push_back(std::unique_ptr<Drawable>(o));
     dirty = true;
     return o;
@@ -874,7 +872,7 @@ Rectangle* Canvas::new_rectangle(vec2 pos, vec2 half_size) {
         (float)fill_brush_num, (float)stroke_brush_num, stroke_width };
     AEdge edge{PrimitiveRectangle,{half_size, half_size}};
     auto o = new Rectangle{this, drawable_rectangle,
-        (int)objects.size(), ctx->add_shape(&shape, &edge), pos, 0.0f, 0.0f};
+        (int)objects.size(), ctx->add_shape(&shape, &edge), pos, 0.0f};
     objects.push_back(std::unique_ptr<Drawable>(o));
     dirty = true;
     return o;
@@ -887,7 +885,7 @@ RoundedRectangle* Canvas::new_rounded_rectangle(vec2 pos, vec2 half_size, float 
         (float)fill_brush_num, (float)stroke_brush_num, stroke_width };
     AEdge edge{PrimitiveRoundedRectangle,{half_size, half_size, vec2(radius)}};
     auto o = new RoundedRectangle{this, drawable_rounded_rectangle,
-        (int)objects.size(), ctx->add_shape(&shape, &edge), pos, 0.0f, 0.0f};
+        (int)objects.size(), ctx->add_shape(&shape, &edge), pos, 0.0f};
     objects.push_back(std::unique_ptr<Drawable>(o));
     dirty = true;
     return o;
@@ -899,8 +897,8 @@ void Canvas::emit(draw_list &batch, mat3 matrix) {
         case drawable_patch: {
             auto shape = static_cast<Patch*>(o.get());
             AShape &llshape = ctx->shapes[shape->ll_shape_num];
-            vec2 pos = shape->pos + llshape.offset /* * shape->scale */;
-            vec2 halfSize = (llshape.size /* * shape->scale */) / 2.0f;
+            vec2 pos = shape->pos + llshape.offset;
+            vec2 halfSize = llshape.size / 2.0f;
             float padding = ceil(llshape.stroke_width/2.0f);
             Brush fill_brush = get_brush((int)llshape.fill_brush);
             uint32_t c = 0xffffffff;
@@ -913,8 +911,8 @@ void Canvas::emit(draw_list &batch, mat3 matrix) {
         case drawable_path: {
             auto shape = static_cast<Path*>(o.get());
             AShape &llshape = ctx->shapes[shape->ll_shape_num];
-            vec2 pos = shape->pos + llshape.offset /* * shape->scale */;
-            vec2 halfSize = (llshape.size /* * shape->scale */) / 2.0f;
+            vec2 pos = shape->pos + llshape.offset;
+            vec2 halfSize = llshape.size / 2.0f;
             float padding = ceil(llshape.stroke_width/2.0f);
             Brush fill_brush = get_brush((int)llshape.fill_brush);
             uint32_t c = 0xffffffff;

@@ -231,7 +231,6 @@ struct Drawable
     int ll_shape_num;
     vec2 pos;
     float z;
-    float scale;
 
     size_t num_edges();
     Edge get_edge(size_t edge_num);
@@ -239,11 +238,9 @@ struct Drawable
 
     vec2 get_position();
     float get_z();
-    float get_scale();
 
     void set_position(vec2 pos);
     void set_z(float z);
-    void set_scale(float scale);
 };
 
 /*
