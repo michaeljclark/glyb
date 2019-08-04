@@ -567,6 +567,26 @@ Path* Path::new_quadratic_curve(vec2 p1, vec2 c1, vec2 p2) {
     return this;
 }
 
+/* TextStyle */
+
+float TextStyle::get_size() { return size; }
+font_face* TextStyle::get_face() { return face; }
+text_halign TextStyle::get_halign() { return halign; }
+text_valign TextStyle::get_valign() { return valign; }
+std::string TextStyle::get_lang() { return lang; }
+Brush TextStyle::get_fill_brush() { return fill_brush; }
+Brush TextStyle::get_stroke_brush() { return stroke_brush; }
+float TextStyle::get_stroke_width() { return stroke_width; }
+
+void TextStyle::set_size(float size) { this->size = size; }
+void TextStyle::set_face(font_face *face) { this->face = face; }
+void TextStyle::set_halign(text_halign halign) { this->halign = halign; }
+void TextStyle::set_valign(text_valign valign) { this->valign = valign; }
+void TextStyle::set_lang(std::string lang) { this->lang = lang; }
+void TextStyle::set_fill_brush(Brush fill_brush) { this->fill_brush = fill_brush; }
+void TextStyle::set_stroke_brush(Brush stroke_brush) { this->stroke_brush = stroke_brush; }
+void TextStyle::set_stroke_width(float stroke_width) { this->stroke_width = stroke_width; }
+
 /* Text */
 
 float Text::get_size() { return size; }
@@ -575,7 +595,9 @@ text_halign Text::get_halign() { return halign; }
 text_valign Text::get_valign() { return valign; }
 std::string Text::get_text() { return text; }
 std::string Text::get_lang() { return lang; }
-color Text::get_color() { return col; }
+Brush Text::get_fill_brush() { return fill_brush; }
+Brush Text::get_stroke_brush() { return stroke_brush; }
+float Text::get_stroke_width() { return stroke_width; }
 
 void Text::set_size(float size) { shapes.clear(); this->size = size; }
 void Text::set_face(font_face *face) { shapes.clear(); this->face = face; }
@@ -583,11 +605,29 @@ void Text::set_halign(text_halign halign) { this->halign = halign; }
 void Text::set_valign(text_valign valign) { this->valign = valign; }
 void Text::set_text(std::string text) { shapes.clear(); this->text = text; }
 void Text::set_lang(std::string lang) { shapes.clear(); this->lang = lang; }
-void Text::set_color(color col) { this->col = col; }
+void Text::set_fill_brush(Brush fill_brush) { this->fill_brush = fill_brush; }
+void Text::set_stroke_brush(Brush stroke_brush) { this->stroke_brush = stroke_brush; }
+void Text::set_stroke_width(float stroke_width) { this->stroke_width = stroke_width; }
+
+TextStyle Text::get_text_style() {
+    return TextStyle{size, face, halign, valign, lang, fill_brush, stroke_brush, stroke_width};
+}
+
+void Text::set_text_style(TextStyle style) {
+    shapes.clear();
+    size = style.size;
+    face = style.face;
+    halign = style.halign;
+    valign = style.valign;
+    lang = style.lang;
+    fill_brush = style.fill_brush;
+    stroke_brush = style.stroke_brush;
+    stroke_width = style.stroke_width;
+}
 
 text_segment& Text::get_text_segment() {
     int font_size = (int)(size * 64.0f);
-    segment = text_segment(text, lang, face, font_size, 0, 0, col.rgba32());
+    segment = text_segment(text, lang, face, font_size, 0, 0, 0xffffffff);
     return segment;
 }
 
@@ -683,8 +723,8 @@ void RoundedRectangle::update_rounded_rectangle(vec2 pos, vec2 half_size, float 
 
 Canvas::Canvas(font_manager* manager) :
     objects(), glyph_map(), ctx(std::make_unique<AContext>()),
-    text_renderer(*ctx, glyph_map), manager(manager),
-    dirty(false),
+    text_renderer_c(*ctx, glyph_map), text_renderer_r(manager),
+    manager(manager), dirty(false),
     fill_brush{BrushSolid, {vec2(0)}, {color(0,0,0,1)}},
     stroke_brush{BrushSolid, {vec2(0)}, {color(0,0,0,1)}},
     stroke_width(0.0f) {}
@@ -787,6 +827,16 @@ Path* Canvas::new_path(vec2 offset, vec2 size) {
 
 Text* Canvas::new_text() {
     auto o = new Text{this, drawable_text, (int)objects.size(), -1};
+    o->fill_brush = fill_brush;
+    o->stroke_brush = stroke_brush;
+    o->stroke_width = stroke_width;
+    objects.push_back(std::unique_ptr<Drawable>(o));
+    return o;
+}
+
+Text* Canvas::new_text(TextStyle text_style) {
+    auto o = new Text{this, drawable_text, (int)objects.size(), -1};
+    o->set_text_style(text_style);
     objects.push_back(std::unique_ptr<Drawable>(o));
     return o;
 }
@@ -890,8 +940,19 @@ void Canvas::emit(draw_list &batch, mat3 matrix) {
             case text_valign_center: segment.y = shape->pos.y - text_size.y/2.0f; break;
             case text_valign_bottom: segment.y = shape->pos.y; break;
             }
-            text_renderer.render(batch, shapes, &segment, matrix);
-            dirty |= (s != glyph_map.size());
+            if (false &&
+                shape->get_stroke_width() == 0 &&
+                shape->get_fill_brush().brush_type == BrushSolid)
+            {
+                /* todo - use fast text renderer (currently disabled) */
+                segment.color = shape->get_fill_brush().colors[0].rgba32();
+                text_renderer_r.render(batch, shapes, &segment);
+            } else {
+                /* todo - brushes are stored on each glyph shape */
+                segment.color = shape->get_fill_brush().colors[0].rgba32();
+                text_renderer_c.render(batch, shapes, &segment, matrix);
+                dirty |= (s != glyph_map.size());
+            }
             break;
         }
         case drawable_circle: {

@@ -294,6 +294,38 @@ enum text_valign {
     text_valign_bottom,
 };
 
+struct TextStyle
+{
+    float size;
+    font_face* face;
+    text_halign halign;
+    text_valign valign;
+    std::string lang;
+    Brush fill_brush;
+    Brush stroke_brush;
+    float stroke_width;
+
+    float get_size();
+    font_face* get_face();
+    text_halign get_halign();
+    text_valign get_valign();
+    std::string get_text();
+    std::string get_lang();
+    Brush get_fill_brush();
+    Brush get_stroke_brush();
+    float get_stroke_width();
+
+    void set_size(float size);
+    void set_face(font_face* face);
+    void set_halign(text_halign halign);
+    void set_valign(text_valign valign);
+    void set_text(std::string text);
+    void set_lang(std::string lang);
+    void set_fill_brush(Brush brush);
+    void set_stroke_brush(Brush brush);
+    void set_stroke_width(float width);
+};
+
 struct Text : Drawable
 {
     float size;
@@ -302,26 +334,34 @@ struct Text : Drawable
     text_valign valign;
     std::string text;
     std::string lang;
-    color col;
+    Brush fill_brush;
+    Brush stroke_brush;
+    float stroke_width;
 
     text_segment segment;
     std::vector<glyph_shape> shapes;
 
+    TextStyle get_text_style();
     float get_size();
     font_face* get_face();
     text_halign get_halign();
     text_valign get_valign();
     std::string get_text();
     std::string get_lang();
-    color get_color();
+    Brush get_fill_brush();
+    Brush get_stroke_brush();
+    float get_stroke_width();
 
+    void set_text_style(TextStyle style);
     void set_size(float size);
     void set_face(font_face* face);
     void set_halign(text_halign halign);
     void set_valign(text_valign valign);
     void set_text(std::string text);
     void set_lang(std::string lang);
-    void set_color(color col);
+    void set_fill_brush(Brush brush);
+    void set_stroke_brush(Brush brush);
+    void set_stroke_width(float width);
 
     text_segment& get_text_segment();
     std::vector<glyph_shape>& get_glyph_shapes();
@@ -392,7 +432,8 @@ struct Canvas
     std::map<int,int> glyph_map;
     std::unique_ptr<AContext> ctx;
     text_shaper_hb text_shaper;
-    text_renderer_canvas text_renderer;
+    text_renderer_canvas text_renderer_c;
+    text_renderer_ft text_renderer_r;
     font_manager *manager;
     bool dirty;
     Brush fill_brush;
@@ -439,6 +480,7 @@ struct Canvas
     Patch* new_patch(vec2 offset, vec2 size);
     Path* new_path(vec2 offset, vec2 size);
     Text* new_text();
+    Text* new_text(TextStyle text_style);
     Circle* new_circle(vec2 pos, float radius);
     Ellipse* new_ellipse(vec2 pos, vec2 half_size);
     Rectangle* new_rectangle(vec2 pos, vec2 half_size);

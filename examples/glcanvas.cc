@@ -27,6 +27,7 @@
 #include <mutex>
 #include <chrono>
 #include <numeric>
+#include <initializer_list>
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -63,6 +64,10 @@ using namespace std::chrono;
 
 using dvec2 = glm::dvec2;
 
+template <typename T>
+static inline void set(T *p, std::initializer_list<T> l)
+{ for (auto i = l.begin(); i != l.end(); i++) *p++ = *i; }
+
 /* globals */
 
 static texture_buffer shape_tb, edge_tb, brush_tb;
@@ -76,12 +81,15 @@ static mat4 mvp;
 static GLFWwindow* window;
 
 static const char *font_path = "fonts/DejaVuSans.ttf";
+static const char *mono_norm_font_path = "fonts/RobotoMono-Regular.ttf";
+static const char *mono_bold_font_path = "fonts/RobotoMono-Bold.ttf";
 static const char *render_text = "πάθος λόγος ἦθος";
 static const char* text_lang = "en";
 static const int font_dpi = 72;
 static const int stats_font_size = 18;
 
 static const float min_zoom = 16.0f, max_zoom = 32768.0f;
+static float clear_color[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
 static int width = 1024, height = 768;
 static double tl, tn, td;
 static bool help_text = false;
@@ -96,7 +104,7 @@ struct zoom_state {
 };
 
 static AContext ctx;
-static font_face *face;
+static font_face *face, *mono_norm, *mono_bold;
 static draw_list batch;
 static zoom_state state = { 64.0f }, state_save;
 static bool mouse_left_drag = false, mouse_right_drag = false;
@@ -148,6 +156,8 @@ static void do_example_text1()
     static font_face *face = nullptr;
     static const auto &font_list = manager.getFontList();
 
+    set(clear_color, { 1.0f, 1.0f, 1.0f, 1.0f });
+
     /* controller - cl */
 
     if (ImGui::BeginCombo("font", font_list[item_current]->name.c_str(), 0)) {
@@ -176,7 +186,6 @@ static void do_example_text1()
     t->set_valign(text_valign_center);
     t->set_text(render_text);
     t->set_lang("en");
-    t->set_color(color(0,0,0,1));
     t->set_position(vec2(0));
     t->set_size(64.0f);
 
@@ -195,10 +204,11 @@ static void do_example_text1()
     std::swap(canvas.objects[0], canvas.objects[1]);
 }
 
-
 static void do_example_circle1()
 {
     static float rot = 0.0f;
+
+    set(clear_color, { 1.0f, 1.0f, 1.0f, 1.0f });
 
     if (ImGui::SliderFloat("rotation", &rot, 0.0f, 360.0f)) {
         canvas.clear();
@@ -231,6 +241,8 @@ static void do_example_circle1()
 
 static void do_example_curve1()
 {
+    set(clear_color, { 1.0f, 1.0f, 1.0f, 1.0f });
+
     if (canvas.num_drawables() > 0) return;
 
     canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0.0f,0.0f,0.0f,0.0f) }});
@@ -254,6 +266,117 @@ static void do_example_curve1()
     }
 }
 
+static void do_example_node1()
+{
+    set(clear_color, { 0.1f, 0.1f, 0.1f, 1.0f });
+
+    if (canvas.num_drawables() > 0) return;
+
+    if (!mono_norm) {
+        mono_norm = manager.findFontByPath(mono_norm_font_path);
+        mono_bold = manager.findFontByPath(mono_bold_font_path);
+    }
+
+    TextStyle text_style_default{
+        12.0f,
+        mono_norm,
+        text_halign_left,
+        text_valign_center,
+        "en",
+        Brush{BrushSolid, { }, { color(1.0f,1.0f,1.0f,1.0f) }},
+        Brush{BrushNone, { }, { }}
+    };
+
+    canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0.15f,0.15f,0.15f,1.0f) }});
+    canvas.set_stroke_brush(Brush{BrushSolid, { }, { color(0.7f,0.7f,0.7f,1.0f) }});
+    canvas.set_stroke_width(1.0f);
+
+    float x = -300.0f, y = 20.0f;
+    size_t num_reg = 32;
+    float cellh = 18.0f, regx = 70.0f, regw = 140.0f;
+    float w = 250.0f, h = cellh * num_reg + 50.0f;
+    RoundedRectangle *r1 = canvas.new_rounded_rectangle(vec2(0), vec2(w/2,h/2), 5.0f);
+    r1->pos = { x, y };
+
+    Text *th1 = canvas.new_text(text_style_default);
+    th1->pos = { x - w/2 + 10.0f, y - h/2 + 20.0f };
+    th1->set_face(mono_bold);
+    th1->set_text("Register File");
+
+    vec2 out_c[32];
+
+    for (size_t i = 0; i < num_reg; i++) {
+
+        float yo = y - h/2 + 50.0f + i * cellh;
+
+        std::string regname = std::string("x") + std::to_string(i);
+
+        Text *t1 = canvas.new_text(text_style_default);
+        t1->pos = { x - w/2 + 10.0f, yo };
+        t1->set_text(regname);
+
+        canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0.3f,0.3f,0.3f,1.0f) }});
+
+        Rectangle *r2 = canvas.new_rectangle(vec2(0), vec2(regw/2,7.0f));
+        r2->pos = { x - w/2 + regx + regw/2, yo + 1 };
+
+        Text *t2 = canvas.new_text(text_style_default);
+        t2->pos = { x - w/2 + regx + 5.0f, yo };
+        t2->set_text("0xffffffffffffffff");
+
+        canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0.15f,0.15f,0.15f,1.0f) }});
+
+        out_c[i] = { x + w/2 - 20.0f, yo };
+        Circle *c1 = canvas.new_circle(vec2(0), 5.0f);
+        c1->pos = out_c[i];
+    }
+
+    x = 20.0f, y = -100.0f;
+    w = 300.0f, h = 75.0f;
+    regx = 150.0f;
+    RoundedRectangle *r2 = canvas.new_rounded_rectangle(vec2(0), vec2(w/2,h/2), 5.0f);
+    r2->pos = { x, y };
+
+    Text *th2 = canvas.new_text(text_style_default);
+    th2->pos = { x - w/2 + 10.0f, y - h/2 + 20.0f };
+    th2->set_face(mono_bold);
+    th2->set_text("Register Monitor");
+
+    vec2 in_c[1];
+    {
+        float yo = y + 10.0f;
+
+        in_c[0] = { x - w/2 + 20.0f, yo };
+        Circle *c1 = canvas.new_circle(vec2(0), 5.0f);
+        c1->pos = in_c[0];
+
+        Text *t1 = canvas.new_text(text_style_default);
+        t1->pos = { x - w/2 + 40.0f, yo };
+        t1->set_text("Match Value");
+
+        canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0.3f,0.3f,0.3f,1.0f) }});
+
+        Rectangle *r2 = canvas.new_rectangle(vec2(0), vec2(regw/2,7.0f));
+        r2->pos = { x - w/2 + regx + regw/2, yo + 1 };
+
+        Text *t2 = canvas.new_text(text_style_default);
+        t2->pos = { x - w/2 + regx + 5.0f, yo };
+        t2->set_text("0xdeadbeaffeedbeef");
+
+        canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0.15f,0.15f,0.15f,1.0f) }});
+    }
+
+    canvas.set_stroke_brush(Brush{BrushSolid, { }, { color(0.7f,0.7f,0.7f,1.0f) }});
+    canvas.set_stroke_width(3.0f);
+
+    vec2 delta_c = in_c[0] - out_c[0];
+    float pw = delta_c.x, ph = delta_c.y;
+    pw += 20; ph += 20;
+    Path *p1 = canvas.new_path({0.0f,0.0f},{pw,ph});
+    p1->new_quadratic_curve({10,10}, {pw/2,10}, {pw/2,ph/2});
+    p1->new_quadratic_curve({pw/2,ph/2}, {pw/2,ph-10}, {pw-10,ph-10});
+    p1->pos = out_c[0] + delta_c/2.0f;
+}
 
 static void populate_canvas()
 {
@@ -261,7 +384,7 @@ static void populate_canvas()
     ImGui::Begin("Controller", nullptr,
         ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings);
 
-    const char* items[] = { "text1", "circle1", "curve1" };
+    const char* items[] = { "text1", "circle1", "curve1", "node1" };
     if (ImGui::Combo("example", &current_example, items, IM_ARRAYSIZE(items))) {
         canvas.clear();
     }
@@ -270,6 +393,7 @@ static void populate_canvas()
         case 0: do_example_text1(); break;
         case 1: do_example_circle1(); break;
         case 2: do_example_curve1(); break;
+        case 3: do_example_node1(); break;
     }
 
     ImGui::End();
@@ -341,7 +465,7 @@ static void display()
     vertex_buffer_create("ibo", &ibo, GL_ELEMENT_ARRAY_BUFFER, batch.indices);
 
     /* okay, lets send commands to the GPU */
-    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+    glClearColor(clear_color[0], clear_color[1], clear_color[2], clear_color[3]);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     /* draw list batch with tbo_iid canvas texture buffer special case */
@@ -414,6 +538,7 @@ static void keyboard(GLFWwindow* window, int key, int scancode, int action, int 
     case GLFW_KEY_1: current_example = 0; canvas.clear(); break;
     case GLFW_KEY_2: current_example = 1; canvas.clear(); break;
     case GLFW_KEY_3: current_example = 2; canvas.clear(); break;
+    case GLFW_KEY_4: current_example = 3; canvas.clear(); break;
     }
 }
 
@@ -504,10 +629,12 @@ static void initialize()
     vertex_array_pointer(p, "a_uv0", 2, GL_FLOAT, 0, &draw_vertex::uv);
     vertex_array_pointer(p, "a_color", 4, GL_UNSIGNED_BYTE, 1, &draw_vertex::color);
     vertex_array_pointer(p, "a_shape", 1, GL_FLOAT, 0, &draw_vertex::shape);
-    vertex_array_1f(p, "a_gamma", 2.0f);
+    vertex_array_1f(p, "a_gamma", 1.0f);
     glBindVertexArray(0);
 
     /* get font list */
+    //manager.msdf_autoload = true;
+    //manager.msdf_enabled = true;
     manager.scanFontDir("fonts");
 
     /* create shape and edge buffer textures */
