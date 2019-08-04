@@ -93,7 +93,6 @@ static float clear_color[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
 static int width = 1024, height = 768;
 static double tl, tn, td;
 static bool help_text = false;
-static int codepoint = 'g';
 
 /* canvas state */
 
@@ -703,8 +702,7 @@ void print_help(int argc, char **argv)
 {
     fprintf(stderr,
         "Usage: %s [options]\n"
-        "  -g, --glyph <glyph>   glyph to render (default '%c')\n"
-        "  -h, --help            command line help\n", argv[0], codepoint);
+        "  -h, --help            command line help\n", argv[0]);
 }
 
 /* option parsing */
@@ -726,20 +724,10 @@ void parse_options(int argc, char **argv)
 {
     int i = 1;
     while (i < argc) {
-        if (match_opt(argv[i], "-g", "--glyph")) {
-            if (check_param(++i == argc, "--glyph")) break;
-            const char *codepoint_str = argv[i++];
-            if (utf8_codelen(codepoint_str) == strlen(codepoint_str)) {
-                codepoint = utf8_to_utf32(codepoint_str);
-            } else if (!(codepoint = atoi(codepoint_str))) {
-                printf("error:--glyph must be a single character or integer\n");
-                help_text = true;
-                break;
-            }
-        } else if (match_opt(argv[i], "-h", "--help")) {
+        if (match_opt(argv[i], "-h", "--help")) {
             help_text = true;
             i++;
-         } else {
+        } else {
             fprintf(stderr, "error: unknown option: %s\n", argv[i]);
             help_text = true;
             break;
