@@ -764,8 +764,8 @@ void Canvas::clear() {
 
 Patch* Canvas::new_patch(vec2 offset, vec2 size) {
     int shape_num = ctx->new_shape(offset, size);
-    ctx->shapes[shape_num].fill_brush = get_brush_num(fill_brush);
-    ctx->shapes[shape_num].stroke_brush = get_brush_num(stroke_brush);
+    ctx->shapes[shape_num].fill_brush = (float)get_brush_num(fill_brush);
+    ctx->shapes[shape_num].stroke_brush = (float)get_brush_num(stroke_brush);
     ctx->shapes[shape_num].stroke_width = stroke_width;
     auto o = new Patch{this, drawable_patch, (int)objects.size(), shape_num};
     objects.push_back(std::unique_ptr<Drawable>(o));
@@ -775,8 +775,8 @@ Patch* Canvas::new_patch(vec2 offset, vec2 size) {
 
 Path* Canvas::new_path(vec2 offset, vec2 size) {
     int shape_num = ctx->new_shape(offset, size);
-    ctx->shapes[shape_num].fill_brush = get_brush_num(fill_brush);
-    ctx->shapes[shape_num].stroke_brush = get_brush_num(stroke_brush);
+    ctx->shapes[shape_num].fill_brush = (float)get_brush_num(fill_brush);
+    ctx->shapes[shape_num].stroke_brush = (float)get_brush_num(stroke_brush);
     ctx->shapes[shape_num].stroke_width = stroke_width;
     ctx->shapes[shape_num].stroke_mode = 1.0f; /* no interior */
     auto o = new Path{this, drawable_patch, (int)objects.size(), shape_num};
