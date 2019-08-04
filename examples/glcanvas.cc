@@ -80,7 +80,7 @@ static Canvas canvas(&manager);
 static mat4 mvp;
 static GLFWwindow* window;
 
-static const char *font_path = "fonts/DejaVuSans.ttf";
+static const char *sans_norm_font_path = "fonts/DejaVuSans.ttf";
 static const char *mono_norm_font_path = "fonts/RobotoMono-Regular.ttf";
 static const char *mono_bold_font_path = "fonts/RobotoMono-Bold.ttf";
 static const char *render_text = "πάθος λόγος ἦθος";
@@ -103,7 +103,7 @@ struct zoom_state {
 };
 
 static AContext ctx;
-static font_face *face, *mono_norm, *mono_bold;
+static font_face *sans_norm, *mono_norm, *mono_bold;
 static draw_list batch;
 static zoom_state state = { 64.0f }, state_save;
 static bool mouse_left_drag = false, mouse_right_drag = false;
@@ -412,8 +412,8 @@ static void display()
     text_shaper_hb shaper;
     text_renderer_ft renderer(&manager);
 
-    if (!face) {
-        face = manager.findFontByPath(font_path);
+    if (!sans_norm) {
+        sans_norm = manager.findFontByPath(sans_norm_font_path);
     }
 
     auto t = high_resolution_clock::now();
@@ -447,14 +447,14 @@ static void display()
 
     /* render stats text */
     float x = 10.0f, y = height - 10.0f;
-    std::vector<std::string> stats = get_stats(face, td);
+    std::vector<std::string> stats = get_stats(sans_norm, td);
     const uint32_t bg_color = 0xbfffffff;
     for (size_t i = 0; i < stats.size(); i++) {
-        text_segment stats_segment(stats[i], text_lang, face,
+        text_segment stats_segment(stats[i], text_lang, sans_norm,
             (int)((float)stats_font_size * 64.0f), x, y, 0xff000000);
         shapes.clear();
         shaper.shape(shapes, &stats_segment);
-        font_atlas *atlas = manager.getCurrentAtlas(face);
+        font_atlas *atlas = manager.getCurrentAtlas(sans_norm);
         renderer.render(batch, shapes, &stats_segment);
         y -= (int)((float)stats_font_size * 1.334f);
     }
