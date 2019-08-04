@@ -26,7 +26,6 @@ uniform samplerBuffer tb_brush;
 
 #define Linear 2
 #define Quadratic 3
-#define Cubic 4
 #define Rectangle 5
 #define Circle 6
 #define Ellipse 7
@@ -46,6 +45,7 @@ struct Shape {
     int fill_brush;
     int stroke_brush;
     float stroke_width;
+    float stroke_mode;
 };
 
 struct Edge {
@@ -292,61 +292,6 @@ float sdQuadratic(vec2 p[4], out float dir, vec2 origin, out float param)
     }
 }
 
-float sdCubic(vec2 p[4], out float dir, vec2 origin, out float param)
-{
-    vec2 qa = p[0]-origin;
-    vec2 ab = p[1]-p[0];
-    vec2 br = p[2]-p[1]-ab;
-    vec2 as = p[3]-p[2]-p[2]-p[1]-br;
-
-    vec2 epDir = directionCubic(p, 0);
-    float minDistance = nonZeroSign(cross(epDir, qa))*length(qa); // distance from A
-    param = -dot(qa, epDir)/dot(epDir, epDir);
-    {
-        epDir = directionCubic(p, 1);
-        float distance = nonZeroSign(cross(epDir, p[3]-origin))*length(p[3]-origin); // distance from B
-        if (abs(distance) < abs(minDistance)) {
-            minDistance = distance;
-            param = dot(epDir-(p[3]-origin), epDir)/dot(epDir, epDir);
-        }
-    }
-    // Iterative minimum distance search
-    for (int i = 0; i <= 4; ++i) {
-        float t = i/4;
-        for (int step = 0;; ++step) {
-            vec2 qe = p[0]+3*t*ab+3*t*t*br+t*t*t*as-origin; // do not simplify with qa !!!
-            float distance = nonZeroSign(cross(directionCubic(p, t), qe))*length(qe);
-            if (abs(distance) < abs(minDistance)) {
-                minDistance = distance;
-                param = t;
-            }
-            if (step == 4) {
-                break;
-            }
-            // Improve t
-            vec2 d1 = 3*as*t*t+6*br*t+3*ab;
-            vec2 d2 = 6*as*t+6*br;
-            t -= dot(qe, d1)/(dot(d1, d1)+dot(qe, d2));
-            if (t < 0 || t > 1) {
-                break;
-            }
-        }
-    }
-
-    if (param >= 0 && param <= 1) {
-        dir = 0;
-        return minDistance;
-    }
-    if (param < .5) {
-        dir = abs(dot(normalize(directionCubic(p, 0)), normalize(qa)));
-        return minDistance;
-    }
-    else {
-        dir = abs(dot(normalize(directionCubic(p, 1)), normalize(p[3]-origin)));
-        return minDistance;
-    }
-}
-
 float sdRect(vec2 center, vec2 halfSize, vec2 origin)
 {
     vec2 edgeDist = abs(origin - center) - halfSize;
@@ -392,7 +337,7 @@ float sdRoundedRectangle(vec2 p[4], out float dir, vec2 origin, out float param)
 
 void getShape(out Shape shape, int shape_num)
 {
-    int o = shape_num * 11;
+    int o = shape_num * 12;
     shape.contour_offset =   int(texelFetch(tb_shape, o + 0).r);
     shape.contour_count =    int(texelFetch(tb_shape, o + 1).r);
     shape.edge_offset =      int(texelFetch(tb_shape, o + 2).r);
@@ -404,6 +349,7 @@ void getShape(out Shape shape, int shape_num)
     shape.fill_brush =   int(texelFetch(tb_shape, o + 8).r);
     shape.stroke_brush = int(texelFetch(tb_shape, o + 9).r);
     shape.stroke_width =     texelFetch(tb_shape, o + 10).r;
+    shape.stroke_mode =      texelFetch(tb_shape, o + 11).r;
 }
 
 void getEdge(out Edge edge, int edge_num)
@@ -447,7 +393,6 @@ float getDistanceEdge(Edge edge, vec2 origin, out float dir, out float param)
     switch(edge.edge_type) {
     case Linear:    return sdLinear   (edge.p, dir, origin, param);
     case Quadratic: return sdQuadratic(edge.p, dir, origin, param);
-    case Cubic:     return sdCubic    (edge.p, dir, origin, param);
     case Rectangle: return sdRectangle(edge.p, dir, origin, param);
     case Circle:    return sdCircle   (edge.p, dir, origin, param);
     case Ellipse:   return sdEllipse  (edge.p, dir, origin, param);
@@ -525,6 +470,10 @@ void main()
 
     float dir, param;
     float distance = getDistanceShape(shape, v_uv0.xy, dir, param);
+
+    if (shape.stroke_mode > 0) {
+        distance = -abs(distance);
+    }
 
     float dx = dFdx( v_uv0.x );
     float dy = dFdy( v_uv0.y );

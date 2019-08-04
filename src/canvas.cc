@@ -542,8 +542,28 @@ Patch* Patch::new_quadratic_curve(vec2 p1, vec2 c1, vec2 p2) {
     return this;
 }
 
-Patch* Patch::new_cubic_curve(vec2 p1, vec2 c1, vec2 c2, vec2 p2) {
-    canvas->ctx->new_edge(AEdge{EdgeCubic, { p1, c1, c2, p2 }});
+/* Path */
+
+size_t Path::num_contours() {
+    return get_shape().num_contours();
+}
+
+Contour Path::get_contour(size_t contour_num) {
+    return Contour{canvas,ll_shape_num,(int)contour_num};
+}
+
+Path* Path::new_contour() {
+    canvas->ctx->new_contour();
+    return this;
+}
+
+Path* Path::new_line(vec2 p1, vec2 p2) {
+    canvas->ctx->new_edge(AEdge{EdgeLinear, { p1, p2 }});
+    return this;
+}
+
+Path* Path::new_quadratic_curve(vec2 p1, vec2 c1, vec2 p2) {
+    canvas->ctx->new_edge(AEdge{EdgeQuadratic, { p1, c1, p2 }});
     return this;
 }
 
@@ -744,7 +764,22 @@ void Canvas::clear() {
 
 Patch* Canvas::new_patch(vec2 offset, vec2 size) {
     int shape_num = ctx->new_shape(offset, size);
+    ctx->shapes[shape_num].fill_brush = get_brush_num(fill_brush);
+    ctx->shapes[shape_num].stroke_brush = get_brush_num(stroke_brush);
+    ctx->shapes[shape_num].stroke_width = stroke_width;
     auto o = new Patch{this, drawable_patch, (int)objects.size(), shape_num};
+    objects.push_back(std::unique_ptr<Drawable>(o));
+    dirty = true;
+    return o;
+}
+
+Path* Canvas::new_path(vec2 offset, vec2 size) {
+    int shape_num = ctx->new_shape(offset, size);
+    ctx->shapes[shape_num].fill_brush = get_brush_num(fill_brush);
+    ctx->shapes[shape_num].stroke_brush = get_brush_num(stroke_brush);
+    ctx->shapes[shape_num].stroke_width = stroke_width;
+    ctx->shapes[shape_num].stroke_mode = 1.0f; /* no interior */
+    auto o = new Path{this, drawable_patch, (int)objects.size(), shape_num};
     objects.push_back(std::unique_ptr<Drawable>(o));
     dirty = true;
     return o;
@@ -814,11 +849,25 @@ void Canvas::emit(draw_list &batch, mat3 matrix) {
         case drawable_patch: {
             auto shape = static_cast<Patch*>(o.get());
             AShape &llshape = ctx->shapes[shape->ll_shape_num];
-            vec2 pos = shape->pos + llshape.offset * shape->scale;
-            vec2 halfSize = (llshape.size * shape->scale) / 2.0f;
+            vec2 pos = shape->pos + llshape.offset /* * shape->scale */;
+            vec2 halfSize = (llshape.size /* * shape->scale */) / 2.0f;
             float padding = ceil(llshape.stroke_width/2.0f);
             Brush fill_brush = get_brush((int)llshape.fill_brush);
-            uint32_t c = fill_brush.colors[0].rgba32();
+            uint32_t c = 0xffffffff;
+            rect(batch, tbo_iid,
+                pos - halfSize - padding, pos + halfSize + padding,
+                shape->get_z(), -vec2(padding), halfSize * 2.0f + padding, c,
+                (float)o->ll_shape_num, matrix);
+            break;
+        }
+        case drawable_path: {
+            auto shape = static_cast<Path*>(o.get());
+            AShape &llshape = ctx->shapes[shape->ll_shape_num];
+            vec2 pos = shape->pos + llshape.offset /* * shape->scale */;
+            vec2 halfSize = (llshape.size /* * shape->scale */) / 2.0f;
+            float padding = ceil(llshape.stroke_width/2.0f);
+            Brush fill_brush = get_brush((int)llshape.fill_brush);
+            uint32_t c = 0xffffffff;
             rect(batch, tbo_iid,
                 pos - halfSize - padding, pos + halfSize + padding,
                 shape->get_z(), -vec2(padding), halfSize * 2.0f + padding, c,
@@ -852,7 +901,7 @@ void Canvas::emit(draw_list &batch, mat3 matrix) {
             float radius = shape->get_radius();
             float padding = ceil(llshape.stroke_width/2.0f);
             Brush fill_brush = get_brush((int)llshape.fill_brush);
-            uint32_t c = fill_brush.colors[0].rgba32();
+            uint32_t c = 0xffffffff;
             rect(batch, tbo_iid,
                 pos - radius - padding, pos + radius + padding,
                 shape->get_z(), -vec2(padding), vec2(radius) * 2.0f + padding, c,
@@ -866,7 +915,7 @@ void Canvas::emit(draw_list &batch, mat3 matrix) {
             vec2 halfSize = shape->get_halfsize();
             float padding = ceil(llshape.stroke_width/2.0f);
             Brush fill_brush = get_brush((int)llshape.fill_brush);
-            uint32_t c = fill_brush.colors[0].rgba32();
+            uint32_t c = 0xffffffff;
             rect(batch, tbo_iid,
                 pos - halfSize - padding, pos + halfSize + padding,
                 shape->get_z(), -vec2(padding), halfSize * 2.0f + padding, c,
@@ -880,7 +929,7 @@ void Canvas::emit(draw_list &batch, mat3 matrix) {
             vec2 halfSize = shape->get_halfsize();
             float padding = ceil(llshape.stroke_width/2.0f);
             Brush fill_brush = get_brush((int)llshape.fill_brush);
-            uint32_t c = fill_brush.colors[0].rgba32();
+            uint32_t c = 0xffffffff;
             rect(batch, tbo_iid,
                 pos - halfSize - padding, pos + halfSize + padding,
                 shape->get_z(), -vec2(padding), halfSize * 2.0f + padding, c,
@@ -894,7 +943,7 @@ void Canvas::emit(draw_list &batch, mat3 matrix) {
             vec2 halfSize = shape->get_halfsize();
             float padding = ceil(llshape.stroke_width/2.0f);
             Brush fill_brush = get_brush((int)llshape.fill_brush);
-            uint32_t c = fill_brush.colors[0].rgba32();
+            uint32_t c = 0xffffffff;
             rect(batch, tbo_iid,
                 pos - halfSize - padding, pos + halfSize + padding,
                 shape->get_z(), -vec2(padding), halfSize * 2.0f + padding, c,

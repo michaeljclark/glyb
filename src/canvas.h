@@ -75,6 +75,7 @@ struct AShape {
     float fill_brush;
     float stroke_brush;
     float stroke_width;
+    float stroke_mode;
 };
 
 struct ABrush {
@@ -207,7 +208,8 @@ struct Shape
 /* forward decls for high-level canvas objects */
 
 struct Drawable;         /* Base class for high-level obejcts */
-struct Patch;            /* Set of contours composed of Bézier curves */
+struct Patch;            /* Solid contour composed of Bézier curves */
+struct Path;             /* Open contour composed of Bézier curves */
 struct Text;             /* Position, size, face and text string */
 struct Primitve;         /* Base class for shapes composed of one edge */
 struct Circle;           /* Circle: position, radius */
@@ -245,18 +247,35 @@ struct Drawable
 };
 
 /*
- * Patch encompasses a set of contours containing Bézier curves
+ * Patch encompasses solid contours containing Bézier curves
  */
 
 struct Patch : Drawable
 {
+    bool stroke_mode;
+
     size_t num_contours();
     Contour get_contour(size_t contour_num);
 
     Patch* new_contour();
     Patch* new_line(vec2 p1, vec2 p2);
     Patch* new_quadratic_curve(vec2 p1, vec2 c1, vec2 p2);
-    Patch* new_cubic_curve(vec2 p1, vec2 c1, vec2 c2, vec2 p2);
+};
+
+/*
+ * Path encompasses open contours containing Bézier curves
+ */
+
+struct Path : Drawable
+{
+    bool stroke_mode;
+
+    size_t num_contours();
+    Contour get_contour(size_t contour_num);
+
+    Path* new_contour();
+    Path* new_line(vec2 p1, vec2 p2);
+    Path* new_quadratic_curve(vec2 p1, vec2 c1, vec2 p2);
 };
 
 /*
@@ -395,6 +414,7 @@ struct Canvas
     /* types used by canvas drawables */
     enum drawable_type {
         drawable_patch,
+        drawable_path,
         drawable_text,
         drawable_circle,
         drawable_ellipse,
@@ -417,6 +437,7 @@ struct Canvas
 
     /* interface to create new canvas objects */
     Patch* new_patch(vec2 offset, vec2 size);
+    Path* new_path(vec2 offset, vec2 size);
     Text* new_text();
     Circle* new_circle(vec2 pos, float radius);
     Ellipse* new_ellipse(vec2 pos, vec2 half_size);

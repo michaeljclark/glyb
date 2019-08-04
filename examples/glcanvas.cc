@@ -167,7 +167,6 @@ static void do_example_text1()
         canvas.clear();
     }
 
-    /* return */
     if (canvas.num_drawables() > 0) return;
 
     canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0,0,0,1) }});
@@ -230,13 +229,39 @@ static void do_example_circle1()
     }
 }
 
+static void do_example_curve1()
+{
+    if (canvas.num_drawables() > 0) return;
+
+    canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0.0f,0.0f,0.0f,0.0f) }});
+    canvas.set_stroke_brush(Brush{BrushSolid, { }, { color(0.3f,0.3f,0.3f,1.0f) }});
+    canvas.set_stroke_width(5.0f);
+
+    for (size_t x = 0; x < 4; x++)
+    {
+        for (size_t y = 0; y < 3; y++)
+        {
+            Path *p1 = canvas.new_path({0.0f,0.0f},{100.0f,100.0f});
+            p1->pos = { -380.0f + x * 220.0f, -270.0f + y * 220.0f };
+            p1->new_quadratic_curve({0.0f,0.0f}, {0.0f,50.0f}, {50.0f,50.0f});
+            p1->new_quadratic_curve({50.0f,50.0f}, {100.0f,50.0f}, {100.0f,100.0f});
+
+            Path *p2 = canvas.new_path({0.0f,0.0f},{100.0f,100.0f});
+            p2->pos = { -270.0f + x * 220.0f, -160.0f + y * 220.0f };
+            p2->new_quadratic_curve({0.0f,0.0f}, {50.0f,0.0f}, {50.0f,50.0f});
+            p2->new_quadratic_curve({50.0f,50.0f}, {50.0f,100.0f}, {100.0f,100.0f});
+        }
+    }
+}
+
+
 static void populate_canvas()
 {
     ImGui::SetNextWindowPos(ImVec2(10.0f,10.0f));
     ImGui::Begin("Controller", nullptr,
         ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings);
 
-    const char* items[] = { "text1", "circle1" };
+    const char* items[] = { "text1", "circle1", "curve1" };
     if (ImGui::Combo("example", &current_example, items, IM_ARRAYSIZE(items))) {
         canvas.clear();
     }
@@ -244,6 +269,7 @@ static void populate_canvas()
     switch (current_example) {
         case 0: do_example_text1(); break;
         case 1: do_example_circle1(); break;
+        case 2: do_example_curve1(); break;
     }
 
     ImGui::End();
@@ -387,6 +413,7 @@ static void keyboard(GLFWwindow* window, int key, int scancode, int action, int 
     case GLFW_KEY_ESCAPE: exit(0); break;
     case GLFW_KEY_1: current_example = 0; canvas.clear(); break;
     case GLFW_KEY_2: current_example = 1; canvas.clear(); break;
+    case GLFW_KEY_3: current_example = 2; canvas.clear(); break;
     }
 }
 
