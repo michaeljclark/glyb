@@ -119,6 +119,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(GLYPHIC_SOURCES
   src/binpack.cc
   src/binpack.h
+  src/canvas.cc
+  src/canvas.h
   src/file.cc
   src/file.h
   src/font.cc
@@ -133,8 +135,6 @@ set(GLYPHIC_SOURCES
   src/msdf.h
   src/multi.cc
   src/multi.h
-  src/canvas.cc
-  src/canvas.h
   src/text.cc
   src/text.h
   src/utf8.cc
