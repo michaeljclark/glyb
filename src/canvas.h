@@ -226,6 +226,7 @@ struct Drawable
     typedef std::unique_ptr<Drawable> Ptr;
 
     Canvas *canvas;
+    bool visible;
     int drawable_type;
     int drawable_num;
     int ll_shape_num;
@@ -236,9 +237,11 @@ struct Drawable
     Edge get_edge(size_t edge_num);
     Shape get_shape();
 
+    bool is_visible();
     vec2 get_position();
     float get_z();
 
+    void set_visible(bool visible);
     void set_position(vec2 pos);
     void set_z(float z);
 };
