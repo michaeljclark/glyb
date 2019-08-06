@@ -535,7 +535,7 @@ char* file::readLine(char *buf, size_t buflen)
     }
 
     // return EOF if there is no data remaining
-    if (sbuf.size() - sbufOffset <= 0) {
+    if (sbufOffset >= sbuf.size()) {
         sbuf.resize(0);
         sbufOffset = 0;
         return NULL;
