@@ -662,6 +662,30 @@ void Primitive::set_vec(size_t offset, vec2 val) {
     }
 }
 
+Brush Primitive::get_fill_brush() {
+    return get_shape().get_fill_brush();
+}
+
+void Primitive::set_fill_brush(Brush brush) {
+    get_shape().set_fill_brush(brush);
+}
+
+Brush Primitive::get_stroke_brush() {
+    return get_shape().get_stroke_brush();
+}
+
+void Primitive::set_stroke_brush(Brush brush) {
+    get_shape().set_stroke_brush(brush);
+}
+
+float Primitive::get_stroke_width() {
+    return get_shape().get_stroke_width();
+}
+
+void Primitive::set_stroke_width(float width) {
+    get_shape().set_stroke_width(width);
+}
+
 /* Circle */
 
 vec2 Circle::get_origin() { return get_vec(0); }

@@ -378,6 +378,13 @@ struct Primitive : Drawable
     void set_origin(vec2 origin);
     vec2 get_vec(size_t offset);
     void set_vec(size_t offset, vec2 val);
+
+    Brush get_fill_brush();
+    void set_fill_brush(Brush brush);
+    Brush get_stroke_brush();
+    void set_stroke_brush(Brush brush);
+    float get_stroke_width();
+    void set_stroke_width(float width);
 };
 
 struct Circle : Primitive
