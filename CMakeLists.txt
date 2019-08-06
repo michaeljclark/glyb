@@ -158,6 +158,9 @@ target_link_libraries(glbinpack libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})
 add_executable(glcanvas examples/glcanvas.cc)
 target_link_libraries(glcanvas libglyphic ${LIBS} glad ${CMAKE_DL_LIBS} imgui)
 
+add_executable(glgraph examples/glgraph.cc)
+target_link_libraries(glgraph libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})
+
 add_executable(glfont examples/glfont.cc)
 target_link_libraries(glfont libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})
 
