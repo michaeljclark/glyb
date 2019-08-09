@@ -420,10 +420,10 @@ static void make_path(Canvas &canvas, vec2 from, vec2 to,
 static void wire_bits(Canvas &canvas,
     int x, int y, int xi, int yi, int tyi,
     int w, int h, int xs, int ys, int ss, int ds,
-    float sw = 3.0f, float cr = 5.0f, float cs = 1.0f)
+    float sw = 3.0f, float cr = 5.0f, float cs = 1.0f, float l = 10.0f)
 {
-    vec2 from = { x + xs*(xi-1) + w/2, y + ys*yi     + ss * h/4 };
-    vec2 to   = { x + xs*xi     - w/2, y + ys*tyi    + ds * h/4 };
+    vec2 from = { x + xs*(xi-1) + w/2 - l, y + ys*yi     + ss * h/4 };
+    vec2 to   = { x + xs*xi     - w/2 + l, y + ys*tyi    + ds * h/4 };
     canvas.set_stroke_width(cs);
     Circle *c1 = canvas.new_circle(vec2(0), cr);
     Circle *c2 = canvas.new_circle(vec2(0), cr);
@@ -463,6 +463,7 @@ static void do_example_shuffle1()
             h1->set_text(std::string("ABC").substr(xi,1) + std::to_string(yi+1));
         }
     }
+    canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0.125f,0.125f,0.125f,1.0f) }});
     for (int xi = 0; xi < xlim; xi++) {
         for (int yi = 0; yi < ylim; yi++) {
             {   int tyi = (yi * 2 + 1) % ylim, ss = 1, ds = yi * 2 + 1 >= 4 ? 1 : -1;
@@ -484,8 +485,8 @@ static void do_example_shuffle1()
             tl->set_halign(text_halign_left);
             tl->set_text(t);
             tr->set_text(t);
-            tl->pos = { x + xs*(-1) + w/2 - 30.0f, y + ys*yi + (-1+2*yj) * h/4 };
-            tr->pos = { x + xs*xlim - w/2 + 30.0f, y + ys*yi + (-1+2*yj) * h/4 };
+            tl->pos = { x + xs*(-1) + w/2 - 50.0f, y + ys*yi + (-1+2*yj) * h/4 };
+            tr->pos = { x + xs*xlim - w/2 + 50.0f, y + ys*yi + (-1+2*yj) * h/4 };
         }
     }
 }
