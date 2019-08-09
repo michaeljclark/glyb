@@ -377,6 +377,23 @@ static void do_example_node1()
     p1->pos = out_c[0] + delta_c/2.0f;
 }
 
+template <typename T>
+struct bit_char_array_t : std::array<char, (sizeof(T)<<3)+1>
+{
+    enum size_t { msb = (sizeof(T)<<3)-1 };
+    inline operator char*() { return std::array<char, (sizeof(T)<<3)+1>::data(); }
+};
+
+std::string to_binary(uint64_t v, size_t n)
+{
+    std::string s;
+    s.resize(n);
+    for (size_t i = 0; i < n; i++) {
+        s[i] = '0' + ((v >> (n-i-1)) & 1);
+    }
+    return s;
+}
+
 static void make_path(Canvas &canvas, vec2 from, vec2 to,
     float nr = 0.4f, float sr = 0.6f, float cr = 0.9f)
 {
@@ -415,23 +432,6 @@ static void wire_bits(Canvas &canvas,
     make_path(canvas, from, to);
 }
 
-template <typename T>
-struct bit_char_array_t : std::array<char, (sizeof(T)<<3)+1>
-{
-    enum size_t { msb = (sizeof(T)<<3)-1 };
-    inline operator char*() { return std::array<char, (sizeof(T)<<3)+1>::data(); }
-};
-
-std::string to_binary(uint64_t v, size_t n)
-{
-    std::string s;
-    s.resize(n);
-    for (size_t i = 0; i < n; i++) {
-        s[i] = '0' + ((v >> (n-i-1)) & 1);
-    }
-    return s;
-}
-
 static void do_example_shuffle1()
 {
     set(clear_color, { 0.1f, 0.1f, 0.1f, 1.0f });
@@ -447,16 +447,14 @@ static void do_example_shuffle1()
         Brush{BrushSolid, { }, { color(1.0f,1.0f,1.0f,1.0f) }},
         Brush{BrushNone, { }, { }}
     };
-
     canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0.15f,0.15f,0.15f,1.0f) }});
     canvas.set_stroke_brush(Brush{BrushSolid, { }, { color(0.7f,0.7f,0.7f,1.0f) }});
 
-    float x = -250.0f, y = -200.0f;
-    float w = 100.0f, h = 100.0;
-    float xs = 250.0f, ys = 150.0;
+    int xlim = 3, ylim = 4;
+    float x = -250.0f, y = -200.0f, w = 100.0f, h = 100.0, xs = 250.0f, ys = 150.0;
 
-    for (int xi = 0; xi < 3; xi++) {
-        for (int yi = 0; yi < 4; yi++) {
+    for (int xi = 0; xi < xlim; xi++) {
+        for (int yi = 0; yi < ylim; yi++) {
             canvas.set_stroke_width(1.0f);
             RoundedRectangle *r1 = canvas.new_rounded_rectangle(vec2(0), vec2(w/2,h/2), 5.0f);
             Text *h1 = canvas.new_text(text_style_default);
@@ -465,42 +463,29 @@ static void do_example_shuffle1()
             h1->set_text(std::string("ABC").substr(xi,1) + std::to_string(yi+1));
         }
     }
-
-    int xlim = 3, ylim = 4;
-
     for (int xi = 0; xi < xlim; xi++) {
         for (int yi = 0; yi < ylim; yi++) {
-            {
-                int tyi = (yi * 2 + 1) % ylim;
-                int ss = 1, ds = yi * 2 + 1 >= 4 ? 1 : -1;
-                wire_bits(canvas, x, y, xi, yi, tyi, w, h, xs, ys, ss, ds);
-            }
-            {
-                int tyi = (yi * 2) % ylim;
-                int ss = -1, ds = yi * 2 >= 4 ? 1 : -1;
-                wire_bits(canvas, x, y, xi, yi, tyi, w, h, xs, ys, ss, ds);
-            }
+            {   int tyi = (yi * 2 + 1) % ylim, ss = 1, ds = yi * 2 + 1 >= 4 ? 1 : -1;
+                wire_bits(canvas, x, y, xi, yi, tyi, w, h, xs, ys, ss, ds); }
+            {   int tyi = (yi * 2) % ylim, ss = -1, ds = yi * 2 >= 4 ? 1 : -1;
+                wire_bits(canvas, x, y, xi, yi, tyi, w, h, xs, ys, ss, ds); }
         }
     }
-    {
-        for (int yi = 0; yi < ylim; yi++) {
-            wire_bits(canvas, x, y, xlim, yi, yi, w, h, xs, ys, 1, 1);
-            wire_bits(canvas, x, y, xlim, yi, yi, w, h, xs, ys, -1, -1);
-        }
+    for (int yi = 0; yi < ylim; yi++) {
+        wire_bits(canvas, x, y, xlim, yi, yi, w, h, xs, ys, 1, 1);
+        wire_bits(canvas, x, y, xlim, yi, yi, w, h, xs, ys, -1, -1);
     }
-    {
-        for (int yi = 0; yi < ylim; yi++) {
-            for (int yj = 0; yj < 2; yj++) {
-                std::string t = to_binary((yi << 1) + yj, 3);
-                Text *tl = canvas.new_text(text_style_default);
-                Text *tr = canvas.new_text(text_style_default);
-                tr->set_halign(text_halign_right);
-                tl->set_halign(text_halign_left);
-                tl->set_text(t);
-                tr->set_text(t);
-                tl->pos = { x + xs*(-1) + w/2 - 30.0f, y + ys*yi + (-1+2*yj) * h/4 };
-                tr->pos = { x + xs*xlim - w/2 + 30.0f, y + ys*yi + (-1+2*yj) * h/4 };
-            }
+    for (int yi = 0; yi < ylim; yi++) {
+        for (int yj = 0; yj < 2; yj++) {
+            std::string t = to_binary((yi << 1) + yj, 3);
+            Text *tl = canvas.new_text(text_style_default);
+            Text *tr = canvas.new_text(text_style_default);
+            tr->set_halign(text_halign_right);
+            tl->set_halign(text_halign_left);
+            tl->set_text(t);
+            tr->set_text(t);
+            tl->pos = { x + xs*(-1) + w/2 - 30.0f, y + ys*yi + (-1+2*yj) * h/4 };
+            tr->pos = { x + xs*xlim - w/2 + 30.0f, y + ys*yi + (-1+2*yj) * h/4 };
         }
     }
 }
