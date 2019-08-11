@@ -880,7 +880,7 @@ Circle* Canvas::new_circle(vec2 pos, float radius) {
         (float)fill_brush_num, (float)stroke_brush_num, stroke_width };
     AEdge edge{PrimitiveCircle,{vec2(radius), vec2(radius)}};
     auto o = new Circle{this, 1, drawable_circle,
-        (int)objects.size(), ctx->add_shape(&shape, &edge), pos, 0.0f};
+        (int)objects.size(), ctx->add_shape(&shape, &edge, false), pos, 0.0f};
     objects.push_back(std::unique_ptr<Drawable>(o));
     dirty = true;
     return o;
@@ -893,7 +893,7 @@ Ellipse* Canvas::new_ellipse(vec2 pos, vec2 half_size) {
         (float)fill_brush_num, (float)stroke_brush_num, stroke_width };
     AEdge edge{PrimitiveEllipse,{half_size, half_size}};
     auto o = new Ellipse{this, 1, drawable_ellipse,
-        (int)objects.size(), ctx->add_shape(&shape, &edge), pos, 0.0f};
+        (int)objects.size(), ctx->add_shape(&shape, &edge, false), pos, 0.0f};
     objects.push_back(std::unique_ptr<Drawable>(o));
     dirty = true;
     return o;
@@ -906,7 +906,7 @@ Rectangle* Canvas::new_rectangle(vec2 pos, vec2 half_size) {
         (float)fill_brush_num, (float)stroke_brush_num, stroke_width };
     AEdge edge{PrimitiveRectangle,{half_size, half_size}};
     auto o = new Rectangle{this, 1, drawable_rectangle,
-        (int)objects.size(), ctx->add_shape(&shape, &edge), pos, 0.0f};
+        (int)objects.size(), ctx->add_shape(&shape, &edge, false), pos, 0.0f};
     objects.push_back(std::unique_ptr<Drawable>(o));
     dirty = true;
     return o;
@@ -919,7 +919,7 @@ RoundedRectangle* Canvas::new_rounded_rectangle(vec2 pos, vec2 half_size, float 
         (float)fill_brush_num, (float)stroke_brush_num, stroke_width };
     AEdge edge{PrimitiveRoundedRectangle,{half_size, half_size, vec2(radius)}};
     auto o = new RoundedRectangle{this, 1, drawable_rounded_rectangle,
-        (int)objects.size(), ctx->add_shape(&shape, &edge), pos, 0.0f};
+        (int)objects.size(), ctx->add_shape(&shape, &edge, false), pos, 0.0f};
     objects.push_back(std::unique_ptr<Drawable>(o));
     dirty = true;
     return o;
