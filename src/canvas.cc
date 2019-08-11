@@ -603,11 +603,19 @@ void Text::set_size(float size) { shapes.clear(); this->size = size; }
 void Text::set_face(font_face *face) { shapes.clear(); this->face = face; }
 void Text::set_halign(text_halign halign) { this->halign = halign; }
 void Text::set_valign(text_valign valign) { this->valign = valign; }
-void Text::set_text(std::string text) { shapes.clear(); this->text = text; }
 void Text::set_lang(std::string lang) { shapes.clear(); this->lang = lang; }
 void Text::set_fill_brush(Brush fill_brush) { this->fill_brush = fill_brush; }
 void Text::set_stroke_brush(Brush stroke_brush) { this->stroke_brush = stroke_brush; }
 void Text::set_stroke_width(float stroke_width) { this->stroke_width = stroke_width; }
+
+void Text::set_text(std::string text)
+{
+    if (this->text == text) {
+        return;
+    }
+    shapes.clear();
+    this->text = text;
+}
 
 TextStyle Text::get_text_style() {
     return TextStyle{size, face, halign, valign, lang, fill_brush, stroke_brush, stroke_width};
