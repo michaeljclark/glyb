@@ -692,119 +692,6 @@ struct Frame : Container
         Sizing cs = has_children() ? children[0]->calc_size() : Sizing();
 
         vec3 min = p() + b() + m() +
-            vec3(std::max(ts.x, cs.preferred.x), ts.y + cs.preferred.y, 0);
-        vec3 pref = p() + b() + m() +
-            vec3(std::max(ts.x, cs.minimum.x), ts.y + cs.minimum.y, 0);
-
-        Sizing s = {
-            vec3(std::max(min.x, get_minimum_size().x),
-                 std::max(min.y, get_minimum_size().y),
-                 std::max(min.z, get_minimum_size().z)),
-            vec3(std::max(pref.x, get_default_size().x),
-                 std::max(pref.y, get_default_size().y),
-                 std::max(pref.z, get_default_size().z))
-        };
-        if (debug) {
-            Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n",
-                __PRETTY_FUNCTION__,
-                s.minimum.x, s.minimum.y,
-                s.preferred.x, s.preferred.y);
-        }
-        return s;
-    }
-
-    virtual void grant_size(vec3 size)
-    {
-        Visible::grant_size(size);
-        if (has_children()) {
-            vec3 cs = size - (p() + b() + m()) - vec3(0, ts.y, 0);
-            children[0]->grant_size(cs);
-        }
-    }
-
-    virtual void init(Canvas *c)
-    {
-        if (!rc) {
-            rc = c->new_rounded_rectangle(vec2(0), vec2(0), 0.0f);
-        }
-        if (!tc) {
-            tc = c->new_text();
-        }
-        Container::init(c);
-    }
-
-    virtual void layout(Canvas *c)
-    {
-        if (valid) return;
-
-        Brush fill_brush{BrushSolid, {}, { fill_color }};
-        Brush stroke_brush{BrushSolid, {}, { stroke_color }};
-        Brush text_brush{BrushSolid, {}, { text_color }};
-
-        vec3 size_remaining = assigned_size - m();
-        vec3 half_size = size_remaining / 2.0f;
-
-        rc->pos = position + half_size;
-        rc->set_origin(vec2(half_size));
-        rc->set_halfsize(vec2(half_size));
-        rc->set_radius(border_radius);
-        rc->set_visible(visible);
-        rc->set_fill_brush(fill_brush);
-        rc->set_stroke_brush(stroke_brush);
-        rc->set_stroke_width(border[0]);
-
-        tc->pos = position + half_size;
-        tc->set_text(text);
-        tc->set_size(font_size);
-        tc->set_face(get_font_face());
-        tc->set_fill_brush(text_brush);
-        tc->set_stroke_brush(Brush{BrushNone, {}, {}});
-        tc->set_stroke_width(0);
-        tc->set_halign(text_halign_center);
-        tc->set_valign(text_valign_center);
-        tc->set_visible(visible);
-
-        Container::layout(c);
-
-        if (has_children()) {
-            children[0]->set_position(vec3(0, ts.y/2.0f, 0));
-        }
-
-        valid = true;
-    }
-};
-
-struct Window : Container
-{
-    std::string text;
-
-    Rectangle *rc;
-    Text *tc;
-    vec2 ts;
-
-    Window() :
-        Container("Window"),
-        rc(nullptr),
-        tc(nullptr)
-    {
-        load_properties();
-    }
-
-    virtual std::string get_text() { return text; }
-    virtual void set_text(std::string str) { text = str; invalidate(); }
-
-    virtual Sizing calc_size()
-    {
-        assert(tc);
-
-        tc->set_text(text);
-        tc->set_size(font_size);
-        tc->set_face(get_font_face());
-
-        ts = tc->get_text_size() * vec2(1.0f,text_leading);
-        Sizing cs = has_children() ? children[0]->calc_size() : Sizing();
-
-        vec3 min = p() + b() + m() +
             vec3(std::max(ts.x, cs.minimum.x), ts.y + cs.minimum.y, 0);
         vec3 pref = p() + b() + m() +
             vec3(std::max(ts.x, cs.preferred.x), ts.y + cs.preferred.y, 0);
@@ -879,6 +766,266 @@ struct Window : Container
 
         if (has_children()) {
             children[0]->set_position(vec3(0, ts.y/2.0f, 0));
+        }
+
+        Container::layout(c);
+
+        valid = true;
+    }
+};
+
+struct GridData
+{
+    size_t left;
+    size_t top;
+    size_t width;
+    size_t height;
+    
+    Sizing sz;
+    Rect rect;
+};
+
+struct Grid : Container
+{
+    size_t rows_count;
+    size_t cols_count;
+    bool rows_homogeneous;
+    bool cols_homogeneous;
+    bool rows_expand;
+    bool cols_expand;
+
+    std::map<Visible*,GridData> datamap;
+    std::vector<float> col_widths;
+    std::vector<float> row_heights;
+    float max_col_width;
+    float max_row_height;
+    std::vector<Rect> sizes;
+    Sizing s;
+
+    Grid() :
+        Container("Grid"),
+        col_widths(),
+        row_heights(),
+        max_col_width(0),
+        max_row_height(0),
+        sizes(),
+        s{.minimum = vec3(0), .preferred = vec3(0)}
+    {
+        load_properties();
+    }
+
+    virtual size_t get_rows_count() { return rows_count; }
+    virtual size_t get_cols_count() { return cols_count; }
+    virtual bool is_rows_expand() { return rows_expand; }
+    virtual bool is_cols_expand() { return cols_expand; }
+    virtual bool is_rows_homogenous() { return rows_homogeneous; }
+    virtual bool is_cols_homogeneous() { return cols_homogeneous; }
+    virtual void set_rows_count(size_t n) { rows_count = n; invalidate(); }
+    virtual void set_cols_count(size_t n) { cols_count = n; invalidate(); }
+    virtual void set_rows_expand(bool n) { rows_expand = n; invalidate(); }
+    virtual void set_cols_expand(bool n) { cols_expand = n; invalidate(); }
+    virtual void set_rows_homogeneous(bool n) { rows_homogeneous = n; invalidate(); }
+    virtual void set_cols_homogeneous(bool n) { cols_homogeneous = n; invalidate(); }
+
+    virtual void load_properties()
+    {
+        Container::load_properties();
+        Defaults *d = get_defaults();
+        set_rows_expand(d->get_boolean(class_name, "rows-expand", true));
+        set_cols_expand(d->get_boolean(class_name, "cols-expand", true));
+        set_rows_homogeneous(d->get_boolean(class_name, "rows-homogeneous", true));
+        set_cols_homogeneous(d->get_boolean(class_name, "cols-homogeneous", true));
+    }
+
+    void add_child(Visible *c, size_t left, size_t top, size_t width = 1, size_t height = 1)
+    {
+        Container::add_child(c);
+        datamap[c] = GridData{ left, top, width, height };
+    }
+
+    virtual Sizing calc_size()
+    {
+        /* call calc_size on children, count rows and columns */
+        rows_count = 0, cols_count = 0;
+        for (auto &o : children) {
+            auto di = datamap.find(o.get());
+            if (di == datamap.end()) continue;
+            GridData &grid_data = di->second;
+            grid_data.sz = o->calc_size();
+            cols_count = std::max(cols_count, grid_data.left + grid_data.width);
+            rows_count = std::max(rows_count, grid_data.top + grid_data.height);
+        }
+
+        /* clear arrays */
+        sizes.clear();
+        sizes.resize(rows_count * cols_count);
+        col_widths.clear();
+        col_widths.resize(cols_count);
+        row_heights.clear();
+        row_heights.resize(rows_count);
+
+        /* populate sizes array */
+        for (auto &o : children) {
+            auto di = datamap.find(o.get());
+            if (di == datamap.end()) continue;
+            GridData &grid_data = di->second;
+            for (size_t i = 0; i < grid_data.width; i++) {
+                for (size_t j = 0; j < grid_data.height; j++) {
+                    size_t idx = (grid_data.top + j) * cols_count + grid_data.left + i;
+                    sizes[idx].size = vec2(
+                        grid_data.sz.preferred.x / grid_data.width,
+                        grid_data.sz.preferred.y / grid_data.height
+                    );
+                }
+            }
+        }
+
+        /* find max_col_width and max width for each column */
+        max_col_width = 0;
+        for (size_t i = 0; i < cols_count; i++) {
+            for (size_t j = 0; j < rows_count; j++) {
+                col_widths[i] = std::max(col_widths[i], sizes[j*cols_count+i].size.x);
+            }
+            max_col_width = std::max(col_widths[i], max_col_width);
+        }
+
+        /* find max_row_height and max height for each row */
+        max_row_height = 0;
+        for (size_t j = 0; j < rows_count; j++) {
+            for (size_t i = 0; i < cols_count; i++) {
+                row_heights[j] = std::max(row_heights[j], sizes[j*cols_count+i].size.y);
+            }
+            max_row_height = std::max(row_heights[j], max_row_height);
+        }
+
+        /* calculate overall size */
+        vec3 min(
+            is_cols_homogeneous() ? max_col_width * cols_count :
+                std::accumulate(col_widths.begin(), col_widths.end(), 0),
+            is_rows_homogenous() ? max_row_height * rows_count :
+                std::accumulate(row_heights.begin(), row_heights.end(), 0),
+            0);
+
+        /* return results */
+        vec3 pref = min;
+        s = {
+            vec3(std::max(min.x, get_minimum_size().x),
+                 std::max(min.y, get_minimum_size().y),
+                 std::max(min.z, get_minimum_size().z)),
+            vec3(std::max(pref.x, get_default_size().x),
+                 std::max(pref.y, get_default_size().y),
+                 std::max(pref.z, get_default_size().z))
+        };
+        if (debug) {
+            Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n",
+                __PRETTY_FUNCTION__,
+                s.minimum.x, s.minimum.y,
+                s.preferred.x, s.preferred.y);
+        }
+        return s;
+    }
+
+    virtual void grant_size(vec3 size)
+    {
+        Visible::grant_size(size);
+
+        float hratio = is_cols_expand() && s.minimum.x > 0 ?
+            (float)s.preferred.x / (float)s.minimum.x : 1.0f;
+        float vratio = is_rows_expand() && s.minimum.y > 0 ?
+            (float)s.preferred.y / (float)s.minimum.y : 1.0f;
+
+        /* expand cell sizes horizontally */
+        for (size_t j = 0; j < rows_count; j++) {
+            for (size_t i = 0; i < cols_count; i++) {
+                sizes[j*cols_count+i].size.x = (int)((is_cols_homogeneous() ?
+                    max_col_width : col_widths[i]) * hratio);
+            }
+        }
+        if (is_cols_expand()) {
+            for (size_t j = 0; j < rows_count; j++) {
+                float total_width = 0;
+                for (int i = 0; i < cols_count; i++) {
+                    total_width += sizes[j*cols_count+i].size.x;
+                }
+                while (total_width < assigned_size.x) {
+                    for (size_t i = 0; i < cols_count && total_width < assigned_size.x; i++) {
+                        sizes[j*cols_count+i].size.x++;
+                        total_width++;
+                    }
+                }
+            }
+        }
+
+        /* expand cell sizes vertically */
+        for (size_t j = 0; j < rows_count; j++) {
+            for (size_t i = 0; i < cols_count; i++) {
+                sizes[j*cols_count+i].size.y = (int)((is_rows_homogenous() ?
+                    max_row_height : row_heights[j]) * vratio);
+            }
+        }
+        if (is_rows_expand()) {
+            for (size_t i = 0; i < cols_count; i++) {
+                float total_height = 0;
+                for (int j = 0; j < rows_count; j++) {
+                    total_height += sizes[j*cols_count+i].size.y;
+                }
+                while (total_height < assigned_size.y) {
+                    for (size_t j = 0; j < rows_count && total_height < assigned_size.y; j++) {
+                        sizes[j*cols_count+i].size.y++;
+                        total_height++;
+                    }
+                }
+            }
+        }
+        
+        /* set x and y coordinates */
+        float y = 0;
+        for (size_t j = 0; j < rows_count; j++) {
+            float x = 0;
+            for (size_t i = 0; i < cols_count; i++) {
+                size_t idx = j*cols_count+i;
+                sizes[idx].pos = vec2(x, y);
+                x += sizes[idx].size.x;
+            }
+            y += sizes[j * cols_count].size.y;
+        }
+
+        /* set grant space to children */
+        for (auto &o : children) {
+            auto di = datamap.find(o.get());
+            if (di == datamap.end()) continue;
+            GridData &grid_data = di->second;
+            vec3 child_size(0);
+            for (size_t i = 0; i < grid_data.width; i++) {
+                for (size_t j = 0; j < grid_data.height; j++) {
+                    size_t idx = (grid_data.top + j) * cols_count + grid_data.left + i;
+                    child_size += vec3(sizes[idx].size, 0);
+                }
+            }
+            size_t idx = grid_data.top * cols_count + grid_data.left;
+            o->grant_size(child_size);
+        }
+    }
+
+    virtual void init(Canvas *c)
+    {
+        Container::init(c);
+    }
+
+    virtual void layout(Canvas *c)
+    {
+        if (valid) return;
+
+        /* set positions for children */
+        for (auto &o : children) {
+            auto di = datamap.find(o.get());
+            if (di != datamap.end()) {
+                GridData &grid_data = di->second;
+                size_t idx = grid_data.top * cols_count + grid_data.left;
+                o->set_position(position + vec3(sizes[idx].pos, 0) -
+                    assigned_size/2.0f +
+                    o->get_assigned_size()/2.0f);
+            }
         }
 
         Container::layout(c);
@@ -1084,7 +1231,6 @@ struct Slider : Visible
     float value;
 
     Rectangle *rc;
-    Path *pc;
     Circle *cc;
 
     Slider() : Visible("Slider")
@@ -1092,17 +1238,50 @@ struct Slider : Visible
         load_properties();
 
         rc = nullptr;
-        pc = nullptr;
         cc = nullptr;
+    }
+
+    virtual void load_properties()
+    {
+        Visible::load_properties();
+        Defaults *d = get_defaults();
+        set_control_size(d->get_float(class_name, "control-size", 10.0f));
+        set_bar_thickness(d->get_float(class_name, "bar-thickness", 5.0f));
+        set_value(d->get_float(class_name, "value", 0.0f));
+    }
+
+    virtual float get_control_size() { return control_size; }
+    virtual void set_control_size(float v) { control_size = v; invalidate(); }
+    virtual float get_bar_thickness() { return bar_thickness; }
+    virtual void set_bar_thickness(float v) { bar_thickness = v; invalidate(); }
+    virtual float get_value() { return value; }
+    virtual void set_value(float v) { value = v; invalidate(); }
+
+    virtual Sizing calc_size()
+    {
+        vec3 sz(0);
+
+        Sizing s = {
+            vec3(std::max(sz.x, get_minimum_size().x),
+                 std::max(sz.y, get_minimum_size().y),
+                 std::max(sz.z, get_minimum_size().z)),
+            vec3(std::max(sz.x, get_default_size().x),
+                 std::max(sz.y, get_default_size().y),
+                 std::max(sz.z, get_default_size().z))
+        };
+        if (debug) {
+            Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n",
+                __PRETTY_FUNCTION__,
+                s.minimum.x, s.minimum.y,
+                s.preferred.x, s.preferred.y);
+        }
+        return s;
     }
 
     virtual void init(Canvas *c)
     {
         if (!rc) {
             rc = c->new_rounded_rectangle(vec2(0), vec2(0), 0.0f);
-        }
-        if (!pc) {
-            pc = c->new_path(vec2(0), vec2(0));
         }
         if (!cc) {
             cc = c->new_circle(vec2(0),0);
@@ -1113,7 +1292,30 @@ struct Slider : Visible
     {
         if (valid) return;
 
-        /* todo */
+        Brush fill_brush{BrushSolid, {}, { fill_color }};
+        Brush stroke_brush{BrushSolid, {}, { stroke_color }};
+        Brush text_brush{BrushSolid, {}, { text_color }};
+
+        vec3 size_remaining = assigned_size - m();
+        vec3 half_size = size_remaining / 2.0f;
+
+        rc->pos = position;
+        rc->set_origin(vec2(half_size.x,bar_thickness/2.0f));
+        rc->set_halfsize(vec2(half_size.x,bar_thickness/2.0f));
+        rc->set_radius(border_radius);
+        rc->set_visible(visible);
+        rc->set_fill_brush(fill_brush);
+        rc->set_stroke_brush(stroke_brush);
+        rc->set_stroke_width(border[0]);
+
+        /* todo - bounds and interval for value */
+        cc->pos = position + vec3(-half_size.x + size_remaining.x*value, 0, 0);
+        cc->set_origin(vec2(control_size));
+        cc->set_radius(control_size);
+        cc->set_visible(visible);
+        cc->set_fill_brush(fill_brush);
+        cc->set_stroke_brush(stroke_brush);
+        cc->set_stroke_width(border[0]);
 
         valid = true;
     }

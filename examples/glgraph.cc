@@ -89,7 +89,7 @@ static const int stats_font_size = 12;
 
 static const float min_zoom = 16.0f, max_zoom = 32768.0f;
 static float clear_color[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
-static int width = 1024, height = 768;
+static int width = 1920, height = 1080;
 static double tl, tn, td;
 static bool help_text = false;
 
@@ -148,6 +148,37 @@ static std::vector<std::string> get_stats(font_face *face, double td)
     return stats;
 }
 
+static void create_layout(ui9::Root &root)
+{
+    auto frame = new ui9::Frame();
+    frame->set_text("Simulation Settings");
+    root.add_child(frame);
+
+    auto grid = new ui9::Grid();
+    grid->set_cols_homogeneous(false);
+    frame->add_child(grid);
+
+    const char* label_names[] = {
+        "Damping",
+        "Center Attract",
+        "Time Step",
+        "Maximum Speed",
+        "Stopping Energy"
+    };
+
+    for (size_t i = 0; i < 5; i++) {
+        auto l1 = new ui9::Label();
+        l1->set_text(label_names[i]);
+        l1->set_preferred_size({200,50,0});
+        grid->add_child(l1, 0, i);
+
+        auto s1 = new ui9::Slider();
+        s1->set_value((1.0f/6.0f) * (i+1));
+        s1->set_preferred_size({300,50,0});
+        grid->add_child(s1, 1, i);
+    }
+}
+
 static void populate_canvas()
 {
     set(clear_color, { 0.1f, 0.1f, 0.1f, 1.0f });
@@ -161,19 +192,10 @@ static void populate_canvas()
 
     static ui9::Root root(&manager);
 
-    if (!root.has_children())
-    {
-        auto window = new ui9::Window();
-        window->set_text("Window");
-        root.add_child(window);
+    if (root.has_children()) return;
 
-        auto label = new ui9::Label();
-        label->set_text("Label");
-        label->set_preferred_size({200,100,0});
-        window->add_child(label);
-
-        root.layout(&canvas);
-    }
+    create_layout(root);
+    root.layout(&canvas);
 }
 
 static void update_texture_buffers()
