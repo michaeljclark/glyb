@@ -704,7 +704,7 @@ static void cursor_position(GLFWwindow* window, double xpos, double ypos)
         float zoom = state_save.zoom * powf(65.0f/64.0f,(float)-delta.y);
         if (zoom != state.zoom && zoom > min_zoom && zoom < max_zoom) {
             state.zoom = zoom;
-            state.origin = state_save.origin * (zoom / state_save.zoom);
+            state.origin = (state.origin * (zoom / state.zoom));
         }
     }
 }
