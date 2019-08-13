@@ -394,12 +394,19 @@ void text_renderer_canvas::render(draw_list &batch,
 
 /* Edge */
 
-EdgeType Edge::type() {
+EdgeType Edge::get_type() {
     return (EdgeType)(int)canvas->ctx->edges[edge_num].type;
 }
 
+void Edge::set_type(EdgeType type) {
+    if ((float)(int)type != canvas->ctx->edges[edge_num].type) {
+        canvas->ctx->edges[edge_num].type = (float)(int)type;
+        canvas->dirty = true;
+    }
+}
+
 size_t Edge::num_points() {
-    return AEdge::num_points(type());
+    return AEdge::num_points(get_type());
 }
 
 vec2 Edge::get_point(size_t offset) {
@@ -504,7 +511,8 @@ size_t Drawable::num_edges() {
 
 Edge Drawable::get_edge(size_t edge_num) {
     /* we use -1 to go via edge vs contours array */
-    return Edge{canvas,-1,0};
+    return Edge{canvas,ll_shape_num,-1,
+        (int)(canvas->ctx->shapes[ll_shape_num].edge_offset + edge_num)};
 }
 
 Shape Drawable::get_shape() { return Shape{canvas,ll_shape_num}; }
@@ -725,25 +733,27 @@ void Ellipse::update_ellipse(vec2 pos, vec2 half_size) {
 vec2 Rectangle::get_origin() { return get_vec(0); }
 void Rectangle::set_origin(vec2 origin)  { set_vec(0, origin); }
 vec2 Rectangle::get_halfsize() { return get_vec(1); }
+float Rectangle::get_radius() { return get_vec(2)[0]; }
 void Rectangle::set_halfsize(vec2 halfSize) { set_vec(1, halfSize); }
+void Rectangle::set_radius(float radius)
+{
+    get_edge(0).set_type(radius == 0 ?
+        PrimitiveRectangle : PrimitiveRoundedRectangle);
+    set_vec(2, vec2(radius));
+}
 void Rectangle::update_rectangle(vec2 pos, vec2 half_size) {
     set_position(pos);
     get_shape().set_size(half_size*2.0f);
+    get_edge(0).set_type(PrimitiveRectangle);
     set_vec(0, half_size);
     set_vec(1, half_size);
+    set_vec(2, vec2(0));
 }
-
-/* RoundedRectangle */
-
-vec2 RoundedRectangle::get_origin() { return get_vec(0); }
-void RoundedRectangle::set_origin(vec2 origin)  { set_vec(0, origin); }
-vec2 RoundedRectangle::get_halfsize() { return get_vec(1); }
-float RoundedRectangle::get_radius() { return get_vec(2)[0]; }
-void RoundedRectangle::set_halfsize(vec2 halfSize) { set_vec(1, halfSize); }
-void RoundedRectangle::set_radius(float radius) { set_vec(2, vec2(radius)); }
-void RoundedRectangle::update_rounded_rectangle(vec2 pos, vec2 half_size, float radius) {
+void Rectangle::update_rounded_rectangle(vec2 pos, vec2 half_size, float radius) {
     set_position(pos);
     get_shape().set_size(half_size*2.0f);
+    get_edge(0).set_type(radius == 0 ?
+        PrimitiveRectangle : PrimitiveRoundedRectangle);
     set_vec(0, half_size);
     set_vec(1, half_size);
     set_vec(2, vec2(radius));
@@ -912,13 +922,15 @@ Rectangle* Canvas::new_rectangle(vec2 pos, vec2 half_size) {
     return o;
 }
 
-RoundedRectangle* Canvas::new_rounded_rectangle(vec2 pos, vec2 half_size, float radius) {
+Rectangle* Canvas::new_rounded_rectangle(vec2 pos, vec2 half_size, float radius) {
     int fill_brush_num = get_brush_num(fill_brush);
     int stroke_brush_num = get_brush_num(stroke_brush);
     AShape shape{0, 0, 0, 1, vec2(0), half_size * 2.0f,
         (float)fill_brush_num, (float)stroke_brush_num, stroke_width };
-    AEdge edge{PrimitiveRoundedRectangle,{half_size, half_size, vec2(radius)}};
-    auto o = new RoundedRectangle{this, 1, drawable_rounded_rectangle,
+    AEdge edge = (radius > 0.0f) ?
+        AEdge{PrimitiveRoundedRectangle,{half_size, half_size, vec2(radius)}} :
+        AEdge{PrimitiveRectangle,{half_size, half_size}};
+    auto o = new Rectangle{this, 1, drawable_rectangle,
         (int)objects.size(), ctx->add_shape(&shape, &edge, false), pos, 0.0f};
     objects.push_back(std::unique_ptr<Drawable>(o));
     dirty = true;
@@ -1018,20 +1030,6 @@ void Canvas::emit(draw_list &batch, mat3 matrix) {
         }
         case drawable_rectangle: {
             auto shape = static_cast<Rectangle*>(o.get());
-            AShape &llshape = ctx->shapes[shape->ll_shape_num];
-            vec2 pos = shape->get_position();
-            vec2 halfSize = shape->get_halfsize();
-            float padding = ceil(llshape.stroke_width/2.0f);
-            Brush fill_brush = get_brush((int)llshape.fill_brush);
-            uint32_t c = 0xffffffff;
-            rect(batch, tbo_iid,
-                pos - halfSize - padding, pos + halfSize + padding,
-                shape->get_z(), -vec2(padding), halfSize * 2.0f + padding, c,
-                (float)o->ll_shape_num, matrix);
-            break;
-        }
-        case drawable_rounded_rectangle: {
-            auto shape = static_cast<RoundedRectangle*>(o.get());
             AShape &llshape = ctx->shapes[shape->ll_shape_num];
             vec2 pos = shape->get_position();
             vec2 halfSize = shape->get_halfsize();

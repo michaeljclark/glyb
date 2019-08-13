@@ -168,7 +168,8 @@ struct Edge
     int contour_num;
     int edge_num;
 
-    EdgeType type();
+    EdgeType get_type();
+    void set_type(EdgeType type);
     size_t num_points();
     vec2 get_point(size_t offset);
     void set_point(size_t offset, vec2 val);
@@ -214,8 +215,7 @@ struct Text;             /* Position, size, face and text string */
 struct Primitve;         /* Base class for shapes composed of one edge */
 struct Circle;           /* Circle: position, radius */
 struct Ellipse;          /* Ellipse: position, halfsize */
-struct Rectangle;        /* Rectangle: position, halfsize */
-struct RoundedRectangle; /* Rounded Rectangle: position, halfsize, radius */
+struct Rectangle;        /* Rectangle: position, halfsize, (optional radius) */
 
 /*
  * Drawable is the base class for all canvas objects
@@ -413,19 +413,10 @@ struct Rectangle : Primitive
     void set_origin(vec2 origin);
     vec2 get_halfsize();
     void set_halfsize(vec2 radius);
-
-    void update_rectangle(vec2 pos, vec2 half_size);
-};
-
-struct RoundedRectangle : Primitive
-{
-    vec2 get_origin();
-    void set_origin(vec2 origin);
-    vec2 get_halfsize();
     float get_radius();
-    void set_halfsize(vec2 radius);
     void set_radius(float radius);
 
+    void update_rectangle(vec2 pos, vec2 half_size);
     void update_rounded_rectangle(vec2 pos, vec2 half_size, float radius);
 };
 
@@ -466,8 +457,7 @@ struct Canvas
         drawable_text,
         drawable_circle,
         drawable_ellipse,
-        drawable_rectangle,
-        drawable_rounded_rectangle
+        drawable_rectangle
     };
 
     /* drawables are the high-evel canvas objects */
@@ -491,7 +481,7 @@ struct Canvas
     Circle* new_circle(vec2 pos, float radius);
     Ellipse* new_ellipse(vec2 pos, vec2 half_size);
     Rectangle* new_rectangle(vec2 pos, vec2 half_size);
-    RoundedRectangle* new_rounded_rectangle(vec2 pos, vec2 half_size, float radius);
+    Rectangle* new_rounded_rectangle(vec2 pos, vec2 half_size, float radius);
 
     /* emit canvas to draw list */
     void emit(draw_list &batch, mat3 matrix);

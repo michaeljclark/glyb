@@ -196,7 +196,7 @@ static void do_example_text1()
         BrushAxial, { vec2(0,0), vec2(0, text_size.y*2.0f) },
         { color(0.80f,0.80f,0.80f,1.0f), color(0.50f,0.50f,0.50f,1.0f) }
     });
-    RoundedRectangle *r = canvas.new_rounded_rectangle(vec2(0),
+    Rectangle *r = canvas.new_rounded_rectangle(vec2(0),
         vec2(text_size.x/1.85f,text_size.y), text_size.y/2.0f);
 
     /* trick to move the rounded rectangle behind the text */
@@ -294,7 +294,7 @@ static void do_example_node1()
     size_t num_reg = 32;
     float cellh = 18.0f, regx = 70.0f, regw = 140.0f;
     float w = 250.0f, h = cellh * num_reg + 50.0f;
-    RoundedRectangle *r1 = canvas.new_rounded_rectangle(vec2(0), vec2(w/2,h/2), 5.0f);
+    Rectangle *r1 = canvas.new_rounded_rectangle(vec2(0), vec2(w/2,h/2), 5.0f);
     r1->pos = { x, y };
 
     Text *th1 = canvas.new_text(text_style_default);
@@ -333,7 +333,7 @@ static void do_example_node1()
     x = 20.0f, y = -100.0f;
     w = 300.0f, h = 75.0f;
     regx = 150.0f;
-    RoundedRectangle *r2 = canvas.new_rounded_rectangle(vec2(0), vec2(w/2,h/2), 5.0f);
+    Rectangle *r2 = canvas.new_rounded_rectangle(vec2(0), vec2(w/2,h/2), 5.0f);
     r2->pos = { x, y };
 
     Text *th2 = canvas.new_text(text_style_default);
@@ -456,7 +456,7 @@ static void do_example_shuffle1()
     for (int xi = 0; xi < xlim; xi++) {
         for (int yi = 0; yi < ylim; yi++) {
             canvas.set_stroke_width(1.0f);
-            RoundedRectangle *r1 = canvas.new_rounded_rectangle(vec2(0), vec2(w/2,h/2), 5.0f);
+            Rectangle *r1 = canvas.new_rounded_rectangle(vec2(0), vec2(w/2,h/2), 5.0f);
             Text *h1 = canvas.new_text(text_style_default);
             vec2 pos = { x + xs*xi , y + ys*yi  };
             r1->pos = h1->pos = pos;
