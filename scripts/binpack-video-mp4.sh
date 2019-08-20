@@ -13,6 +13,6 @@ rm -f ${video}/ppm/* ${video}/mp4/binpack.mp4
 	--template "${video}/ppm/binpack-%09d.ppm"
 
 ffmpeg -framerate 25 -i "${video}/ppm/binpack-%09d.ppm" \
-	-s 1920x1080 -crf 0 \
-	-preset veryslow -threads 36 \
+	-s 1920x1080 -acodec aac -vf format=yuv420p \
+	-preset veryslow -profile:v baseline \
 	${video}/mp4/binpack.mp4 -hide_banner
