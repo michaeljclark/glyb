@@ -1342,7 +1342,6 @@ struct Slider : Visible
         rc->set_stroke_brush(stroke_brush);
         rc->set_stroke_width(border[0]);
 
-        /* todo - bounds and interval for value */
         cc->pos = position + vec3(control_offset, 0, 0);
         cc->set_origin(vec2(control_size));
         cc->set_radius(control_size);
