@@ -2,18 +2,18 @@
 
 namespace ui9 {
 
-using dvec3 = glm::dvec3;
+using vec3 = glm::vec3;
 
-bool operator<(const dvec3 &a, const dvec3 &b)
+bool operator<(const vec3 &a, const vec3 &b)
 {
     return (a[0] < b[0]) ||
            (a[0] == b[0] && a[1] < b[1]) ||
            (a[0] == b[0] && a[1] == b[1] && a[2] < b[2]);
 }
 
-bool operator>(const dvec3 &a, const dvec3 &b) { return b < a; }
-bool operator<=(const dvec3 &a, const dvec3 &b) { return a < b || a == b; }
-bool operator>=(const dvec3 &a, const dvec3 &b) { return b < a || a == b; }
+bool operator>(const vec3 &a, const vec3 &b) { return b < a; }
+bool operator<=(const vec3 &a, const vec3 &b) { return a < b || a == b; }
+bool operator>=(const vec3 &a, const vec3 &b) { return b < a || a == b; }
 
 typedef enum {
     trim_leading = 0x1,
@@ -102,7 +102,7 @@ struct MouseEvent
 {
     Event header;
     int button;
-    dvec3 pos;
+    vec3 pos;
 };
 
 enum class Orientation
@@ -387,6 +387,7 @@ struct Visible
     float text_leading;
     std::string font_family;
     std::string font_style;
+    mat4 the_matrix;
 
     Visible() = delete;
     Visible(const char* class_name) :
@@ -448,6 +449,7 @@ struct Visible
     virtual float get_text_leading() { return text_leading; }
     virtual std::string get_font_family() { return font_family; }
     virtual std::string get_font_style() { return font_style; }
+    virtual mat4 get_the_matrix() { return the_matrix; }
 
     virtual font_face* get_font_face()
     {
@@ -1229,11 +1231,17 @@ struct Slider : Visible
     float control_size;
     float bar_thickness;
     float value;
+    bool inside;
 
     Rectangle *rc;
     Circle *cc;
 
-    Slider() : Visible("Slider")
+    Slider() :
+        Visible("Slider"),
+        value(0.0f),
+        inside(false),
+        rc(nullptr),
+        cc(nullptr)
     {
         load_properties();
 
@@ -1247,7 +1255,6 @@ struct Slider : Visible
         Defaults *d = get_defaults();
         set_control_size(d->get_float(class_name, "control-size", 10.0f));
         set_bar_thickness(d->get_float(class_name, "bar-thickness", 5.0f));
-        set_value(d->get_float(class_name, "value", 0.0f));
     }
 
     virtual float get_control_size() { return control_size; }
@@ -1298,10 +1305,11 @@ struct Slider : Visible
 
         vec3 size_remaining = assigned_size - m();
         vec3 half_size = size_remaining / 2.0f;
+        float control_offset = -half_size.x + size_remaining.x * value;
 
         rc->pos = position;
-        rc->set_origin(vec2(half_size.x,bar_thickness/2.0f));
-        rc->set_halfsize(vec2(half_size.x,bar_thickness/2.0f));
+        rc->set_origin(vec2(half_size.x, bar_thickness/2.0f));
+        rc->set_halfsize(vec2(half_size.x, bar_thickness/2.0f));
         rc->set_radius(border_radius);
         rc->set_visible(visible);
         rc->set_fill_brush(fill_brush);
@@ -1309,7 +1317,7 @@ struct Slider : Visible
         rc->set_stroke_width(border[0]);
 
         /* todo - bounds and interval for value */
-        cc->pos = position + vec3(-half_size.x + size_remaining.x*value, 0, 0);
+        cc->pos = position + vec3(control_offset, 0, 0);
         cc->set_origin(vec2(control_size));
         cc->set_radius(control_size);
         cc->set_visible(visible);
@@ -1322,7 +1330,37 @@ struct Slider : Visible
 
     virtual bool dispatch(Event *e)
     {
-        return false;
+        MouseEvent *me = reinterpret_cast<MouseEvent*>(e);
+
+        if (e->type != mouse) {
+            return false;
+        }
+
+        vec3 size_remaining = assigned_size - m();
+        vec3 half_size = size_remaining / 2.0f;
+        vec3 bar_dist = me->pos - vec3(rc->pos,0);
+        float bar_offset = bar_thickness/2.0f + border[0];
+        float new_value = (bar_dist.x + half_size.x) / size_remaining.x;
+        float control_dist = glm::distance(vec3(cc->pos,0), me->pos);
+        bool in_control = control_dist < (control_size + border[0]);
+        bool in_bar = bar_dist.x >= -half_size.x && bar_dist.x <= half_size.x &&
+            bar_dist.y >= -bar_offset && bar_dist.y <= bar_offset;
+
+        if (e->qualifier == pressed && !inside) {
+            inside = in_control || in_bar;
+        }
+
+        if (inside) {
+            value = std::min(std::max(new_value, 0.0f), 1.0f);
+            float control_offset = -half_size.x + size_remaining.x * value;
+            cc->pos = position + vec3(control_offset, 0, 0);
+        }
+
+        if (e->qualifier == released && inside) {
+            inside = false;
+        }
+
+        return inside;
     }
 };
 

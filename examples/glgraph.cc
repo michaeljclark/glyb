@@ -107,6 +107,7 @@ static draw_list batch;
 static zoom_state state = { 64.0f }, state_save;
 static bool mouse_left_drag = false, mouse_right_drag = false;
 static int current_example;
+static ui9::Root root(&manager);
 
 /* display  */
 
@@ -189,8 +190,6 @@ static void populate_canvas()
         mono_norm = manager.findFontByPath(mono_norm_font_path);
         mono_bold = manager.findFontByPath(mono_bold_font_path);
     }
-
-    static ui9::Root root(&manager);
 
     if (root.has_children()) return;
 
@@ -339,8 +338,30 @@ static void scroll(GLFWwindow* window, double xoffset, double yoffset)
     }
 }
 
+static char q = ui9::none;
+static char b = ui9::none;
+
+static bool mouse_button_ui9(int button, int action, int mods, vec3 pos)
+{
+    switch(button) {
+    case GLFW_MOUSE_BUTTON_LEFT:  b = ui9::left;  break;
+    case GLFW_MOUSE_BUTTON_RIGHT: b = ui9::right; break;
+    }
+    switch(action) {
+    case GLFW_PRESS:   q = ui9::pressed;  break;
+    case GLFW_RELEASE: q = ui9::released; break;
+    }
+    vec3 v = canvas.get_inverse_transform() * pos;
+    ui9::MouseEvent evt{{ui9::mouse, q}, b, v};
+    return root.dispatch(&evt.header);
+}
+
 static void mouse_button(GLFWwindow* window, int button, int action, int mods)
 {
+    if (mouse_button_ui9(button, action, mods, vec3(state.mouse_pos, 1))) {
+        return;
+    }
+
     switch (button) {
     case GLFW_MOUSE_BUTTON_LEFT:
         mouse_left_drag = (action == GLFW_PRESS);
@@ -353,9 +374,20 @@ static void mouse_button(GLFWwindow* window, int button, int action, int mods)
     }
 }
 
+static bool mouse_motion_ui9(vec3 pos)
+{
+    vec3 v = canvas.get_inverse_transform() * pos;
+    ui9::MouseEvent evt{{ui9::mouse, ui9::motion}, b, v};
+    return root.dispatch(&evt.header);
+}
+
 static void cursor_position(GLFWwindow* window, double xpos, double ypos)
 {
     state.mouse_pos = dvec2(xpos, ypos);
+
+    if (mouse_motion_ui9(vec3(state.mouse_pos, 1))) {
+        return;
+    }
 
     if (mouse_left_drag) {
         state.origin += state.mouse_pos - state_save.mouse_pos;
