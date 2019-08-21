@@ -361,7 +361,7 @@ struct Sizing
 
 struct Visible
 {
-    static const bool debug = true;
+    static const bool debug = false;
 
     const char *class_name;
     Context *context;
@@ -408,7 +408,14 @@ struct Visible
     virtual Visible* get_parent() { return parent; }
     virtual void set_parent(Visible *v) { parent = v; invalidate(); }
 
-    virtual void invalidate() { valid = false; }
+    virtual void invalidate()
+    {
+        valid = false;
+        if (parent) {
+            parent->invalidate();
+        }
+    }
+
     virtual void set_visible(bool v) { visible = v; invalidate(); }
     virtual void set_enabled(bool v) { enabled = v; invalidate(); }
     virtual void set_can_focus(bool v) { can_focus = v; invalidate(); }
@@ -574,7 +581,7 @@ struct Visible
     virtual void init(Canvas *c) {};
 
     /* override to implement custom layout */
-    virtual void layout(Canvas *c) {};
+    virtual void layout(Canvas *c) { valid = true; };
 
     /* override to intercept events */
     virtual bool dispatch(Event *e) { return false; };
@@ -656,9 +663,13 @@ struct Root : Container
 
     virtual void layout(Canvas *c)
     {
+        if (valid) {
+            return;
+        }
         Container::init(c);
         Container::grant_size(Container::calc_size().preferred);
         Container::layout(c);
+        valid = true;
     }
 
 };
@@ -1231,6 +1242,7 @@ struct Slider : Visible
     float control_size;
     float bar_thickness;
     float value;
+    std::function<void(float)> callback;
     bool inside;
 
     Rectangle *rc;
@@ -1239,6 +1251,7 @@ struct Slider : Visible
     Slider() :
         Visible("Slider"),
         value(0.0f),
+        callback(),
         inside(false),
         rc(nullptr),
         cc(nullptr)
@@ -1262,7 +1275,20 @@ struct Slider : Visible
     virtual float get_bar_thickness() { return bar_thickness; }
     virtual void set_bar_thickness(float v) { bar_thickness = v; invalidate(); }
     virtual float get_value() { return value; }
-    virtual void set_value(float v) { value = v; invalidate(); }
+    virtual std::function<void(float)> get_callback() { return callback; }
+    virtual void set_callback(std::function<void(float)> cb) { callback = cb; }
+
+    virtual void set_value(float v)
+    {
+        if (v == value) {
+            return;
+        }
+        value = v;
+        invalidate();
+        if (callback) {
+            callback(value);
+        }
+    }
 
     virtual Sizing calc_size()
     {
@@ -1351,9 +1377,7 @@ struct Slider : Visible
         }
 
         if (inside) {
-            value = std::min(std::max(new_value, 0.0f), 1.0f);
-            float control_offset = -half_size.x + size_remaining.x * value;
-            cc->pos = position + vec3(control_offset, 0, 0);
+            set_value(std::min(std::max(new_value, 0.0f), 1.0f));
         }
 
         if (e->qualifier == released && inside) {

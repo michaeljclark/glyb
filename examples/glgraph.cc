@@ -177,6 +177,13 @@ static void create_layout(ui9::Root &root)
         s1->set_value((1.0f/6.0f) * (i+1));
         s1->set_preferred_size({300,50,0});
         grid->add_child(s1, 1, i);
+
+        auto l2 = new ui9::Label();
+        l2->set_text(std::to_string(s1->get_value()));
+        l2->set_preferred_size({100,50,0});
+        grid->add_child(l2, 2, i);
+
+        s1->set_callback([=](float v) { l2->set_text(std::to_string(v)); });
     }
 }
 
@@ -236,6 +243,7 @@ static void display()
                               0,  0,  1));
 
     /* emit canvas draw list */
+    root.layout(&canvas);
     canvas.emit(batch);
     canvas.sync(update_texture_buffers);
 
