@@ -27,6 +27,7 @@
 #include FT_OUTLINE_H
 
 #include "glm/glm.hpp"
+#include "glm/gtc/matrix_inverse.hpp"
 
 #include "binpack.h"
 #include "image.h"
@@ -771,6 +772,22 @@ Canvas::Canvas(font_manager* manager) :
     stroke_brush{BrushSolid, {vec2(0)}, {color(0,0,0,1)}},
     stroke_width(0.0f) {}
 
+void Canvas::set_transform(mat3 m)
+{
+    transform = m;
+    transform_inv = glm::inverseTranspose(m);
+}
+
+mat3 Canvas::get_transform()
+{
+    return transform;
+}
+
+mat3 Canvas::get_inverse_transform()
+{
+    return transform_inv;
+}
+
 int Canvas::get_brush_num(Brush p)
 {
     if (p.brush_type == BrushNone) {
@@ -937,7 +954,7 @@ Rectangle* Canvas::new_rounded_rectangle(vec2 pos, vec2 half_size, float radius)
     return o;
 }
 
-void Canvas::emit(draw_list &batch, mat3 matrix) {
+void Canvas::emit(draw_list &batch) {
     for (auto &o : objects) {
         if (!o->visible) continue;
         switch (o->drawable_type) {
@@ -952,7 +969,7 @@ void Canvas::emit(draw_list &batch, mat3 matrix) {
             rect(batch, tbo_iid,
                 pos - halfSize - padding, pos + halfSize + padding,
                 shape->get_z(), -vec2(padding), halfSize * 2.0f + padding, c,
-                (float)o->ll_shape_num, matrix);
+                (float)o->ll_shape_num, transform);
             break;
         }
         case drawable_path: {
@@ -966,7 +983,7 @@ void Canvas::emit(draw_list &batch, mat3 matrix) {
             rect(batch, tbo_iid,
                 pos - halfSize - padding, pos + halfSize + padding,
                 shape->get_z(), -vec2(padding), halfSize * 2.0f + padding, c,
-                (float)o->ll_shape_num, matrix);
+                (float)o->ll_shape_num, transform);
             break;
         }
         case drawable_text: {
@@ -995,7 +1012,7 @@ void Canvas::emit(draw_list &batch, mat3 matrix) {
             } else {
                 /* todo - brushes are stored on each glyph shape */
                 segment.color = shape->get_fill_brush().colors[0].rgba32();
-                text_renderer_c.render(batch, shapes, &segment, matrix);
+                text_renderer_c.render(batch, shapes, &segment, transform);
                 dirty |= (s != glyph_map.size());
             }
             break;
@@ -1011,7 +1028,7 @@ void Canvas::emit(draw_list &batch, mat3 matrix) {
             rect(batch, tbo_iid,
                 pos - radius - padding, pos + radius + padding,
                 shape->get_z(), -vec2(padding), vec2(radius) * 2.0f + padding, c,
-                (float)o->ll_shape_num, matrix);
+                (float)o->ll_shape_num, transform);
             break;
         }
         case drawable_ellipse: {
@@ -1025,7 +1042,7 @@ void Canvas::emit(draw_list &batch, mat3 matrix) {
             rect(batch, tbo_iid,
                 pos - halfSize - padding, pos + halfSize + padding,
                 shape->get_z(), -vec2(padding), halfSize * 2.0f + padding, c,
-                (float)o->ll_shape_num, matrix);
+                (float)o->ll_shape_num, transform);
             break;
         }
         case drawable_rectangle: {
@@ -1039,7 +1056,7 @@ void Canvas::emit(draw_list &batch, mat3 matrix) {
             rect(batch, tbo_iid,
                 pos - halfSize - padding, pos + halfSize + padding,
                 shape->get_z(), -vec2(padding), halfSize * 2.0f + padding, c,
-                (float)o->ll_shape_num, matrix);
+                (float)o->ll_shape_num, transform);
             break;
         }
         }

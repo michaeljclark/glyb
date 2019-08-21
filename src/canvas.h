@@ -437,8 +437,15 @@ struct Canvas
     Brush fill_brush;
     Brush stroke_brush;
     float stroke_width;
+    mat3 transform;
+    mat3 transform_inv;
 
     Canvas(font_manager* manager);
+
+    /* coordinate transform matrix */
+    void set_transform(mat3 m);
+    mat3 get_transform();
+    mat3 get_inverse_transform();
 
     /* interface to low-level objects shared with the gpu */
     Brush get_brush(int brush_num);
@@ -484,6 +491,6 @@ struct Canvas
     Rectangle* new_rounded_rectangle(vec2 pos, vec2 half_size, float radius);
 
     /* emit canvas to draw list */
-    void emit(draw_list &batch, mat3 matrix);
+    void emit(draw_list &batch);
     void sync(std::function<void(void)> dirty_cb);
 };

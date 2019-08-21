@@ -232,12 +232,12 @@ static void display()
     float s = state.zoom / 64.0f;
     float tx = state.origin.x + width/2.0f;
     float ty = state.origin.y + height/2.0f;
-    mat3 m(s, 0, tx,
-           0, s, ty,
-           0, 0, 1);
+    canvas.set_transform(mat3(s,  0,  tx,
+                              0,  s,  ty,
+                              0,  0,  1));
 
     /* emit canvas draw list */
-    canvas.emit(batch, m);
+    canvas.emit(batch);
     canvas.sync(update_texture_buffers);
 
     /* render stats text */
