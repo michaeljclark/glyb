@@ -683,14 +683,14 @@ struct Frame : Container
 {
     std::string text;
 
-    Rectangle *rc;
-    Text *tc;
+    Rectangle *rect;
+    Text *label;
     vec2 ts;
 
     Frame() :
         Container("Frame"),
-        rc(nullptr),
-        tc(nullptr)
+        rect(nullptr),
+        label(nullptr)
     {
         load_properties();
     }
@@ -700,13 +700,13 @@ struct Frame : Container
 
     virtual Sizing calc_size()
     {
-        assert(tc);
+        assert(label);
 
-        tc->set_text(text);
-        tc->set_size(font_size);
-        tc->set_face(get_font_face());
+        label->set_text(text);
+        label->set_size(font_size);
+        label->set_face(get_font_face());
 
-        ts = tc->get_text_size() * vec2(1.0f,text_leading);
+        ts = label->get_text_size() * vec2(1.0f,text_leading);
         Sizing cs = has_children() ? children[0]->calc_size() : Sizing();
 
         vec3 min = p() + b() + m() +
@@ -742,11 +742,11 @@ struct Frame : Container
 
     virtual void init(Canvas *c)
     {
-        if (!rc) {
-            rc = c->new_rounded_rectangle(vec2(0), vec2(0), 0.0f);
+        if (!rect) {
+            rect = c->new_rounded_rectangle(vec2(0), vec2(0), 0.0f);
         }
-        if (!tc) {
-            tc = c->new_text();
+        if (!label) {
+            label = c->new_text();
         }
         Container::init(c);
     }
@@ -762,25 +762,25 @@ struct Frame : Container
         vec3 size_remaining = assigned_size - m();
         vec3 half_size = size_remaining / 2.0f;
 
-        rc->pos = position;
-        rc->set_origin(vec2(half_size));
-        rc->set_halfsize(vec2(half_size));
-        rc->set_radius(border_radius);
-        rc->set_visible(visible);
-        rc->set_fill_brush(fill_brush);
-        rc->set_stroke_brush(stroke_brush);
-        rc->set_stroke_width(border[0]);
+        rect->pos = position;
+        rect->set_origin(vec2(half_size));
+        rect->set_halfsize(vec2(half_size));
+        rect->set_radius(border_radius);
+        rect->set_visible(visible);
+        rect->set_fill_brush(fill_brush);
+        rect->set_stroke_brush(stroke_brush);
+        rect->set_stroke_width(border[0]);
 
-        tc->pos = position + vec3(0.0f,-half_size.y + ts.y/2.0f,0);
-        tc->set_text(text);
-        tc->set_size(font_size);
-        tc->set_face(get_font_face());
-        tc->set_fill_brush(text_brush);
-        tc->set_stroke_brush(Brush{BrushNone, {}, {}});
-        tc->set_stroke_width(0);
-        tc->set_halign(text_halign_center);
-        tc->set_valign(text_valign_center);
-        tc->set_visible(visible);
+        label->pos = position + vec3(0.0f,-half_size.y + ts.y/2.0f,0);
+        label->set_text(text);
+        label->set_size(font_size);
+        label->set_face(get_font_face());
+        label->set_fill_brush(text_brush);
+        label->set_stroke_brush(Brush{BrushNone, {}, {}});
+        label->set_stroke_width(0);
+        label->set_halign(text_halign_center);
+        label->set_valign(text_valign_center);
+        label->set_visible(visible);
 
         if (has_children()) {
             children[0]->set_position(vec3(0, ts.y/2.0f, 0));
@@ -1056,14 +1056,14 @@ struct Label : Visible
 {
     std::string text;
 
-    Rectangle *rc;
-    Text *tc;
-    vec2 ts;
+    Rectangle *rect;
+    Text *label;
+    vec2 scale;
 
     Label() :
         Visible("Label"),
-        rc(nullptr),
-        tc(nullptr)
+        rect(nullptr),
+        label(nullptr)
     {
         load_properties();
     }
@@ -1073,14 +1073,14 @@ struct Label : Visible
 
     virtual Sizing calc_size()
     {
-        assert(tc);
+        assert(label);
 
-        tc->set_text(text);
-        tc->set_size(font_size);
-        tc->set_face(get_font_face());
+        label->set_text(text);
+        label->set_size(font_size);
+        label->set_face(get_font_face());
 
-        ts = tc->get_text_size() * vec2(1.0f,text_leading);
-        vec3 sz = p() + b() + m() + vec3(ts, 0);
+        scale = label->get_text_size() * vec2(1.0f,text_leading);
+        vec3 sz = p() + b() + m() + vec3(scale, 0);
 
         Sizing s = {
             vec3(std::max(sz.x, get_minimum_size().x),
@@ -1101,11 +1101,11 @@ struct Label : Visible
 
     virtual void init(Canvas *c)
     {
-        if (!rc) {
-            rc = c->new_rounded_rectangle(vec2(0), vec2(0), 0.0f);
+        if (!rect) {
+            rect = c->new_rounded_rectangle(vec2(0), vec2(0), 0.0f);
         }
-        if (!tc) {
-            tc = c->new_text();
+        if (!label) {
+            label = c->new_text();
         }
     }
 
@@ -1120,25 +1120,25 @@ struct Label : Visible
         vec3 size_remaining = assigned_size - m();
         vec3 half_size = size_remaining / 2.0f;
 
-        rc->pos = position;
-        rc->set_origin(vec2(half_size));
-        rc->set_halfsize(vec2(half_size));
-        rc->set_radius(border_radius);
-        rc->set_visible(visible);
-        rc->set_fill_brush(fill_brush);
-        rc->set_stroke_brush(stroke_brush);
-        rc->set_stroke_width(border[0]);
+        rect->pos = position;
+        rect->set_origin(vec2(half_size));
+        rect->set_halfsize(vec2(half_size));
+        rect->set_radius(border_radius);
+        rect->set_visible(visible);
+        rect->set_fill_brush(fill_brush);
+        rect->set_stroke_brush(stroke_brush);
+        rect->set_stroke_width(border[0]);
 
-        tc->pos = position;
-        tc->set_text(text);
-        tc->set_size(font_size);
-        tc->set_face(get_font_face());
-        tc->set_fill_brush(text_brush);
-        tc->set_stroke_brush(Brush{BrushNone, {}, {}});
-        tc->set_stroke_width(0);
-        tc->set_halign(text_halign_center);
-        tc->set_valign(text_valign_center);
-        tc->set_visible(visible);
+        label->pos = position;
+        label->set_text(text);
+        label->set_size(font_size);
+        label->set_face(get_font_face());
+        label->set_fill_brush(text_brush);
+        label->set_stroke_brush(Brush{BrushNone, {}, {}});
+        label->set_stroke_width(0);
+        label->set_halign(text_halign_center);
+        label->set_valign(text_valign_center);
+        label->set_visible(visible);
 
         valid = true;
     }
@@ -1148,14 +1148,14 @@ struct Button : Visible
 {
     std::string text;
 
-    Rectangle *rc;
-    Text *tc;
-    vec2 ts;
+    Rectangle *rect;
+    Text *label;
+    vec2 scale;
 
     Button() :
         Visible("Button"),
-        rc(nullptr),
-        tc(nullptr)
+        rect(nullptr),
+        label(nullptr)
     {
         load_properties();
     }
@@ -1165,14 +1165,14 @@ struct Button : Visible
 
     virtual Sizing calc_size()
     {
-        assert(tc);
+        assert(label);
 
-        tc->set_text(text);
-        tc->set_size(font_size);
-        tc->set_face(get_font_face());
+        label->set_text(text);
+        label->set_size(font_size);
+        label->set_face(get_font_face());
 
-        ts = tc->get_text_size() * vec2(1.0f,text_leading);
-        vec3 sz = p() + b() + m() + vec3(ts, 0);
+        scale = label->get_text_size() * vec2(1.0f,text_leading);
+        vec3 sz = p() + b() + m() + vec3(scale, 0);
 
         Sizing s = {
             vec3(std::max(sz.x, get_minimum_size().x),
@@ -1193,11 +1193,11 @@ struct Button : Visible
 
     virtual void init(Canvas *c)
     {
-        if (!rc) {
-            rc = c->new_rounded_rectangle(vec2(0), vec2(0), 0.0f);
+        if (!rect) {
+            rect = c->new_rounded_rectangle(vec2(0), vec2(0), 0.0f);
         }
-        if (!tc) {
-            tc = c->new_text();
+        if (!label) {
+            label = c->new_text();
         }
     }
 
@@ -1212,25 +1212,25 @@ struct Button : Visible
         vec3 size_remaining = assigned_size - m();
         vec3 half_size = size_remaining / 2.0f;
 
-        rc->pos = position;
-        rc->set_origin(vec2(half_size));
-        rc->set_halfsize(vec2(half_size));
-        rc->set_radius(border_radius);
-        rc->set_visible(visible);
-        rc->set_fill_brush(fill_brush);
-        rc->set_stroke_brush(stroke_brush);
-        rc->set_stroke_width(border[0]);
+        rect->pos = position;
+        rect->set_origin(vec2(half_size));
+        rect->set_halfsize(vec2(half_size));
+        rect->set_radius(border_radius);
+        rect->set_visible(visible);
+        rect->set_fill_brush(fill_brush);
+        rect->set_stroke_brush(stroke_brush);
+        rect->set_stroke_width(border[0]);
 
-        tc->pos = position;
-        tc->set_text(text);
-        tc->set_size(font_size);
-        tc->set_face(get_font_face());
-        tc->set_fill_brush(text_brush);
-        tc->set_stroke_brush(Brush{BrushNone, {}, {}});
-        tc->set_stroke_width(0);
-        tc->set_halign(text_halign_center);
-        tc->set_valign(text_valign_center);
-        tc->set_visible(visible);
+        label->pos = position;
+        label->set_text(text);
+        label->set_size(font_size);
+        label->set_face(get_font_face());
+        label->set_fill_brush(text_brush);
+        label->set_stroke_brush(Brush{BrushNone, {}, {}});
+        label->set_stroke_width(0);
+        label->set_halign(text_halign_center);
+        label->set_valign(text_valign_center);
+        label->set_visible(visible);
 
         valid = true;
     }
@@ -1250,8 +1250,8 @@ struct Slider : Visible
     std::function<void(float)> callback;
     bool inside;
 
-    Rectangle *rc;
-    Circle *cc;
+    Rectangle *rect;
+    Circle *circle;
 
     Slider() :
         Visible("Slider"),
@@ -1259,13 +1259,13 @@ struct Slider : Visible
         value(0.0f),
         callback(),
         inside(false),
-        rc(nullptr),
-        cc(nullptr)
+        rect(nullptr),
+        circle(nullptr)
     {
         load_properties();
 
-        rc = nullptr;
-        cc = nullptr;
+        rect = nullptr;
+        circle = nullptr;
     }
 
     virtual void load_properties()
@@ -1321,11 +1321,11 @@ struct Slider : Visible
 
     virtual void init(Canvas *c)
     {
-        if (!rc) {
-            rc = c->new_rounded_rectangle(vec2(0), vec2(0), 0.0f);
+        if (!rect) {
+            rect = c->new_rounded_rectangle(vec2(0), vec2(0), 0.0f);
         }
-        if (!cc) {
-            cc = c->new_circle(vec2(0),0);
+        if (!circle) {
+            circle = c->new_circle(vec2(0),0);
         }
     }
 
@@ -1340,32 +1340,32 @@ struct Slider : Visible
         vec3 size_remaining = assigned_size - m();
         vec3 half_size = size_remaining / 2.0f;
 
-        rc->pos = position;
-        rc->set_radius(border_radius);
-        rc->set_visible(visible);
-        rc->set_fill_brush(fill_brush);
-        rc->set_stroke_brush(stroke_brush);
-        rc->set_stroke_width(border[0]);
+        rect->pos = position;
+        rect->set_radius(border_radius);
+        rect->set_visible(visible);
+        rect->set_fill_brush(fill_brush);
+        rect->set_stroke_brush(stroke_brush);
+        rect->set_stroke_width(border[0]);
 
-        cc->set_origin(vec2(control_size));
-        cc->set_radius(control_size);
-        cc->set_visible(visible);
-        cc->set_fill_brush(fill_brush);
-        cc->set_stroke_brush(stroke_brush);
-        cc->set_stroke_width(border[0]);
+        circle->set_origin(vec2(control_size));
+        circle->set_radius(control_size);
+        circle->set_visible(visible);
+        circle->set_fill_brush(fill_brush);
+        circle->set_stroke_brush(stroke_brush);
+        circle->set_stroke_width(border[0]);
 
         if (axis == horizontal) {
             float control_offset = -half_size.x + size_remaining.x * value;
-            rc->set_origin(vec2(half_size.x, bar_thickness/2.0f));
-            rc->set_halfsize(vec2(half_size.x, bar_thickness/2.0f));
-            cc->pos = position + vec3(control_offset, 0, 0);
+            rect->set_origin(vec2(half_size.x, bar_thickness/2.0f));
+            rect->set_halfsize(vec2(half_size.x, bar_thickness/2.0f));
+            circle->pos = position + vec3(control_offset, 0, 0);
         }
 
         if (axis == vertical) {
             float control_offset = -half_size.x + size_remaining.x * (1.0f - value);
-            rc->set_origin(vec2(bar_thickness/2.0f, half_size.x));
-            rc->set_halfsize(vec2(bar_thickness/2.0f, half_size.x));
-            cc->pos = position + vec3(0, control_offset, 0);
+            rect->set_origin(vec2(bar_thickness/2.0f, half_size.x));
+            rect->set_halfsize(vec2(bar_thickness/2.0f, half_size.x));
+            circle->pos = position + vec3(0, control_offset, 0);
         }
 
         valid = true;
@@ -1381,9 +1381,9 @@ struct Slider : Visible
 
         vec3 size_remaining = assigned_size - m();
         vec3 half_size = size_remaining / 2.0f;
-        vec3 bar_dist = me->pos - vec3(rc->pos,0);
+        vec3 bar_dist = me->pos - vec3(rect->pos,0);
         float bar_offset = bar_thickness/2.0f + border[0];
-        float control_dist = glm::distance(vec3(cc->pos,0), me->pos);
+        float control_dist = glm::distance(vec3(circle->pos,0), me->pos);
         bool in_control = control_dist < (control_size + border[0]);
 
         float new_value = 0.0f;
