@@ -67,18 +67,21 @@ enum {
     none = 0,
 };
 
-enum event_type {
+enum event_type
+{
     keyboard = 1,
     mouse = 2,
 };
 
-enum event_qualifier {
+enum event_qualifier
+{
     pressed = 1,
     released = 2,
     motion = 3,
 };
 
-enum button {
+enum button
+{
     left = 1,
     center = 2,
     right = 3,
