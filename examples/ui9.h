@@ -188,6 +188,8 @@ struct Defaults
     Defaults();
     Defaults(file_ptr rsrc);
 
+    /* int get_enum(std::string qualifier, std::string key, const char* names[],
+                    int values[], const char* default_val = "default") */
     std::string get_string(std::string qualifier, std::string key, std::string default_val = "");
     bool get_boolean(std::string qualifier, std::string key, bool default_val = false);
     int get_integer(std::string qualifier, std::string key, int default_val = 0);
