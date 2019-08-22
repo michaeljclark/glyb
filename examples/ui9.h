@@ -108,7 +108,7 @@ struct MouseEvent
     vec3 pos;
 };
 
-enum class Orientation
+enum axis_2D
 {
     horizontal,
     vertical
@@ -1243,7 +1243,7 @@ struct Button : Visible
 
 struct Slider : Visible
 {
-    Orientation o;
+    axis_2D axis;
     float control_size;
     float bar_thickness;
     float value;
@@ -1255,6 +1255,7 @@ struct Slider : Visible
 
     Slider() :
         Visible("Slider"),
+        axis(horizontal),
         value(0.0f),
         callback(),
         inside(false),
@@ -1275,6 +1276,8 @@ struct Slider : Visible
         set_bar_thickness(d->get_float(class_name, "bar-thickness", 5.0f));
     }
 
+    virtual axis_2D get_orientation() { return axis; }
+    virtual void set_orientation(axis_2D v) { axis = v; invalidate(); }
     virtual float get_control_size() { return control_size; }
     virtual void set_control_size(float v) { control_size = v; invalidate(); }
     virtual float get_bar_thickness() { return bar_thickness; }
@@ -1336,24 +1339,34 @@ struct Slider : Visible
 
         vec3 size_remaining = assigned_size - m();
         vec3 half_size = size_remaining / 2.0f;
-        float control_offset = -half_size.x + size_remaining.x * value;
 
         rc->pos = position;
-        rc->set_origin(vec2(half_size.x, bar_thickness/2.0f));
-        rc->set_halfsize(vec2(half_size.x, bar_thickness/2.0f));
         rc->set_radius(border_radius);
         rc->set_visible(visible);
         rc->set_fill_brush(fill_brush);
         rc->set_stroke_brush(stroke_brush);
         rc->set_stroke_width(border[0]);
 
-        cc->pos = position + vec3(control_offset, 0, 0);
         cc->set_origin(vec2(control_size));
         cc->set_radius(control_size);
         cc->set_visible(visible);
         cc->set_fill_brush(fill_brush);
         cc->set_stroke_brush(stroke_brush);
         cc->set_stroke_width(border[0]);
+
+        if (axis == horizontal) {
+            float control_offset = -half_size.x + size_remaining.x * value;
+            rc->set_origin(vec2(half_size.x, bar_thickness/2.0f));
+            rc->set_halfsize(vec2(half_size.x, bar_thickness/2.0f));
+            cc->pos = position + vec3(control_offset, 0, 0);
+        }
+
+        if (axis == vertical) {
+            float control_offset = -half_size.x + size_remaining.x * (1.0f - value);
+            rc->set_origin(vec2(bar_thickness/2.0f, half_size.x));
+            rc->set_halfsize(vec2(bar_thickness/2.0f, half_size.x));
+            cc->pos = position + vec3(0, control_offset, 0);
+        }
 
         valid = true;
     }
@@ -1370,11 +1383,23 @@ struct Slider : Visible
         vec3 half_size = size_remaining / 2.0f;
         vec3 bar_dist = me->pos - vec3(rc->pos,0);
         float bar_offset = bar_thickness/2.0f + border[0];
-        float new_value = (bar_dist.x + half_size.x) / size_remaining.x;
         float control_dist = glm::distance(vec3(cc->pos,0), me->pos);
         bool in_control = control_dist < (control_size + border[0]);
-        bool in_bar = bar_dist.x >= -half_size.x && bar_dist.x <= half_size.x &&
-            bar_dist.y >= -bar_offset && bar_dist.y <= bar_offset;
+
+        float new_value = 0.0f;
+        bool in_bar = false;
+
+        if (axis == horizontal) {
+            new_value = (bar_dist.x + half_size.x) / size_remaining.x;
+            in_bar = bar_dist.x >= -half_size.x && bar_dist.x <= half_size.x &&
+                     bar_dist.y >= -bar_offset && bar_dist.y <= bar_offset;
+        }
+
+        if (axis == vertical) {
+            new_value = 1.0f - ((bar_dist.y + half_size.y) / size_remaining.y);
+            in_bar = bar_dist.y >= -half_size.y && bar_dist.y <= half_size.y &&
+                     bar_dist.x >= -bar_offset && bar_dist.x <= bar_offset;
+        }
 
         if (e->qualifier == pressed && !inside) {
             inside = in_control || in_bar;

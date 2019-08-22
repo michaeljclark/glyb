@@ -156,6 +156,7 @@ static void create_layout(ui9::Root &root)
     root.add_child(frame);
 
     auto grid = new ui9::Grid();
+    grid->set_rows_homogeneous(false);
     grid->set_cols_homogeneous(false);
     frame->add_child(grid);
 
@@ -175,7 +176,12 @@ static void create_layout(ui9::Root &root)
 
         auto s1 = new ui9::Slider();
         s1->set_value((1.0f/6.0f) * (i+1));
-        s1->set_preferred_size({300,50,0});
+        if (i == 0) {
+            s1->set_orientation(ui9::vertical);
+            s1->set_preferred_size({300,300,0});
+        } else {
+            s1->set_preferred_size({300,50,0});
+        }
         grid->add_child(s1, 1, i);
 
         auto l2 = new ui9::Label();
