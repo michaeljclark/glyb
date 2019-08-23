@@ -1362,9 +1362,9 @@ struct Slider : Visible
         }
 
         if (axis == vertical) {
-            float control_offset = -half_size.x + size_remaining.x * (1.0f - value);
-            rect->set_origin(vec2(bar_thickness/2.0f, half_size.x));
-            rect->set_halfsize(vec2(bar_thickness/2.0f, half_size.x));
+            float control_offset = -half_size.y + size_remaining.y * (1.0f - value);
+            rect->set_origin(vec2(bar_thickness/2.0f, half_size.y));
+            rect->set_halfsize(vec2(bar_thickness/2.0f, half_size.y));
             circle->pos = position + vec3(0, control_offset, 0);
         }
 
