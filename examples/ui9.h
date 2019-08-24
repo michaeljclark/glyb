@@ -1070,6 +1070,8 @@ struct Grid : Container
                     child_size += vec3(sizes[idx].size, 0);
                 }
             }
+            if (grid_data.width > 1) child_size.y /= grid_data.width;
+            if (grid_data.height > 1) child_size.x /= grid_data.height;
             size_t idx = grid_data.top * cols_count + grid_data.left;
             o->grant_size(child_size);
         }
