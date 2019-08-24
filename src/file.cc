@@ -555,8 +555,12 @@ char* file::readLine(char *buf, size_t buflen)
         memcpy(buf, sbuf.data() + sbufOffset, sizeToCopy);
     }
     buf[sizeToCopy] = '\0';
-    if (nextOffset + 1 < sbuf.size() && sbuf.data()[nextOffset] == '\r' &&
-        sbuf.data()[nextOffset + 1] == '\n') {
+
+    // increment buffer position
+    if (nextOffset == std::string::npos) {
+        sbufOffset += sizeToCopy;
+    } else if (nextOffset + 1 < sbuf.size() && sbuf[nextOffset] == '\r' &&
+        sbuf[nextOffset + 1] == '\n') {
         sbufOffset += (sizeToCopy + 2);
     } else {
         sbufOffset += (sizeToCopy + 1);
