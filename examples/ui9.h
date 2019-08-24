@@ -375,6 +375,7 @@ struct Visible
     bool visible;
     bool enabled;
     bool can_focus;
+    bool can_move;
     bool focused;
     vec3 position;
     vec3 assigned_size;
@@ -403,6 +404,7 @@ struct Visible
         visible(false),
         enabled(false),
         can_focus(false),
+        can_move(false),
         focused(false),
         border_radius(0),
         font_size(0),
@@ -424,6 +426,7 @@ struct Visible
     virtual void set_visible(bool v) { visible = v; invalidate(); }
     virtual void set_enabled(bool v) { enabled = v; invalidate(); }
     virtual void set_can_focus(bool v) { can_focus = v; invalidate(); }
+    virtual void set_can_move(bool v) { can_move = v; invalidate(); }
     virtual void request_focus() {}
     virtual void release_focus() {}
     virtual void next_focus() {}
@@ -433,8 +436,8 @@ struct Visible
     virtual bool is_visible() { return visible; }
     virtual bool is_enabled() { return enabled; }
     virtual bool is_focusable() { return can_focus; }
+    virtual bool is_moveable() { return can_move; }
     virtual bool is_focused() { return focused; }
-    virtual bool get_can_focus() { return can_focus; }
 
     virtual void set_position(vec3 p) { position = p; invalidate(); }
     virtual void set_padding(vec4 v) { padding = v; invalidate(); }
@@ -495,6 +498,7 @@ struct Visible
         set_visible(d->get_boolean(class_name, "visible", true));
         set_enabled(d->get_boolean(class_name, "enabled", true));
         set_can_focus(d->get_boolean(class_name, "can-focus", true));
+        set_can_move(d->get_boolean(class_name, "can-move", true));
         set_position(d->get_vec3(class_name, "position", vec3(0)));
         set_minimum_size(d->get_vec3(class_name, "minimum-size", vec3(0)));
         set_maximum_size(d->get_vec3(class_name, "maximum-size", vec3(0)));
@@ -694,11 +698,15 @@ struct Frame : Container
     Rectangle *rect;
     Text *label;
     vec2 scale;
+    vec3 delta;
+    bool inside;
 
     Frame() :
         Container("Frame"),
         rect(nullptr),
-        label(nullptr)
+        label(nullptr),
+        delta(0),
+        inside(false)
     {
         load_properties();
     }
@@ -797,6 +805,40 @@ struct Frame : Container
         Container::layout(c);
 
         valid = true;
+    }
+
+    virtual bool dispatch(Event *e)
+    {
+        MouseEvent *me = reinterpret_cast<MouseEvent*>(e);
+
+        if (Container::dispatch(e)) {
+            return true;
+        }
+
+        if (!is_moveable() || e->type != mouse) {
+            return false;
+        }
+
+        vec3 size_remaining = assigned_size - m();
+        vec3 half_size = size_remaining / 2.0f;
+        vec3 frame_dist = me->pos - vec3(rect->pos,0);
+        bool in_frame = frame_dist.x >= -half_size.x && frame_dist.x <= half_size.x &&
+                        frame_dist.y >= -half_size.y && frame_dist.y <= half_size.y;
+
+        if (e->qualifier == pressed && !inside) {
+            inside = in_frame;
+            delta = frame_dist;
+        }
+
+        if (inside) {
+            set_position(me->pos - delta);
+        }
+
+        if (e->qualifier == released && inside) {
+            inside = false;
+        }
+
+        return inside;
     }
 };
 
