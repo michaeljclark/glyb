@@ -595,6 +595,7 @@ struct Visible
 struct Container : Visible
 {
     std::vector<std::unique_ptr<Visible>> children;
+    std::vector<Sizing> sizes;
 
     Container(const char* class_name) : Visible(class_name) {}
 
@@ -625,29 +626,36 @@ struct Container : Visible
 
     virtual Sizing calc_size()
     {
-        /* default container overlaps children so find maximum */
-        Sizing maxsz{vec3(0),vec3(0)};
-        for (auto &o : children) {
-            Sizing sz = o->calc_size();
-            maxsz = Sizing{
-                .minimum =
-                    vec3(std::max(maxsz.minimum.x, sz.minimum.x),
-                         std::max(maxsz.minimum.y, sz.minimum.y),
-                         std::max(maxsz.minimum.y, sz.minimum.y)),
-                .preferred =
-                    vec3(std::max(maxsz.preferred.x, sz.preferred.x),
-                         std::max(maxsz.preferred.y, sz.preferred.y),
-                         std::max(maxsz.preferred.y, sz.preferred.y))
-            };
+        /* find bounds containing all children */
+        sizes.resize(children.size());
+        for (size_t i = 0; i < children.size(); i++) {
+            sizes[i] = children[i]->calc_size();
         }
-        return maxsz;
+        vec3 lb(std::numeric_limits<float>::max());
+        vec3 hm(std::numeric_limits<float>::min());
+        vec3 hp(std::numeric_limits<float>::min());
+        for (size_t i = 0; i < children.size(); i++) {
+            vec3 clb = children[i]->get_position();
+            vec3 chm = clb + sizes[i].minimum.x;
+            vec3 chp = clb + sizes[i].preferred.x;
+            lb = vec3(std::min(clb.x, lb.x),
+                       std::min(clb.y, lb.y),
+                       std::min(clb.z, lb.z));
+            hm = vec3(std::max(chm.x, hm.x),
+                       std::max(chm.y, hm.y),
+                       std::max(chm.z, hm.z));
+            hp = vec3(std::max(chp.x, hp.x),
+                       std::max(chp.y, hp.y),
+                       std::max(chp.z, hp.z));
+        }
+        return Sizing{ .minimum = hm - lb, .preferred = hp - lb };
     }
 
     virtual void grant_size(vec3 size)
     {
-        /* default container overlaps children so assign same space */
-        for (auto &o : children) {
-            o->grant_size(size);
+        /* set preferred sizes on all children */
+        for (size_t i = 0; i < children.size(); i++) {
+            children[i]->grant_size(sizes[i].preferred);
         }
     }
 
