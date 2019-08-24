@@ -1041,8 +1041,7 @@ struct Grid : Container
                 GridData &grid_data = di->second;
                 size_t idx = grid_data.top * cols_count + grid_data.left;
                 o->set_position(position + vec3(sizes[idx].pos, 0) -
-                    assigned_size/2.0f +
-                    o->get_assigned_size()/2.0f);
+                    assigned_size/2.0f + o->get_assigned_size()/2.0f);
             }
         }
 
