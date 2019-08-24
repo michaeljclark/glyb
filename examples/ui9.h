@@ -815,7 +815,7 @@ struct Frame : Container
             return true;
         }
 
-        if (!is_moveable() || e->type != mouse) {
+        if (!is_moveable() || e->type != mouse || me->button != left) {
             return false;
         }
 
