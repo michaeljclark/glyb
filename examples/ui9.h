@@ -783,7 +783,7 @@ struct Frame : Container
         label->set_visible(visible);
 
         if (has_children()) {
-            children[0]->set_position(vec3(0, ts.y/2.0f, 0));
+            children[0]->set_position(position + vec3(0, ts.y/2.0f, 0));
         }
 
         Container::layout(c);
