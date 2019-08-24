@@ -693,7 +693,7 @@ struct Frame : Container
 
     Rectangle *rect;
     Text *label;
-    vec2 ts;
+    vec2 scale;
 
     Frame() :
         Container("Frame"),
@@ -714,13 +714,13 @@ struct Frame : Container
         label->set_size(font_size);
         label->set_face(get_font_face());
 
-        ts = label->get_text_size() * vec2(1.0f,text_leading);
+        scale = label->get_text_size() * vec2(1.0f,text_leading);
         Sizing cs = has_children() ? children[0]->calc_size() : Sizing();
 
         vec3 min = p() + b() + m() +
-            vec3(std::max(ts.x, cs.minimum.x), ts.y + cs.minimum.y, 0);
+            vec3(std::max(scale.x, cs.minimum.x), scale.y + cs.minimum.y, 0);
         vec3 pref = p() + b() + m() +
-            vec3(std::max(ts.x, cs.preferred.x), ts.y + cs.preferred.y, 0);
+            vec3(std::max(scale.x, cs.preferred.x), scale.y + cs.preferred.y, 0);
 
         Sizing s = {
             vec3(std::max(min.x, get_minimum_size().x),
@@ -743,7 +743,7 @@ struct Frame : Container
     {
         Visible::grant_size(size);
         if (has_children()) {
-            vec3 cs = size - (p() + b() + m()) - vec3(0, ts.y, 0);
+            vec3 cs = size - (p() + b() + m()) - vec3(0, scale.y, 0);
             children[0]->grant_size(cs);
         }
     }
@@ -779,7 +779,7 @@ struct Frame : Container
         rect->set_stroke_brush(stroke_brush);
         rect->set_stroke_width(border[0]);
 
-        label->pos = position + vec3(0.0f,-half_size.y + ts.y/2.0f,0);
+        label->pos = position + vec3(0.0f,-half_size.y + scale.y/2.0f,0);
         label->set_text(text);
         label->set_size(font_size);
         label->set_face(get_font_face());
@@ -791,7 +791,7 @@ struct Frame : Container
         label->set_visible(visible);
 
         if (has_children()) {
-            children[0]->set_position(position + vec3(0, ts.y/2.0f, 0));
+            children[0]->set_position(position + vec3(0, scale.y/2.0f, 0));
         }
 
         Container::layout(c);
