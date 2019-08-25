@@ -1348,15 +1348,9 @@ struct Slider : Visible
 
     virtual Sizing calc_size()
     {
-        vec3 sz(0);
-
         Sizing s = {
-            vec3(std::max(sz.x, get_minimum_size().x),
-                 std::max(sz.y, get_minimum_size().y),
-                 std::max(sz.z, get_minimum_size().z)),
-            vec3(std::max(sz.x, get_default_size().x),
-                 std::max(sz.y, get_default_size().y),
-                 std::max(sz.z, get_default_size().z))
+            get_minimum_size(),
+            get_preferred_size()
         };
         if (debug) {
             Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n",
