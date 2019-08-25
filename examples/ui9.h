@@ -522,17 +522,17 @@ struct Visible
      * - vec3(left + right, top + bottom, 0)
      */
 
-    virtual vec3 p()
-    {
-        return vec3(border[0] + border[2], border[1] + border[3], 0);
-    }
-
-    virtual vec3 b()
+    virtual vec3 m()
     {
         return vec3(margin[0] + margin[2], margin[1] + margin[3], 0);
     }
 
-    virtual vec3 m()
+    virtual vec3 b()
+    {
+        return vec3(border[0] + border[2], border[1] + border[3], 0);
+    }
+
+    virtual vec3 p()
     {
         return vec3(padding[0] + padding[2], padding[1] + padding[3], 0);
     }
