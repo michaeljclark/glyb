@@ -622,8 +622,8 @@ struct Container : Visible
     virtual bool dispatch(Event *e)
     {
         bool ret = false;
-        for (auto &o : children) {
-            if ((ret = o->dispatch(e))) break;
+        for (auto ci = children.rbegin(); ci != children.rend(); ci++) {
+            if ((ret = (*ci)->dispatch(e))) break;
         }
         return ret;
     }
