@@ -257,6 +257,13 @@ struct Patch : Drawable
     size_t num_contours();
     Contour get_contour(size_t contour_num);
 
+    Brush get_fill_brush();
+    void set_fill_brush(Brush brush);
+    Brush get_stroke_brush();
+    void set_stroke_brush(Brush brush);
+    float get_stroke_width();
+    void set_stroke_width(float width);
+
     Patch* new_contour();
     Patch* new_line(vec2 p1, vec2 p2);
     Patch* new_quadratic_curve(vec2 p1, vec2 c1, vec2 p2);
@@ -272,6 +279,11 @@ struct Path : Drawable
 
     size_t num_contours();
     Contour get_contour(size_t contour_num);
+
+    Brush get_stroke_brush();
+    void set_stroke_brush(Brush brush);
+    float get_stroke_width();
+    void set_stroke_width(float width);
 
     Path* new_contour();
     Path* new_line(vec2 p1, vec2 p2);

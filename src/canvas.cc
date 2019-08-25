@@ -541,6 +541,30 @@ Patch* Patch::new_contour() {
     return this;
 }
 
+Brush Patch::get_fill_brush() {
+    return get_shape().get_fill_brush();
+}
+
+void Patch::set_fill_brush(Brush brush) {
+    get_shape().set_fill_brush(brush);
+}
+
+Brush Patch::get_stroke_brush() {
+    return get_shape().get_stroke_brush();
+}
+
+void Patch::set_stroke_brush(Brush brush) {
+    get_shape().set_stroke_brush(brush);
+}
+
+float Patch::get_stroke_width() {
+    return get_shape().get_stroke_width();
+}
+
+void Patch::set_stroke_width(float width) {
+    get_shape().set_stroke_width(width);
+}
+
 Patch* Patch::new_line(vec2 p1, vec2 p2) {
     canvas->ctx->new_edge(AEdge{EdgeLinear, { p1, p2 }});
     return this;
@@ -559,6 +583,22 @@ size_t Path::num_contours() {
 
 Contour Path::get_contour(size_t contour_num) {
     return Contour{canvas,ll_shape_num,(int)contour_num};
+}
+
+Brush Path::get_stroke_brush() {
+    return get_shape().get_stroke_brush();
+}
+
+void Path::set_stroke_brush(Brush brush) {
+    get_shape().set_stroke_brush(brush);
+}
+
+float Path::get_stroke_width() {
+    return get_shape().get_stroke_width();
+}
+
+void Path::set_stroke_width(float width) {
+    get_shape().set_stroke_width(width);
 }
 
 Path* Path::new_contour() {
