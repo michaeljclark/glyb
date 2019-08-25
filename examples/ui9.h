@@ -1379,7 +1379,7 @@ struct Slider : Visible
         Brush stroke_brush{BrushSolid, {}, { stroke_color }};
         Brush text_brush{BrushSolid, {}, { text_color }};
 
-        vec3 size_remaining = assigned_size - m();
+        vec3 size_remaining = assigned_size - m() - b() - p();
         vec3 half_size = size_remaining / 2.0f;
 
         rect->pos = position;
