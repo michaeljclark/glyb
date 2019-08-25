@@ -1314,9 +1314,6 @@ struct Slider : Visible
         circle(nullptr)
     {
         load_properties();
-
-        rect = nullptr;
-        circle = nullptr;
     }
 
     virtual void load_properties()
