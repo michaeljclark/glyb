@@ -487,8 +487,7 @@ void Shape::set_stroke_width(float stroke_width) {
 }
 
 size_t Shape::num_contours() {
-    /* fake contour count for primitive shapes without contours */
-    return std::max((int)canvas->ctx->shapes[shape_num].contour_count,1);
+    return canvas->ctx->shapes[shape_num].contour_count;
 }
 
 Contour Shape::get_contour(size_t offset) {
