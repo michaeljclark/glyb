@@ -439,6 +439,7 @@ struct Canvas
     float stroke_width;
     mat3 transform;
     mat3 transform_inv;
+    float scale;
 
     Canvas(font_manager* manager);
 
@@ -446,6 +447,10 @@ struct Canvas
     void set_transform(mat3 m);
     mat3 get_transform();
     mat3 get_inverse_transform();
+
+    /* high dpi screen scale to apply to strokes */
+    void set_scale(float scale);
+    float get_scale();
 
     /* interface to low-level objects shared with the gpu */
     Brush get_brush(int brush_num);

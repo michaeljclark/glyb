@@ -89,7 +89,9 @@ static const int stats_font_size = 12;
 
 static const float min_zoom = 16.0f, max_zoom = 32768.0f;
 static float clear_color[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
-static int width = 1920, height = 1080;
+static float xscale, yscale;
+static int window_width = 1920, window_height = 1080;
+static int framebuffer_width, framebuffer_height;
 static double tl, tn, td;
 static bool help_text = false;
 
@@ -240,13 +242,16 @@ static void display()
     populate_canvas();
 
     /* set up scale/translate matrix */
-    glfwGetFramebufferSize(window, &width, &height);
+    glfwGetWindowSize(window, &window_width, &window_height);
+    glfwGetFramebufferSize(window, &framebuffer_width, &framebuffer_height);
     float s = state.zoom / 64.0f;
-    float tx = state.origin.x + width/2.0f;
-    float ty = state.origin.y + height/2.0f;
+    float tx = state.origin.x + window_width/2.0f;
+    float ty = state.origin.y + window_height/2.0f;
     canvas.set_transform(mat3(s,  0,  tx,
                               0,  s,  ty,
                               0,  0,  1));
+    canvas.set_scale(sqrtf((framebuffer_width * framebuffer_height) /
+        (window_width * window_height)));
 
     /* emit canvas draw list */
     root.layout(&canvas);
@@ -254,7 +259,7 @@ static void display()
     canvas.sync(update_texture_buffers);
 
     /* render stats text */
-    float x = 10.0f, y = height - 10.0f;
+    float x = 10.0f, y = window_height - 10.0f;
     std::vector<std::string> stats = get_stats(sans_norm, td);
     for (size_t i = 0; i < stats.size(); i++) {
         text_segment stats_segment(stats[i], text_lang, sans_norm,
@@ -311,11 +316,15 @@ static void update_uniforms(program *prog)
     uniform_1i(prog, "tb_brush", 2);
 }
 
-static void reshape(int width, int height)
+static void reshape(int framebuffer_width, int framebuffer_height)
 {
-    mvp = glm::ortho(0.0f, (float)width,(float)height, 0.0f, 0.0f, 100.0f);
+    glfwGetWindowSize(window, &window_width, &window_height);
+    glfwGetFramebufferSize(window, &framebuffer_width, &framebuffer_height);
 
-    glViewport(0, 0, width, height);
+    mvp = glm::ortho(0.0f, (float)window_width, (float)window_height,
+        0.0f, 0.0f, 100.0f);
+
+    glViewport(0, 0, framebuffer_width, framebuffer_height);
 
     glUseProgram(prog_canvas.pid);
     update_uniforms(&prog_canvas);
@@ -478,9 +487,9 @@ static void initialize()
 
 /* GLFW GUI entry point */
 
-static void resize(GLFWwindow* window, int width, int height)
+static void resize(GLFWwindow* window, int framebuffer_width, int framebuffer_height)
 {
-    reshape(width, height);
+    reshape(framebuffer_width, framebuffer_height);
 }
 
 static void glcanvas(int argc, char **argv)
@@ -489,7 +498,7 @@ static void glcanvas(int argc, char **argv)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, CTX_OPENGL_MAJOR);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, CTX_OPENGL_MINOR);
 
-    window = glfwCreateWindow(width, height, argv[0], NULL, NULL);
+    window = glfwCreateWindow(window_width, window_height, argv[0], NULL, NULL);
     glfwMakeContextCurrent(window);
     gladLoadGL();
     glfwSwapInterval(1);
@@ -498,10 +507,11 @@ static void glcanvas(int argc, char **argv)
     glfwSetMouseButtonCallback(window, mouse_button);
     glfwSetCursorPosCallback(window, cursor_position);
     glfwSetFramebufferSizeCallback(window, resize);
-    glfwGetFramebufferSize(window, &width, &height);
+    glfwGetWindowSize(window, &window_width, &window_height);
+    glfwGetFramebufferSize(window, &framebuffer_width, &framebuffer_height);
 
     initialize();
-    reshape(width, height);
+    reshape(framebuffer_width, framebuffer_height);
     while (!glfwWindowShouldClose(window)) {
         display();
         glfwSwapBuffers(window);

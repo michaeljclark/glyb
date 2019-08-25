@@ -483,7 +483,7 @@ void Shape::set_stroke_brush(Brush stroke_brush) {
 }
 
 void Shape::set_stroke_width(float stroke_width) {
-    canvas->ctx->shapes[shape_num].stroke_width = stroke_width;
+    canvas->ctx->shapes[shape_num].stroke_width = stroke_width * canvas->scale;
 }
 
 size_t Shape::num_contours() {
@@ -770,7 +770,7 @@ Canvas::Canvas(font_manager* manager) :
     manager(manager), dirty(false),
     fill_brush{BrushSolid, {vec2(0)}, {color(0,0,0,1)}},
     stroke_brush{BrushSolid, {vec2(0)}, {color(0,0,0,1)}},
-    stroke_width(0.0f) {}
+    stroke_width(0.0f), scale(1.0f) {}
 
 void Canvas::set_transform(mat3 m)
 {
@@ -786,6 +786,24 @@ mat3 Canvas::get_transform()
 mat3 Canvas::get_inverse_transform()
 {
     return transform_inv;
+}
+
+void Canvas::set_scale(float scale)
+{
+    if (scale != this->scale) {
+        float factor = scale / this->scale;
+        this->scale = scale;
+        /* update strokes on existing shapes */
+        for (auto &shape : ctx->shapes) {
+            shape.stroke_width = shape.stroke_width * factor;
+        }
+        dirty = true;
+    }
+}
+
+float Canvas::get_scale()
+{
+    return scale;
 }
 
 int Canvas::get_brush_num(Brush p)
@@ -865,7 +883,7 @@ Patch* Canvas::new_patch(vec2 offset, vec2 size) {
     int shape_num = ctx->new_shape(offset, size);
     ctx->shapes[shape_num].fill_brush = (float)get_brush_num(fill_brush);
     ctx->shapes[shape_num].stroke_brush = (float)get_brush_num(stroke_brush);
-    ctx->shapes[shape_num].stroke_width = stroke_width;
+    ctx->shapes[shape_num].stroke_width = stroke_width * scale;
     auto o = new Patch{this, 1, drawable_patch, (int)objects.size(), shape_num};
     objects.push_back(std::unique_ptr<Drawable>(o));
     dirty = true;
@@ -876,7 +894,7 @@ Path* Canvas::new_path(vec2 offset, vec2 size) {
     int shape_num = ctx->new_shape(offset, size);
     ctx->shapes[shape_num].fill_brush = (float)get_brush_num(fill_brush);
     ctx->shapes[shape_num].stroke_brush = (float)get_brush_num(stroke_brush);
-    ctx->shapes[shape_num].stroke_width = stroke_width;
+    ctx->shapes[shape_num].stroke_width = stroke_width * scale;
     ctx->shapes[shape_num].stroke_mode = 1.0f; /* no interior */
     auto o = new Path{this, 1, drawable_patch, (int)objects.size(), shape_num};
     objects.push_back(std::unique_ptr<Drawable>(o));
@@ -904,7 +922,7 @@ Circle* Canvas::new_circle(vec2 pos, float radius) {
     int fill_brush_num = get_brush_num(fill_brush);
     int stroke_brush_num = get_brush_num(stroke_brush);
     AShape shape{0, 0, 0, 1, vec2(0), vec2(radius * 2.0f),
-        (float)fill_brush_num, (float)stroke_brush_num, stroke_width };
+        (float)fill_brush_num, (float)stroke_brush_num, stroke_width * scale };
     AEdge edge{PrimitiveCircle,{vec2(radius), vec2(radius)}};
     auto o = new Circle{this, 1, drawable_circle,
         (int)objects.size(), ctx->add_shape(&shape, &edge, false), pos, 0.0f};
@@ -917,7 +935,7 @@ Ellipse* Canvas::new_ellipse(vec2 pos, vec2 half_size) {
     int fill_brush_num = get_brush_num(fill_brush);
     int stroke_brush_num = get_brush_num(stroke_brush);
     AShape shape{0, 0, 0, 1, vec2(0), half_size * 2.0f,
-        (float)fill_brush_num, (float)stroke_brush_num, stroke_width };
+        (float)fill_brush_num, (float)stroke_brush_num, stroke_width * scale };
     AEdge edge{PrimitiveEllipse,{half_size, half_size}};
     auto o = new Ellipse{this, 1, drawable_ellipse,
         (int)objects.size(), ctx->add_shape(&shape, &edge, false), pos, 0.0f};
@@ -930,7 +948,7 @@ Rectangle* Canvas::new_rectangle(vec2 pos, vec2 half_size) {
     int fill_brush_num = get_brush_num(fill_brush);
     int stroke_brush_num = get_brush_num(stroke_brush);
     AShape shape{0, 0, 0, 1, vec2(0), vec2(half_size*2.0f),
-        (float)fill_brush_num, (float)stroke_brush_num, stroke_width };
+        (float)fill_brush_num, (float)stroke_brush_num, stroke_width * scale };
     AEdge edge{PrimitiveRectangle,{half_size, half_size}};
     auto o = new Rectangle{this, 1, drawable_rectangle,
         (int)objects.size(), ctx->add_shape(&shape, &edge, false), pos, 0.0f};
@@ -943,7 +961,7 @@ Rectangle* Canvas::new_rounded_rectangle(vec2 pos, vec2 half_size, float radius)
     int fill_brush_num = get_brush_num(fill_brush);
     int stroke_brush_num = get_brush_num(stroke_brush);
     AShape shape{0, 0, 0, 1, vec2(0), half_size * 2.0f,
-        (float)fill_brush_num, (float)stroke_brush_num, stroke_width };
+        (float)fill_brush_num, (float)stroke_brush_num, stroke_width * scale };
     AEdge edge = (radius > 0.0f) ?
         AEdge{PrimitiveRoundedRectangle,{half_size, half_size, vec2(radius)}} :
         AEdge{PrimitiveRectangle,{half_size, half_size}};
