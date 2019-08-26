@@ -154,14 +154,15 @@ static std::vector<std::string> get_stats(font_face *face, double td)
 
 static void create_layout(ui9::Root &root)
 {
-    auto frame = new ui9::Frame();
-    frame->set_text("Simulation Settings");
-    root.add_child(frame);
+    auto frame1 = new ui9::Frame();
+    frame1->set_text("Simulation Settings");
+    frame1->set_position(vec3(-350,0,0));
+    root.add_child(frame1);
 
     auto grid = new ui9::Grid();
     grid->set_rows_homogeneous(false);
     grid->set_cols_homogeneous(false);
-    frame->add_child(grid);
+    frame1->add_child(grid);
 
     const char* label_names[] = {
         "Damping",
@@ -171,7 +172,8 @@ static void create_layout(ui9::Root &root)
         "Stopping Energy"
     };
 
-    for (size_t i = 0; i < 5; i++) {
+    for (size_t i = 0; i < 5; i++)
+    {
         auto l1 = new ui9::Label();
         l1->set_text(label_names[i]);
         l1->set_preferred_size({200,50,0});
@@ -194,6 +196,47 @@ static void create_layout(ui9::Root &root)
 
         s1->set_callback([=](float v) { l2->set_text(std::to_string(v)); });
     }
+
+    {
+        auto l1 = new ui9::Label();
+        l1->set_text("Switch");
+        l1->set_preferred_size({200,50,0});
+        grid->add_child(l1, 0, 5);
+
+        auto s1 = new ui9::Switch();
+        s1->set_value(false);
+        grid->add_child(s1, 1, 5);
+
+        auto l2 = new ui9::Label();
+        l2->set_text(s1->get_value() ? "On" : "Off");
+        l2->set_preferred_size({100,50,0});
+        grid->add_child(l2, 2, 5);
+    }
+
+    auto l3 = new ui9::Label();
+    l3->set_text("V1");
+    l3->set_preferred_size({50,50,0});
+    grid->add_child(l3, 3, 0, 1, 2);
+
+    auto l4 = new ui9::Label();
+    l4->set_text("V2");
+    l4->set_preferred_size({50,50,0});
+    grid->add_child(l4, 3, 2, 1, 3);
+
+    auto frame2 = new ui9::Frame();
+    frame2->set_text("Chart");
+    frame2->set_position(vec3(350,0,0));
+    root.add_child(frame2);
+
+    auto chart1 = new ui9::Chart();
+    chart1->set_preferred_size({300,200,0});
+    //chart1->set_data({0.00f, 0.06f, 0.25f, 0.56f, 1.00f, 1.56f,
+    //                  2.25f, 3.06f, 4.00f, 5.06f, 6.25f, 7.49f});
+    //chart1->set_data({0.00f, 0.26f, 0.35f, 0.76f, 1.10f, 1.96f,
+    //                  2.35f, 3.46f, 4.10f, 5.56f, 6.35f, 7.79f});
+    chart1->set_data({0.00f, 3.26f, 0.35f, 3.76f, 1.10f, 4.96f,
+                      2.35f, 7.46f, 4.10f, 9.56f, 6.35f, 10.79f});
+    frame2->add_child(chart1);
 }
 
 static void populate_canvas()

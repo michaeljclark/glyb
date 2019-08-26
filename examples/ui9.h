@@ -694,21 +694,36 @@ struct Root : Container
 struct Frame : Container
 {
     std::string text;
+    float click_radius;
 
     Rectangle *rect;
     Text *label;
     vec2 scale;
     vec3 delta;
-    bool inside;
+    vec3 orig_size;
+    bool _in_title;
+    bool _in_corner;
 
     Frame() :
         Container("Frame"),
         rect(nullptr),
         label(nullptr),
         delta(0),
-        inside(false)
+        orig_size(0),
+        _in_title(false),
+        _in_corner(false)
     {
         load_properties();
+    }
+
+    virtual float get_click_radius() { return click_radius; }
+    virtual void set_click_radius(float v) { click_radius = v; invalidate(); }
+
+    virtual void load_properties()
+    {
+        Container::load_properties();
+        Defaults *d = get_defaults();
+        set_click_radius(d->get_float(class_name, "click-radius", 5.0f));
     }
 
     virtual std::string get_text() { return text; }
@@ -722,7 +737,7 @@ struct Frame : Container
         label->set_size(font_size);
         label->set_face(get_font_face());
 
-        scale = label->get_text_size() * vec2(1.0f,text_leading);
+        scale = label->get_text_size() * vec2(1.0f, text_leading);
         Sizing cs = has_children() ? children[0]->calc_size() : Sizing();
 
         vec3 min = p() + b() + m() +
@@ -822,23 +837,43 @@ struct Frame : Container
         vec3 size_remaining = assigned_size - m();
         vec3 half_size = size_remaining / 2.0f;
         vec3 frame_dist = me->pos - vec3(rect->pos,0);
-        bool in_frame = frame_dist.x >= -half_size.x && frame_dist.x <= half_size.x &&
+        bool in_title = frame_dist.x >= -half_size.x && frame_dist.x <= half_size.x &&
                         frame_dist.y >= -half_size.y && frame_dist.y <= half_size.y;
+        bool in_corner = fabsf(frame_dist.x) < half_size.x &&
+                         fabsf(frame_dist.y) < half_size.y &&
+                         fabsf(frame_dist.x) > half_size.x - click_radius &&
+                         fabsf(frame_dist.y) > half_size.y - click_radius;
 
-        if (e->qualifier == pressed && !inside) {
-            inside = in_frame;
-            delta = frame_dist;
+        if (e->qualifier == pressed) {
+            if (!_in_corner && in_corner) {
+                if (frame_dist.x > 0 && frame_dist.y > 0) { /* bottom-right */
+                    _in_corner = in_corner;
+                    delta = frame_dist;
+                    orig_size = assigned_size;
+                }
+            } else if (!_in_title && in_title) {
+                _in_title = in_title;
+                delta = frame_dist;
+            }
         }
 
-        if (inside) {
+        if (_in_title) {
             set_position(me->pos - delta);
         }
 
-        if (e->qualifier == released && inside) {
-            inside = false;
+        if (_in_corner) {
+            if (frame_dist.x > 0 && frame_dist.y > 0) { /* bottom-right */
+                vec3 d = me->pos - delta - vec3(rect->pos,0);
+                set_preferred_size(orig_size + d*2.0f);
+            }
         }
 
-        return inside;
+        if (e->qualifier == released) {
+            if (_in_title) _in_title = false;
+            if (_in_corner) _in_corner = false;
+        }
+
+        return _in_title || _in_corner;
     }
 };
 
@@ -1456,6 +1491,369 @@ struct Slider : Visible
         }
 
         return inside;
+    }
+};
+
+struct Switch : Visible
+{
+    vec2 control_size;
+    float control_radius;
+    bool value;
+    color active_color;
+    color inactive_color;
+    std::function<void(bool)> callback;
+    bool inside;
+
+    Rectangle *rect;
+    Circle *circle;
+
+    Switch() :
+        Visible("Switch"),
+        value(false),
+        callback(),
+        inside(false),
+        rect(nullptr),
+        circle(nullptr)
+    {
+        load_properties();
+    }
+
+    virtual void load_properties()
+    {
+        Visible::load_properties();
+        Defaults *d = get_defaults();
+        set_control_size(d->get_vec2(class_name, "control-size", vec2(30.0f,15.0f)));
+        set_control_radius(d->get_float(class_name, "control-radius", 12.5f));
+        set_active_color(d->get_color(class_name, "active-color", color("#8080d0")));
+        set_inactive_color(d->get_color(class_name, "inactive-color", color("#505050")));
+    }
+
+    virtual vec2 get_control_size() { return control_size; }
+    virtual void set_control_size(vec2 v) { control_size = v; invalidate(); }
+    virtual float get_control_radius() { return control_radius; }
+    virtual void set_control_radius(float v) { control_radius = v; invalidate(); }
+    virtual color get_active_color() { return active_color; }
+    virtual void set_active_color(color c) { active_color = c; invalidate(); }
+    virtual color get_inactive_color() { return inactive_color; }
+    virtual void set_inactive_color(color c) { inactive_color = c; invalidate(); }
+    virtual bool get_value() { return value; }
+    virtual std::function<void(float)> get_callback() { return callback; }
+    virtual void set_callback(std::function<void(bool)> cb) { callback = cb; }
+
+    virtual void set_value(bool v)
+    {
+        if (v == value) {
+            return;
+        }
+        value = v;
+        invalidate();
+        if (callback) {
+            callback(value);
+        }
+    }
+
+    virtual Sizing calc_size()
+    {
+        Sizing s = {
+            get_minimum_size(),
+            get_preferred_size()
+        };
+        if (debug) {
+            Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n",
+                __PRETTY_FUNCTION__,
+                s.minimum.x, s.minimum.y,
+                s.preferred.x, s.preferred.y);
+        }
+        return s;
+    }
+
+    virtual void init(Canvas *c)
+    {
+        if (!rect) {
+            rect = c->new_rounded_rectangle(vec2(0), vec2(0), 0.0f);
+        }
+        if (!circle) {
+            circle = c->new_circle(vec2(0),0);
+        }
+    }
+
+    virtual void layout(Canvas *c)
+    {
+        if (valid) return;
+
+        Brush fill_brush{BrushSolid, {}, { fill_color }};
+        Brush active_brush{BrushSolid, {}, { active_color }};
+        Brush inactive_brush{BrushSolid, {}, { inactive_color }};
+        Brush stroke_brush{BrushSolid, {}, { stroke_color }};
+        Brush text_brush{BrushSolid, {}, { text_color }};
+
+        vec3 size_remaining = assigned_size - m() - b() - p();
+        vec3 half_size = size_remaining / 2.0f;
+
+        rect->pos = position -half_size + vec3(control_size.x,half_size.y,0);
+        rect->set_origin(control_size);
+        rect->set_halfsize(control_size);
+        rect->set_radius(border_radius);
+        rect->set_visible(visible);
+        rect->set_fill_brush(value ? active_brush : inactive_brush);
+        rect->set_stroke_brush(stroke_brush);
+        rect->set_stroke_width(border[0]);
+
+        circle->pos = position -half_size +
+            vec3(control_size.x, half_size.y, 0) *
+            vec3(value ? 1.5f : 0.5f, 1, 1);
+        circle->set_origin(control_size);
+        circle->set_radius(control_radius);
+        circle->set_visible(visible);
+        circle->set_fill_brush(fill_brush);
+        circle->set_stroke_brush(stroke_brush);
+        circle->set_stroke_width(border[0]);
+
+        valid = true;
+    }
+
+    virtual bool dispatch(Event *e)
+    {
+        MouseEvent *me = reinterpret_cast<MouseEvent*>(e);
+
+        if (e->type != mouse) {
+            return false;
+        }
+
+        vec3 size_remaining = assigned_size - m();
+        vec3 half_size = size_remaining / 2.0f;
+        float control_dist = glm::distance(vec3(circle->pos,0), me->pos);
+        bool in_control = control_dist < control_radius;
+
+        if (e->qualifier == pressed && !inside) {
+            inside = in_control;
+        }
+
+        if (inside) {
+            //
+        }
+
+        if (e->qualifier == released && inside) {
+            inside = false;
+            set_value(!value);
+        }
+
+        return inside;
+    }
+};
+
+struct Chart : Visible
+{
+    color grid_color;
+    color line_color;
+    color point_color;
+    float point_size;
+    bool interpolate;
+    std::vector<float> data;
+
+    Rectangle *rect;
+    Path *line_path;
+    Path *grid_path;
+    std::vector<Circle*> circles;
+
+    Chart() :
+        Visible("Chart"),
+        rect(nullptr),
+        line_path(nullptr),
+        grid_path(nullptr)
+    {
+        load_properties();
+    }
+
+    virtual void load_properties()
+    {
+        Visible::load_properties();
+        Defaults *d = get_defaults();
+        set_grid_color(d->get_color(class_name, "grid-color", color(1,1,1,1)));
+        set_line_color(d->get_color(class_name, "line-color", color(1,1,1,1)));
+        set_point_color(d->get_color(class_name, "point-color", color(1,1,1,1)));
+        set_point_size(d->get_float(class_name, "point-size", 1));
+        set_interpolate(d->get_boolean(class_name, "interpolate", 1));
+    }
+
+    virtual void set_grid_color(color c) { grid_color = c; invalidate(); }
+    virtual void set_line_color(color c) { line_color = c; invalidate(); }
+    virtual void set_point_color(color c) { point_color = c; invalidate(); }
+    virtual void set_point_size(float s) { point_size = s; invalidate(); }
+    virtual void set_interpolate(bool b) { interpolate = b; invalidate(); }
+
+    virtual color get_grid_color() { return grid_color; }
+    virtual color get_line_color() { return line_color; }
+    virtual color get_point_color() { return point_color; }
+    virtual float get_point_size() { return point_size; }
+    virtual bool get_interpolate() { return interpolate; }
+
+    void set_data(std::vector<float> data)
+    {
+        this->data = data;
+    }
+
+    std::vector<float> get_data()
+    {
+        return data;
+    }
+
+    virtual Sizing calc_size()
+    {
+        Sizing s = {
+            get_minimum_size(),
+            get_preferred_size()
+        };
+        if (debug) {
+            Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n",
+                __PRETTY_FUNCTION__,
+                s.minimum.x, s.minimum.y,
+                s.preferred.x, s.preferred.y);
+        }
+        return s;
+    }
+
+    virtual void init(Canvas *c)
+    {
+        if (!rect) {
+            rect = c->new_rounded_rectangle(vec2(0), vec2(0), 0.0f);
+        }
+    }
+
+    virtual void layout(Canvas *c)
+    {
+        if (valid) return;
+
+        Brush none_brush{BrushNone, {}, {} };
+        Brush fill_brush{BrushSolid, {}, { fill_color }};
+        Brush stroke_brush{BrushSolid, {}, { stroke_color }};
+        Brush line_brush{BrushSolid, {}, { line_color }};
+        Brush point_brush{BrushSolid, {}, { point_color }};
+        Brush grid_brush{BrushSolid, {}, { grid_color }};
+
+        vec3 size_remaining = assigned_size - m();
+        vec3 half_size = size_remaining / 2.0f;
+
+        rect->pos = position;
+        rect->set_origin(half_size);
+        rect->set_halfsize(half_size);
+        rect->set_radius(border_radius);
+        rect->set_visible(visible);
+        rect->set_fill_brush(fill_brush);
+        rect->set_stroke_brush(stroke_brush);
+        rect->set_stroke_width(border[0]);
+
+        if (!grid_path) {
+            grid_path = c->new_path(vec2(0), vec2(0));
+            grid_path->new_contour();
+            vec3 sz = size_remaining - p() - b() - m();
+            vec3 tz = vec3(padding[0] + border[0] + margin[0], padding[1] + border[1] + margin[1], 0);
+            grid_path->new_line({tz.x       ,tz.y       },{tz.x + sz.x,tz.y       });
+            grid_path->new_line({tz.x + sz.x,tz.y       },{tz.x + sz.x,tz.y + sz.y});
+            grid_path->new_line({tz.x + sz.x,tz.y + sz.y},{tz.x       ,tz.y + sz.y});
+            grid_path->new_line({tz.x       ,tz.y + sz.y},{tz.x       ,tz.y       });
+        }
+        grid_path->pos = position;
+        grid_path->get_shape().set_offset({0, 0});
+        grid_path->get_shape().set_size(size_remaining);
+        grid_path->set_stroke_brush(grid_brush);
+        grid_path->set_stroke_width(border[0]);
+
+        if (!line_path && !interpolate) {
+            line_path = c->new_path(vec2(0), vec2(0));
+            line_path->new_contour();
+            float vmin = std::numeric_limits<float>::max();
+            float vmax = std::numeric_limits<float>::min();
+            for (float v : data) {
+                vmin = std::min(vmin,v);
+                vmax = std::max(vmax,v);
+            }
+            vec3 sz = size_remaining - p() - b() - m();
+            vec3 tz = vec3(padding[0] + border[0] + margin[0], padding[1] + border[1] + margin[1], 0);
+            for (size_t i = 1; i < data.size(); i++) {
+                float v1 = data[i-1];
+                float v2 = data[i];
+                float x1 = tz.x + sz.x * (float)(i-1) / (float)(data.size()-1);
+                float x2 = tz.x + sz.x * (float)i     / (float)(data.size()-1);
+                float y1 = tz.y + sz.y * (vmax - v1)/vmax;
+                float y2 = tz.y + sz.y * (vmax - v2)/vmax;
+                line_path->new_line({x1,y1},{x2,y2});
+            }
+        }
+
+        if (!line_path && interpolate) {
+            line_path = c->new_path(vec2(0), vec2(0));
+            line_path->new_contour();
+            float vmin = std::numeric_limits<float>::max();
+            float vmax = std::numeric_limits<float>::min();
+            for (float v : data) {
+                vmin = std::min(vmin,v);
+                vmax = std::max(vmax,v);
+            }
+            vec3 sz = size_remaining - p() - b() - m();
+            vec3 tz = vec3(padding[0] + border[0] + margin[0], padding[1] + border[1] + margin[1], 0);
+            size_t n = data.size();
+            for (size_t i = 0; i < data.size(); i++) {
+                float v1 = i == 0 ? data[i] : data[i-1];
+                float v2 = data[i];
+                float v3 = i == n-1 ? data[i] : data[i+1];
+                float x1  = tz.x + sz.x * ((float)i-1.0f) / (float)(data.size()-1);
+                float x12 = tz.x + sz.x * ((float)i-0.5f) / (float)(data.size()-1);
+                float x12c = tz.x + sz.x * ((float)i-0.25f) / (float)(data.size()-1);
+                float x2  = tz.x + sz.x * ((float)i)      / (float)(data.size()-1);
+                float x23c = tz.x + sz.x * ((float)i+0.25f) / (float)(data.size()-1);
+                float x23 = tz.x + sz.x * ((float)i+0.5f) / (float)(data.size()-1);
+                float x3  = tz.x + sz.x * ((float)i+1.0f) / (float)(data.size()-1);
+                float y1 = tz.y + sz.y * (vmax - v1)/vmax;
+                float y2 = tz.y + sz.y * (vmax - v2)/vmax;
+                float y3 = tz.y + sz.y * (vmax - v3)/vmax;
+                float dy = (y3 - y1) / 2.0f;
+                float y12 = (y1 + y2) / 2.0f;
+                float y23 = (y2 + y3) / 2.0f;
+                float y12c = y2 - 0.25f * dy;
+                float y23c = y2 + 0.25f * dy;
+                if (i != 0) line_path->new_quadratic_curve({x12,y12},{x12c,y12c},{x2,y2});
+                if (i != n-1) line_path->new_quadratic_curve({x2,y2},{x23c,y23c},{x23,y23});
+            }
+        }
+
+        line_path->pos = position;
+        line_path->get_shape().set_offset({0, 0});
+        line_path->get_shape().set_size(size_remaining);
+        line_path->set_stroke_brush(line_brush);
+        line_path->set_stroke_width(border[0]);
+
+        //if (circles.size() == 0)
+        {
+            float vmin = std::numeric_limits<float>::max();
+            float vmax = std::numeric_limits<float>::min();
+            for (float v : data) {
+                vmin = std::min(vmin,v);
+                vmax = std::max(vmax,v);
+            }
+            vec3 sz = size_remaining - p() - b() - m();
+            vec3 tz = vec3(padding[0] + border[0] + margin[0], padding[1] + border[1] + margin[1], 0);
+            for (size_t i = 0; i < data.size(); i++) {
+                float v = data[i];
+                float x = tz.x + sz.x * (float)i     / (float)(data.size()-1);
+                float y = tz.y + sz.y * (vmax - v)/vmax;
+                vec3 pos = position - half_size + vec3(x,y,0);
+                Circle *circle = nullptr;
+                if (circles.size() < i + 1) {
+                    circle = c->new_circle(vec2(0), 0);
+                    circles.push_back(circle);
+                } else {
+                    circle = circles[i];
+                }
+                circle->set_position(pos);
+                circle->set_radius(point_size);
+                circle->set_fill_brush(point_brush);
+                circle->set_stroke_brush(none_brush);
+                circle->set_stroke_width(0);
+            }
+        }
+
+        valid = true;
     }
 };
 
