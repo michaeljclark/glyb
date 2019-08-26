@@ -747,7 +747,11 @@ void Primitive::set_stroke_width(float width) {
 vec2 Circle::get_origin() { return get_vec(0); }
 void Circle::set_origin(vec2 origin)  { set_vec(0, origin); }
 float Circle::get_radius() { return get_vec(1)[0]; }
-void Circle::set_radius(float radius) { set_vec(1, vec2(radius)); }
+void Circle::set_radius(float radius) {
+    get_shape().set_size(vec2(radius * 2.0f));
+    set_vec(0, vec2(radius));
+    set_vec(1, vec2(radius));
+}
 void Circle::update_circle(vec2 pos, float radius) {
     set_position(pos);
     get_shape().set_size(vec2(radius * 2.0f));
@@ -760,7 +764,11 @@ void Circle::update_circle(vec2 pos, float radius) {
 vec2 Ellipse::get_origin() { return get_vec(0); }
 void Ellipse::set_origin(vec2 origin)  { set_vec(0, origin); }
 vec2 Ellipse::get_halfsize() { return get_vec(1); }
-void Ellipse::set_halfsize(vec2 halfSize) { set_vec(1, halfSize); }
+void Ellipse::set_halfsize(vec2 half_size) {
+    get_shape().set_size(half_size*2.0f);
+    set_vec(0, half_size);
+    set_vec(1, half_size);
+}
 void Ellipse::update_ellipse(vec2 pos, vec2 half_size) {
     set_position(pos);
     get_shape().set_size(half_size*2.0f);
