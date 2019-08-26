@@ -94,6 +94,7 @@ static int window_width = 1920, window_height = 1080;
 static int framebuffer_width, framebuffer_height;
 static double tl, tn, td;
 static bool help_text = false;
+static bool overlay_stats = false;
 
 /* canvas state */
 
@@ -259,16 +260,18 @@ static void display()
     canvas.sync(update_texture_buffers);
 
     /* render stats text */
-    float x = 10.0f, y = window_height - 10.0f;
-    std::vector<std::string> stats = get_stats(sans_norm, td);
-    for (size_t i = 0; i < stats.size(); i++) {
-        text_segment stats_segment(stats[i], text_lang, sans_norm,
-            (int)((float)stats_font_size * 64.0f), x, y, 0xffffffff);
-        shapes.clear();
-        shaper.shape(shapes, &stats_segment);
-        font_atlas *atlas = manager.getCurrentAtlas(sans_norm);
-        renderer.render(batch, shapes, &stats_segment);
-        y -= (int)((float)stats_font_size * 1.334f);
+    if (overlay_stats) {
+        float x = 10.0f, y = window_height - 10.0f;
+        std::vector<std::string> stats = get_stats(sans_norm, td);
+        for (size_t i = 0; i < stats.size(); i++) {
+            text_segment stats_segment(stats[i], text_lang, sans_norm,
+                (int)((float)stats_font_size * 64.0f), x, y, 0xffffffff);
+            shapes.clear();
+            shaper.shape(shapes, &stats_segment);
+            font_atlas *atlas = manager.getCurrentAtlas(sans_norm);
+            renderer.render(batch, shapes, &stats_segment);
+            y -= (int)((float)stats_font_size * 1.334f);
+        }
     }
 
     /* update vertex and index buffers arrays (idempotent) */
@@ -343,6 +346,7 @@ static void keyboard(GLFWwindow* window, int key, int scancode, int action, int 
     if (action != GLFW_PRESS) return;
     switch(key) {
     case GLFW_KEY_ESCAPE: exit(0); break;
+    case GLFW_KEY_S: overlay_stats = !overlay_stats; break;
     }
 }
 
@@ -528,7 +532,9 @@ void print_help(int argc, char **argv)
 {
     fprintf(stderr,
         "Usage: %s [options]\n"
-        "  -h, --help            command line help\n", argv[0]);
+        "  -h, --help            command line help\n"
+        "  -y, --overlay-stats   show statistics overlay\n",
+        argv[0]);
 }
 
 /* option parsing */
@@ -552,6 +558,9 @@ void parse_options(int argc, char **argv)
     while (i < argc) {
         if (match_opt(argv[i], "-h", "--help")) {
             help_text = true;
+            i++;
+        } else if (match_opt(argv[i], "-y", "--overlay-stats")) {
+            overlay_stats = true;
             i++;
         } else {
             fprintf(stderr, "error: unknown option: %s\n", argv[i]);
