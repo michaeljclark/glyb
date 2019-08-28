@@ -300,7 +300,7 @@ static void display()
     /* emit canvas draw list */
     root.layout(&canvas);
     canvas.emit(batch);
-    canvas.sync(update_texture_buffers);
+    update_texture_buffers();
 
     /* render stats text */
     if (overlay_stats) {

@@ -558,7 +558,7 @@ static void display()
 
     /* emit canvas draw list */
     canvas.emit(batch);
-    canvas.sync(update_texture_buffers);
+    update_texture_buffers();
 
     /* render stats text */
     float x = 10.0f, y = height - 10.0f;

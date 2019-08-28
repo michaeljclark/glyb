@@ -393,129 +393,7 @@ void text_renderer_canvas::render(draw_list &batch,
  * Canvas objects
  */
 
-/* Edge */
-
-EdgeType Edge::get_type() {
-    return (EdgeType)(int)canvas->ctx->edges[edge_num].type;
-}
-
-void Edge::set_type(EdgeType type) {
-    if ((float)(int)type != canvas->ctx->edges[edge_num].type) {
-        canvas->ctx->edges[edge_num].type = (float)(int)type;
-        canvas->dirty = true;
-    }
-}
-
-size_t Edge::num_points() {
-    return AEdge::num_points(get_type());
-}
-
-vec2 Edge::get_point(size_t offset) {
-    return canvas->ctx->edges[edge_num].p[offset];
-}
-
-void Edge::set_point(size_t offset, vec2 val) {
-    if (val != canvas->ctx->edges[edge_num].p[offset]) {
-        canvas->ctx->edges[edge_num].p[offset] = val;
-        canvas->dirty = true;
-    }
-}
-
-/* Contour */
-
-size_t Contour::num_edges() {
-    return contour_num == -1 ?
-        (int)canvas->ctx->shapes[shape_num].edge_count :
-        (int)canvas->ctx->contours[contour_num].edge_count;
-}
-
-Edge Contour::get_edge(size_t offset) {
-    int edge_offset = contour_num == -1 ?
-        (int)canvas->ctx->shapes[shape_num].edge_offset :
-        (int)canvas->ctx->contours[contour_num].edge_offset;
-    return Edge{canvas,contour_num,edge_offset + (int)offset};
-}
-
-/* Shape */
-
-vec2 Shape::get_offset() {
-    return canvas->ctx->shapes[shape_num].offset;
-}
-
-vec2 Shape::get_size() {
-    return canvas->ctx->shapes[shape_num].size;
-}
-
-Brush Shape::get_fill_brush() {
-    return canvas->get_brush((int)canvas->ctx->shapes[shape_num].fill_brush);
-}
-
-Brush Shape::get_stroke_brush() {
-    return canvas->get_brush((int)canvas->ctx->shapes[shape_num].stroke_brush);
-}
-
-float Shape::get_stroke_width() {
-    return canvas->ctx->shapes[shape_num].stroke_width;
-}
-
-void Shape::set_offset(vec2 offset) {
-    if (offset != canvas->ctx->shapes[shape_num].offset) {
-        canvas->ctx->shapes[shape_num].offset = offset;
-        canvas->dirty = true;
-    }
-}
-
-void Shape::set_size(vec2 size) {
-    if (size != canvas->ctx->shapes[shape_num].size) {
-        canvas->ctx->shapes[shape_num].size = size;
-        canvas->dirty = true;
-    }
-}
-
-void Shape::set_fill_brush(Brush fill_brush) {
-    int fill_brush_num = canvas->get_brush_num(fill_brush);
-    canvas->ctx->shapes[shape_num].fill_brush = (float)fill_brush_num;
-}
-
-void Shape::set_stroke_brush(Brush stroke_brush) {
-    int stroke_brush_num = canvas->get_brush_num(stroke_brush);
-    canvas->ctx->shapes[shape_num].stroke_brush = (float)stroke_brush_num;
-}
-
-void Shape::set_stroke_width(float stroke_width) {
-    canvas->ctx->shapes[shape_num].stroke_width = stroke_width * canvas->scale;
-}
-
-size_t Shape::num_contours() {
-    return canvas->ctx->shapes[shape_num].contour_count;
-}
-
-Contour Shape::get_contour(size_t offset) {
-    /* use contour offset of -1 for primitive shapes without contours */
-    if (canvas->ctx->shapes[shape_num].contour_count) {
-        return Contour{canvas,-1};
-    } else {
-        return Contour{canvas,(int)canvas->ctx->shapes[shape_num].contour_offset};
-    }
-}
-
 /* Drawable */
-
-size_t Drawable::num_edges() {
-    if (ll_shape_num) {
-        return (int)canvas->ctx->shapes[ll_shape_num].edge_count;
-    } else {
-        return 0;
-    }
-}
-
-Edge Drawable::get_edge(size_t edge_num) {
-    /* we use -1 to go via edge vs contours array */
-    return Edge{canvas,ll_shape_num,-1,
-        (int)(canvas->ctx->shapes[ll_shape_num].edge_offset + edge_num)};
-}
-
-Shape Drawable::get_shape() { return Shape{canvas,ll_shape_num}; }
 
 float Drawable::get_z() { return z; }
 vec2 Drawable::get_position() { return pos; }
@@ -525,93 +403,72 @@ void Drawable::set_z(float z) { this->z = z; }
 void Drawable::set_position(vec2 pos) { this->pos = pos; }
 void Drawable::set_visible(bool v) { this->visible = visible; }
 
+Brush Drawable::get_fill_brush() { return fill_brush; }
+Brush Drawable::get_stroke_brush() { return stroke_brush; }
+float Drawable::get_stroke_width() { return stroke_width; }
+
+void Drawable::set_fill_brush(Brush brush) { fill_brush = brush; }
+void Drawable::set_stroke_brush(Brush brush) { stroke_brush = brush; }
+void Drawable::set_stroke_width(float width) { stroke_width = width; }
+
+/* Edges */
+
+void Edges::clear()
+{
+    edges.clear();
+    contours.clear();
+}
+
+void Edges::new_contour()
+{
+    contours.emplace_back(AContour{(float)edges.size(), 0});
+}
+
+void Edges::new_edge(AEdge e)
+{
+    edges.push_back(e);
+    if (contours.size() > 0) {
+        contours.back().edge_count++;
+    }
+}
+
+void Edges::set_offset(vec2 v) { offset = v; }
+void Edges::set_size(vec2 v) { size = v; }
+
+vec2 Edges::get_offset() { return offset; }
+vec2 Edges::get_size() { return size; }
+
 /* Patch */
 
-size_t Patch::num_contours() {
-    return get_shape().num_contours();
-}
-
-Contour Patch::get_contour(size_t contour_num) {
-    return Contour{canvas,ll_shape_num,(int)contour_num};
-}
-
 Patch* Patch::new_contour() {
-    canvas->ctx->new_contour();
+    Edges::new_contour();
     return this;
 }
 
-Brush Patch::get_fill_brush() {
-    return get_shape().get_fill_brush();
-}
-
-void Patch::set_fill_brush(Brush brush) {
-    get_shape().set_fill_brush(brush);
-}
-
-Brush Patch::get_stroke_brush() {
-    return get_shape().get_stroke_brush();
-}
-
-void Patch::set_stroke_brush(Brush brush) {
-    get_shape().set_stroke_brush(brush);
-}
-
-float Patch::get_stroke_width() {
-    return get_shape().get_stroke_width();
-}
-
-void Patch::set_stroke_width(float width) {
-    get_shape().set_stroke_width(width);
-}
-
 Patch* Patch::new_line(vec2 p1, vec2 p2) {
-    canvas->ctx->new_edge(AEdge{EdgeLinear, { p1, p2 }});
+    Edges::new_edge(AEdge{EdgeLinear, { p1, p2 }});
     return this;
 }
 
 Patch* Patch::new_quadratic_curve(vec2 p1, vec2 c1, vec2 p2) {
-    canvas->ctx->new_edge(AEdge{EdgeQuadratic, { p1, c1, p2 }});
+    Edges::new_edge(AEdge{EdgeQuadratic, { p1, c1, p2 }});
     return this;
 }
 
 /* Path */
 
-size_t Path::num_contours() {
-    return get_shape().num_contours();
-}
-
-Contour Path::get_contour(size_t contour_num) {
-    return Contour{canvas,ll_shape_num,(int)contour_num};
-}
-
-Brush Path::get_stroke_brush() {
-    return get_shape().get_stroke_brush();
-}
-
-void Path::set_stroke_brush(Brush brush) {
-    get_shape().set_stroke_brush(brush);
-}
-
-float Path::get_stroke_width() {
-    return get_shape().get_stroke_width();
-}
-
-void Path::set_stroke_width(float width) {
-    get_shape().set_stroke_width(width);
-}
-
 Path* Path::new_contour() {
-    canvas->ctx->new_contour();
+    Edges::new_contour();
     return this;
 }
 
 Path* Path::new_line(vec2 p1, vec2 p2) {
-    canvas->ctx->new_edge(AEdge{EdgeLinear, { p1, p2 }});
+    Edges::new_edge(AEdge{EdgeLinear, { p1, p2 }});
     return this;
 }
 
 Path* Path::new_quadratic_curve(vec2 p1, vec2 c1, vec2 p2) {
-    canvas->ctx->new_edge(AEdge{EdgeQuadratic, { p1, c1, p2 }});
+    Edges::new_edge(AEdge{EdgeQuadratic, { p1, c1, p2 }});
     return this;
 }
 
@@ -643,18 +500,12 @@ text_halign Text::get_halign() { return halign; }
 text_valign Text::get_valign() { return valign; }
 std::string Text::get_text() { return text; }
 std::string Text::get_lang() { return lang; }
-Brush Text::get_fill_brush() { return fill_brush; }
-Brush Text::get_stroke_brush() { return stroke_brush; }
-float Text::get_stroke_width() { return stroke_width; }
 
 void Text::set_size(float size) { shapes.clear(); this->size = size; }
 void Text::set_face(font_face *face) { shapes.clear(); this->face = face; }
 void Text::set_halign(text_halign halign) { this->halign = halign; }
 void Text::set_valign(text_valign valign) { this->valign = valign; }
 void Text::set_lang(std::string lang) { shapes.clear(); this->lang = lang; }
-void Text::set_fill_brush(Brush fill_brush) { this->fill_brush = fill_brush; }
-void Text::set_stroke_brush(Brush stroke_brush) { this->stroke_brush = stroke_brush; }
-void Text::set_stroke_width(float stroke_width) { this->stroke_width = stroke_width; }
 
 void Text::set_text(std::string text)
 {
@@ -705,107 +556,28 @@ vec2 Text::get_text_size() {
  * Primitive subclasses are single edge shapes with no contours
  */
 
-vec2 Primitive::get_vec(size_t offset) {
-    size_t edge_offset = (size_t)canvas->ctx->shapes[ll_shape_num].edge_offset;
-    return canvas->ctx->edges[edge_offset].p[offset];
-}
-
-void Primitive::set_vec(size_t offset, vec2 val) {
-    size_t edge_offset = (size_t)canvas->ctx->shapes[ll_shape_num].edge_offset;
-    if (val != canvas->ctx->edges[edge_offset].p[offset]) {
-        canvas->ctx->edges[edge_offset].p[offset] = val;
-        canvas->dirty = true;
-    }
-}
-
-Brush Primitive::get_fill_brush() {
-    return get_shape().get_fill_brush();
-}
-
-void Primitive::set_fill_brush(Brush brush) {
-    get_shape().set_fill_brush(brush);
-}
-
-Brush Primitive::get_stroke_brush() {
-    return get_shape().get_stroke_brush();
-}
-
-void Primitive::set_stroke_brush(Brush brush) {
-    get_shape().set_stroke_brush(brush);
-}
-
-float Primitive::get_stroke_width() {
-    return get_shape().get_stroke_width();
-}
-
-void Primitive::set_stroke_width(float width) {
-    get_shape().set_stroke_width(width);
-}
-
 /* Circle */
 
-vec2 Circle::get_origin() { return get_vec(0); }
-void Circle::set_origin(vec2 origin)  { set_vec(0, origin); }
-float Circle::get_radius() { return get_vec(1)[0]; }
-void Circle::set_radius(float radius) {
-    get_shape().set_size(vec2(radius * 2.0f));
-    set_vec(0, vec2(radius));
-    set_vec(1, vec2(radius));
-}
-void Circle::update_circle(vec2 pos, float radius) {
-    set_position(pos);
-    get_shape().set_size(vec2(radius * 2.0f));
-    set_vec(0, vec2(radius));
-    set_vec(1, vec2(radius));
-}
+vec2 Circle::get_origin() { return origin; }
+void Circle::set_origin(vec2 v) { origin = v; }
+float Circle::get_radius() { return radius; }
+void Circle::set_radius(float v) { radius = v; }
 
 /* Ellipse */
 
-vec2 Ellipse::get_origin() { return get_vec(0); }
-void Ellipse::set_origin(vec2 origin)  { set_vec(0, origin); }
-vec2 Ellipse::get_halfsize() { return get_vec(1); }
-void Ellipse::set_halfsize(vec2 half_size) {
-    get_shape().set_size(half_size*2.0f);
-    set_vec(0, half_size);
-    set_vec(1, half_size);
-}
-void Ellipse::update_ellipse(vec2 pos, vec2 half_size) {
-    set_position(pos);
-    get_shape().set_size(half_size*2.0f);
-    set_vec(0, half_size);
-    set_vec(1, half_size);
-}
+vec2 Ellipse::get_origin() { return origin; }
+void Ellipse::set_origin(vec2 v) { origin = v; }
+vec2 Ellipse::get_halfsize() { return half_size; }
+void Ellipse::set_halfsize(vec2 v) { half_size = v; }
 
 /* Rectangle */
 
-vec2 Rectangle::get_origin() { return get_vec(0); }
-void Rectangle::set_origin(vec2 origin)  { set_vec(0, origin); }
-vec2 Rectangle::get_halfsize() { return get_vec(1); }
-float Rectangle::get_radius() { return get_vec(2)[0]; }
-void Rectangle::set_halfsize(vec2 halfSize) { set_vec(1, halfSize); }
-void Rectangle::set_radius(float radius)
-{
-    get_edge(0).set_type(radius == 0 ?
-        PrimitiveRectangle : PrimitiveRoundedRectangle);
-    set_vec(2, vec2(radius));
-}
-void Rectangle::update_rectangle(vec2 pos, vec2 half_size) {
-    set_position(pos);
-    get_shape().set_size(half_size*2.0f);
-    get_edge(0).set_type(PrimitiveRectangle);
-    set_vec(0, half_size);
-    set_vec(1, half_size);
-    set_vec(2, vec2(0));
-}
-void Rectangle::update_rounded_rectangle(vec2 pos, vec2 half_size, float radius) {
-    set_position(pos);
-    get_shape().set_size(half_size*2.0f);
-    get_edge(0).set_type(radius == 0 ?
-        PrimitiveRectangle : PrimitiveRoundedRectangle);
-    set_vec(0, half_size);
-    set_vec(1, half_size);
-    set_vec(2, vec2(radius));
-}
+vec2 Rectangle::get_origin() { return origin; }
+void Rectangle::set_origin(vec2 v) { origin = v; }
+vec2 Rectangle::get_halfsize() { return half_size; }
+void Rectangle::set_halfsize(vec2 v) { half_size = v; }
+float Rectangle::get_radius() { return radius; }
+void Rectangle::set_radius(float v) { radius = v; }
 
 /*
  * Canvas API
@@ -813,8 +585,7 @@ void Rectangle::update_rounded_rectangle(vec2 pos, vec2 half_size, float radius)
 
 Canvas::Canvas(font_manager* manager) :
     objects(), glyph_map(), ctx(std::make_unique<AContext>()),
-    text_renderer_c(*ctx, glyph_map), text_renderer_r(manager),
-    manager(manager), dirty(false),
+    text_renderer_c(*ctx, glyph_map), text_renderer_r(manager), manager(manager),
     fill_brush{BrushSolid, {vec2(0)}, {color(0,0,0,1)}},
     stroke_brush{BrushSolid, {vec2(0)}, {color(0,0,0,1)}},
     stroke_width(0.0f), scale(1.0f) {}
@@ -844,7 +615,6 @@ void Canvas::set_scale(float scale)
         for (auto &shape : ctx->shapes) {
             shape.stroke_width = shape.stroke_width * factor;
         }
-        dirty = true;
     }
 }
 
@@ -895,29 +665,14 @@ void Canvas::set_fill_brush(Brush brush) { fill_brush = brush; }
 void Canvas::set_stroke_brush(Brush brush) { stroke_brush = brush; }
 void Canvas::set_stroke_width(float width) { stroke_width = width; }
 
-size_t Canvas::num_shapes() { return ctx->shapes.size(); }
-size_t Canvas::num_contours() { return ctx->contours.size(); }
-size_t Canvas::num_edges() { return ctx->edges.size(); }
 size_t Canvas::num_drawables() { return objects.size(); }
-
-Shape Canvas::get_shape(int shape_num) {
-    return Shape{this,shape_num};
-}
-
-Contour Canvas::get_contour(int shape_num, int contour_num) {
-    return Contour{this,shape_num,contour_num};
-}
-
-Edge Canvas::get_edge(int shape_num, int contour_num, int edge_num) {
-    return Edge{this,shape_num,contour_num,edge_num};
-}
 
 Drawable* Canvas::get_drawable(size_t offset) {
     return objects[offset].get();
 }
 
-void Canvas::clear() {
-    dirty = true;
+void Canvas::clear()
+{
     glyph_map.clear();
     objects.clear();
     ctx->clear();
@@ -926,105 +681,110 @@ void Canvas::clear() {
     stroke_width = 0;
 }
 
-Patch* Canvas::new_patch(vec2 offset, vec2 size) {
-    int shape_num = ctx->new_shape(offset, size);
-    ctx->shapes[shape_num].fill_brush = (float)get_brush_num(fill_brush);
-    ctx->shapes[shape_num].stroke_brush = (float)get_brush_num(stroke_brush);
-    ctx->shapes[shape_num].stroke_width = stroke_width * scale;
-    auto o = new Patch{this, 1, drawable_patch, (int)objects.size(), shape_num};
-    objects.push_back(std::unique_ptr<Drawable>(o));
-    dirty = true;
-    return o;
-}
-
-Path* Canvas::new_path(vec2 offset, vec2 size) {
-    int shape_num = ctx->new_shape(offset, size);
-    ctx->shapes[shape_num].fill_brush = (float)get_brush_num(fill_brush);
-    ctx->shapes[shape_num].stroke_brush = (float)get_brush_num(stroke_brush);
-    ctx->shapes[shape_num].stroke_width = stroke_width * scale;
-    ctx->shapes[shape_num].stroke_mode = 1.0f; /* no interior */
-    auto o = new Path{this, 1, drawable_patch, (int)objects.size(), shape_num};
-    objects.push_back(std::unique_ptr<Drawable>(o));
-    dirty = true;
-    return o;
-}
-
-Text* Canvas::new_text() {
-    auto o = new Text{this, 1, drawable_text, (int)objects.size(), -1};
-    o->fill_brush = fill_brush;
-    o->stroke_brush = stroke_brush;
-    o->stroke_width = stroke_width;
+Patch* Canvas::new_patch(vec2 offset, vec2 size)
+{
+    auto o = new Patch{this, 1, drawable_patch, (int)objects.size(),
+        -1, vec2(0), 0.0f, fill_brush, stroke_brush, stroke_width };
+    o->set_offset(offset);
+    o->set_size(size);
     objects.push_back(std::unique_ptr<Drawable>(o));
     return o;
 }
 
-Text* Canvas::new_text(TextStyle text_style) {
-    auto o = new Text{this, 1, drawable_text, (int)objects.size(), -1};
+Path* Canvas::new_path(vec2 offset, vec2 size)
+{
+    auto o = new Path{this, 1, drawable_path, (int)objects.size(),
+        -1, vec2(0), 0.0f, fill_brush, stroke_brush, stroke_width };
+    o->set_offset(offset);
+    o->set_size(size);
+    objects.push_back(std::unique_ptr<Drawable>(o));
+    return o;
+}
+
+Text* Canvas::new_text()
+{
+    auto o = new Text{this, 1, drawable_text, (int)objects.size(),
+        -1, vec2(0), 0.0f, fill_brush, stroke_brush, stroke_width };
+    objects.push_back(std::unique_ptr<Drawable>(o));
+    return o;
+}
+
+Text* Canvas::new_text(TextStyle text_style)
+{
+    auto o = new Text{this, 1, drawable_text, (int)objects.size(),
+        -1, vec2(0), 0.0f, fill_brush, stroke_brush, stroke_width };
     o->set_text_style(text_style);
     objects.push_back(std::unique_ptr<Drawable>(o));
     return o;
 }
 
-Circle* Canvas::new_circle(vec2 pos, float radius) {
-    int fill_brush_num = get_brush_num(fill_brush);
-    int stroke_brush_num = get_brush_num(stroke_brush);
-    AShape shape{0, 0, 0, 1, vec2(0), vec2(radius * 2.0f),
-        (float)fill_brush_num, (float)stroke_brush_num, stroke_width * scale };
-    AEdge edge{PrimitiveCircle,{vec2(radius), vec2(radius)}};
-    auto o = new Circle{this, 1, drawable_circle,
-        (int)objects.size(), ctx->add_shape(&shape, &edge, false), pos, 0.0f};
+Circle* Canvas::new_circle(vec2 pos, float radius)
+{
+    auto o = new Circle{this, 1, drawable_circle, (int)objects.size(),
+        -1, pos, 0.0f, fill_brush, stroke_brush, stroke_width };
+    o->set_radius(radius);
     objects.push_back(std::unique_ptr<Drawable>(o));
-    dirty = true;
     return o;
 }
 
-Ellipse* Canvas::new_ellipse(vec2 pos, vec2 half_size) {
-    int fill_brush_num = get_brush_num(fill_brush);
-    int stroke_brush_num = get_brush_num(stroke_brush);
-    AShape shape{0, 0, 0, 1, vec2(0), half_size * 2.0f,
-        (float)fill_brush_num, (float)stroke_brush_num, stroke_width * scale };
-    AEdge edge{PrimitiveEllipse,{half_size, half_size}};
-    auto o = new Ellipse{this, 1, drawable_ellipse,
-        (int)objects.size(), ctx->add_shape(&shape, &edge, false), pos, 0.0f};
+Ellipse* Canvas::new_ellipse(vec2 pos, vec2 half_size)
+{
+    auto o = new Ellipse{this, 1, drawable_ellipse, (int)objects.size(),
+        -1, pos, 0.0f, fill_brush, stroke_brush, stroke_width };
+    o->set_halfsize(half_size);
     objects.push_back(std::unique_ptr<Drawable>(o));
-    dirty = true;
     return o;
 }
 
-Rectangle* Canvas::new_rectangle(vec2 pos, vec2 half_size) {
-    int fill_brush_num = get_brush_num(fill_brush);
-    int stroke_brush_num = get_brush_num(stroke_brush);
-    AShape shape{0, 0, 0, 1, vec2(0), vec2(half_size*2.0f),
-        (float)fill_brush_num, (float)stroke_brush_num, stroke_width * scale };
-    AEdge edge{PrimitiveRectangle,{half_size, half_size}};
-    auto o = new Rectangle{this, 1, drawable_rectangle,
-        (int)objects.size(), ctx->add_shape(&shape, &edge, false), pos, 0.0f};
+Rectangle* Canvas::new_rectangle(vec2 pos, vec2 half_size)
+{
+    auto o = new Rectangle{this, 1, drawable_rectangle, (int)objects.size(),
+        -1, pos, 0.0f, fill_brush, stroke_brush, stroke_width };
+    o->set_halfsize(half_size);
     objects.push_back(std::unique_ptr<Drawable>(o));
-    dirty = true;
     return o;
 }
 
-Rectangle* Canvas::new_rounded_rectangle(vec2 pos, vec2 half_size, float radius) {
-    int fill_brush_num = get_brush_num(fill_brush);
-    int stroke_brush_num = get_brush_num(stroke_brush);
-    AShape shape{0, 0, 0, 1, vec2(0), half_size * 2.0f,
-        (float)fill_brush_num, (float)stroke_brush_num, stroke_width * scale };
-    AEdge edge = (radius > 0.0f) ?
-        AEdge{PrimitiveRoundedRectangle,{half_size, half_size, vec2(radius)}} :
-        AEdge{PrimitiveRectangle,{half_size, half_size}};
-    auto o = new Rectangle{this, 1, drawable_rectangle,
-        (int)objects.size(), ctx->add_shape(&shape, &edge, false), pos, 0.0f};
+Rectangle* Canvas::new_rounded_rectangle(vec2 pos, vec2 half_size, float radius)
+{
+    auto o = new Rectangle{this, 1, drawable_rectangle, (int)objects.size(),
+        -1, pos, 0.0f, fill_brush, stroke_brush, stroke_width };
+    o->set_halfsize(half_size);
+    o->set_radius(radius);
     objects.push_back(std::unique_ptr<Drawable>(o));
-    dirty = true;
     return o;
 }
 
-void Canvas::emit(draw_list &batch) {
+void Canvas::emit(draw_list &batch)
+{
+    glyph_map.clear();
+    ctx->clear();
+
     for (auto &o : objects) {
         if (!o->visible) continue;
         switch (o->drawable_type) {
         case drawable_patch: {
             auto shape = static_cast<Patch*>(o.get());
+            int fill_brush_num = get_brush_num(shape->fill_brush);
+            int stroke_brush_num = get_brush_num(shape->stroke_brush);
+
+            int shape_num = shape->ll_shape_num = ctx->new_shape(shape->offset, shape->size);
+            ctx->shapes[shape_num].fill_brush = (float)fill_brush_num;
+            ctx->shapes[shape_num].stroke_brush = (float)stroke_brush_num;
+            ctx->shapes[shape_num].stroke_width = shape->stroke_width * scale;
+            ctx->shapes[shape_num].stroke_mode = 0.0f; /* interior */
+            ctx->shapes[shape_num].contour_offset = ctx->contours.size();
+            ctx->shapes[shape_num].contour_count = shape->contours.size();
+            for (size_t i = 0; i < shape->contours.size(); i++) {
+                ctx->contours.push_back(shape->contours[i]);
+                ctx->contours.back().edge_offset += ctx->edges.size();
+            }
+            ctx->shapes[shape_num].edge_offset = ctx->edges.size();
+            ctx->shapes[shape_num].edge_count = shape->edges.size();
+            for (size_t i = 0; i < shape->edges.size(); i++) {
+                ctx->edges.push_back(shape->edges[i]);
+            }
+
             AShape &llshape = ctx->shapes[shape->ll_shape_num];
             vec2 pos = shape->pos + llshape.offset;
             vec2 halfSize = llshape.size / 2.0f;
@@ -1039,6 +799,26 @@ void Canvas::emit(draw_list &batch) {
         }
         case drawable_path: {
             auto shape = static_cast<Path*>(o.get());
+            int fill_brush_num = get_brush_num(shape->fill_brush);
+            int stroke_brush_num = get_brush_num(shape->stroke_brush);
+
+            int shape_num = shape->ll_shape_num = ctx->new_shape(shape->offset, shape->size);
+            ctx->shapes[shape_num].fill_brush = (float)fill_brush_num;
+            ctx->shapes[shape_num].stroke_brush = (float)stroke_brush_num;
+            ctx->shapes[shape_num].stroke_width = shape->stroke_width * scale;
+            ctx->shapes[shape_num].stroke_mode = 1.0f; /* no interior */
+            ctx->shapes[shape_num].contour_offset = ctx->contours.size();
+            ctx->shapes[shape_num].contour_count = shape->contours.size();
+            for (size_t i = 0; i < shape->contours.size(); i++) {
+                ctx->contours.push_back(shape->contours[i]);
+                ctx->contours.back().edge_offset += ctx->edges.size();
+            }
+            ctx->shapes[shape_num].edge_offset = ctx->edges.size();
+            ctx->shapes[shape_num].edge_count = shape->edges.size();
+            for (size_t i = 0; i < shape->edges.size(); i++) {
+                ctx->edges.push_back(shape->edges[i]);
+            }
+
             AShape &llshape = ctx->shapes[shape->ll_shape_num];
             vec2 pos = shape->pos + llshape.offset;
             vec2 halfSize = llshape.size / 2.0f;
@@ -1078,12 +858,19 @@ void Canvas::emit(draw_list &batch) {
                 /* todo - brushes are stored on each glyph shape */
                 segment.color = shape->get_fill_brush().colors[0].rgba32();
                 text_renderer_c.render(batch, shapes, &segment, transform);
-                dirty |= (s != glyph_map.size());
             }
             break;
         }
         case drawable_circle: {
             auto shape = static_cast<Circle*>(o.get());
+            int fill_brush_num = get_brush_num(shape->fill_brush);
+            int stroke_brush_num = get_brush_num(shape->stroke_brush);
+
+            AShape s{0, 0, 0, 1, vec2(0), vec2(shape->radius * 2.0f),
+                (float)fill_brush_num, (float)stroke_brush_num, shape->stroke_width * scale };
+            AEdge e{PrimitiveCircle,{vec2(shape->radius), vec2(shape->radius)}};
+            shape->ll_shape_num = ctx->add_shape(&s, &e, false);
+
             AShape &llshape = ctx->shapes[shape->ll_shape_num];
             vec2 pos = shape->get_position();
             float radius = shape->get_radius();
@@ -1098,6 +885,14 @@ void Canvas::emit(draw_list &batch) {
         }
         case drawable_ellipse: {
             auto shape = static_cast<Ellipse*>(o.get());
+            int fill_brush_num = get_brush_num(shape->fill_brush);
+            int stroke_brush_num = get_brush_num(shape->stroke_brush);
+
+            AShape s{0, 0, 0, 1, vec2(0), shape->half_size * 2.0f,
+                (float)fill_brush_num, (float)stroke_brush_num, shape->stroke_width * scale };
+            AEdge e{PrimitiveEllipse,{shape->half_size, shape->half_size}};
+            shape->ll_shape_num = ctx->add_shape(&s, &e, false);
+
             AShape &llshape = ctx->shapes[shape->ll_shape_num];
             vec2 pos = shape->get_position();
             vec2 halfSize = shape->get_halfsize();
@@ -1112,6 +907,16 @@ void Canvas::emit(draw_list &batch) {
         }
         case drawable_rectangle: {
             auto shape = static_cast<Rectangle*>(o.get());
+            int fill_brush_num = get_brush_num(shape->fill_brush);
+            int stroke_brush_num = get_brush_num(shape->stroke_brush);
+
+            AShape s{0, 0, 0, 1, vec2(0), shape->half_size * 2.0f,
+                (float)fill_brush_num, (float)stroke_brush_num, shape->stroke_width * scale };
+            AEdge e = (shape->radius > 0.0f) ?
+                AEdge{PrimitiveRoundedRectangle,{shape->half_size, shape->half_size, vec2(shape->radius)}} :
+                AEdge{PrimitiveRectangle,{shape->half_size, shape->half_size}};
+            shape->ll_shape_num = ctx->add_shape(&s, &e, false);
+
             AShape &llshape = ctx->shapes[shape->ll_shape_num];
             vec2 pos = shape->get_position();
             vec2 halfSize = shape->get_halfsize();
@@ -1125,13 +930,5 @@ void Canvas::emit(draw_list &batch) {
             break;
         }
         }
-    }
-}
-
-void Canvas::sync(std::function<void(void)> dirty_cb)
-{
-    if (dirty) {
-        dirty_cb();
-        dirty = false;
     }
 }

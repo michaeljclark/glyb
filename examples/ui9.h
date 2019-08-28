@@ -1745,44 +1745,30 @@ struct Chart : Visible
 
         if (!grid_path) {
             grid_path = c->new_path(vec2(0), vec2(0));
-            grid_path->new_contour();
-            vec3 sz = size_remaining - p() - b() - m();
-            vec3 tz = vec3(padding[0] + border[0] + margin[0], padding[1] + border[1] + margin[1], 0);
-            grid_path->new_line({tz.x       ,tz.y       },{tz.x + sz.x,tz.y       });
-            grid_path->new_line({tz.x + sz.x,tz.y       },{tz.x + sz.x,tz.y + sz.y});
-            grid_path->new_line({tz.x + sz.x,tz.y + sz.y},{tz.x       ,tz.y + sz.y});
-            grid_path->new_line({tz.x       ,tz.y + sz.y},{tz.x       ,tz.y       });
+        } else {
+            grid_path->clear();
         }
+        grid_path->new_contour();
+        vec3 sz = size_remaining - p() - b() - m();
+        vec3 tz = vec3(padding[0] + border[0] + margin[0], padding[1] + border[1] + margin[1], 0);
+        grid_path->new_line({tz.x       ,tz.y       },{tz.x + sz.x,tz.y       });
+        grid_path->new_line({tz.x + sz.x,tz.y       },{tz.x + sz.x,tz.y + sz.y});
+        grid_path->new_line({tz.x + sz.x,tz.y + sz.y},{tz.x       ,tz.y + sz.y});
+        grid_path->new_line({tz.x       ,tz.y + sz.y},{tz.x       ,tz.y       });
         grid_path->pos = position;
-        grid_path->get_shape().set_offset({0, 0});
-        grid_path->get_shape().set_size(size_remaining);
+        grid_path->set_offset({0, 0});
+        grid_path->set_size(size_remaining);
+        grid_path->set_fill_brush(grid_brush);
         grid_path->set_stroke_brush(grid_brush);
         grid_path->set_stroke_width(border[0]);
 
-        if (!line_path && !interpolate) {
+        if (!line_path) {
             line_path = c->new_path(vec2(0), vec2(0));
-            line_path->new_contour();
-            float vmin = std::numeric_limits<float>::max();
-            float vmax = std::numeric_limits<float>::min();
-            for (float v : data) {
-                vmin = std::min(vmin,v);
-                vmax = std::max(vmax,v);
-            }
-            vec3 sz = size_remaining - p() - b() - m();
-            vec3 tz = vec3(padding[0] + border[0] + margin[0], padding[1] + border[1] + margin[1], 0);
-            for (size_t i = 1; i < data.size(); i++) {
-                float v1 = data[i-1];
-                float v2 = data[i];
-                float x1 = tz.x + sz.x * (float)(i-1) / (float)(data.size()-1);
-                float x2 = tz.x + sz.x * (float)i     / (float)(data.size()-1);
-                float y1 = tz.y + sz.y * (vmax - v1)/vmax;
-                float y2 = tz.y + sz.y * (vmax - v2)/vmax;
-                line_path->new_line({x1,y1},{x2,y2});
-            }
+        } else {
+            line_path->clear();
         }
-
-        if (!line_path && interpolate) {
-            line_path = c->new_path(vec2(0), vec2(0));
+        if (interpolate)
+        {
             line_path->new_contour();
             float vmin = std::numeric_limits<float>::max();
             float vmax = std::numeric_limits<float>::min();
@@ -1816,10 +1802,31 @@ struct Chart : Visible
                 if (i != n-1) line_path->new_quadratic_curve({x2,y2},{x23c,y23c},{x23,y23});
             }
         }
-
+        else
+        {
+            line_path->new_contour();
+            float vmin = std::numeric_limits<float>::max();
+            float vmax = std::numeric_limits<float>::min();
+            for (float v : data) {
+                vmin = std::min(vmin,v);
+                vmax = std::max(vmax,v);
+            }
+            vec3 sz = size_remaining - p() - b() - m();
+            vec3 tz = vec3(padding[0] + border[0] + margin[0], padding[1] + border[1] + margin[1], 0);
+            for (size_t i = 1; i < data.size(); i++) {
+                float v1 = data[i-1];
+                float v2 = data[i];
+                float x1 = tz.x + sz.x * (float)(i-1) / (float)(data.size()-1);
+                float x2 = tz.x + sz.x * (float)i     / (float)(data.size()-1);
+                float y1 = tz.y + sz.y * (vmax - v1)/vmax;
+                float y2 = tz.y + sz.y * (vmax - v2)/vmax;
+                line_path->new_line({x1,y1},{x2,y2});
+            }
+        }
         line_path->pos = position;
-        line_path->get_shape().set_offset({0, 0});
-        line_path->get_shape().set_size(size_remaining);
+        line_path->set_offset({0, 0});
+        line_path->set_size(size_remaining);
+        line_path->set_fill_brush(line_brush);
         line_path->set_stroke_brush(line_brush);
         line_path->set_stroke_width(border[0]);
 

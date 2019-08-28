@@ -150,64 +150,7 @@ inline text_renderer_canvas::text_renderer_canvas(AContext &ctx,
  * accelerator API. It manages incremental changes to drawables.
  */
 
-/* Low-level wrappers used to access the canvas accelerator arrays */
-
-struct Canvas;
-
-struct Brush
-{
-    BrushType brush_type;
-    vec2 points[4];
-    color colors[4];
-};
-
-struct Edge
-{
-    Canvas *canvas;
-    int shape_num;
-    int contour_num;
-    int edge_num;
-
-    EdgeType get_type();
-    void set_type(EdgeType type);
-    size_t num_points();
-    vec2 get_point(size_t offset);
-    void set_point(size_t offset, vec2 val);
-};
-
-struct Contour
-{
-    Canvas *canvas;
-    int shape_num;
-    int contour_num;
-
-    size_t num_edges();
-    Edge get_edge(size_t offset);
-};
-
-struct Shape
-{
-    Canvas *canvas;
-    int shape_num;
-
-    size_t num_contours();
-    Contour get_contour(size_t offset);
-
-    vec2 get_offset();
-    vec2 get_size();
-    Brush get_fill_brush();
-    Brush get_stroke_brush();
-    float get_stroke_width();
-
-    void set_offset(vec2 offset);
-    void set_size(vec2 size);
-    void set_fill_brush(Brush fill_brush);
-    void set_stroke_brush(Brush stroke_brush);
-    void set_stroke_width(float stroke_width);
-};
-
-/* forward decls for high-level canvas objects */
-
+struct Canvas;           /* Canvas contains collection of drawables */
 struct Drawable;         /* Base class for high-level obejcts */
 struct Patch;            /* Solid contour composed of Bézier curves */
 struct Path;             /* Open contour composed of Bézier curves */
@@ -216,6 +159,17 @@ struct Primitve;         /* Base class for shapes composed of one edge */
 struct Circle;           /* Circle: position, radius */
 struct Ellipse;          /* Ellipse: position, halfsize */
 struct Rectangle;        /* Rectangle: position, halfsize, (optional radius) */
+
+/*
+ * Brush contains attributes for solid and gradient fills
+ */
+
+struct Brush
+{
+    BrushType brush_type;
+    vec2 points[4];
+    color colors[4];
+};
 
 /*
  * Drawable is the base class for all canvas objects
@@ -232,38 +186,50 @@ struct Drawable
     int ll_shape_num;
     vec2 pos;
     float z;
-
-    size_t num_edges();
-    Edge get_edge(size_t edge_num);
-    Shape get_shape();
+    Brush fill_brush;
+    Brush stroke_brush;
+    float stroke_width;
 
     bool is_visible();
     vec2 get_position();
     float get_z();
+    Brush get_fill_brush();
+    Brush get_stroke_brush();
+    float get_stroke_width();
 
     void set_visible(bool visible);
     void set_position(vec2 pos);
     void set_z(float z);
+    void set_fill_brush(Brush brush);
+    void set_stroke_brush(Brush brush);
+    void set_stroke_width(float width);
+};
+
+struct Edges : Drawable
+{
+    vec2 offset;
+    vec2 size;
+    std::vector<AContour> contours;
+    std::vector<AEdge> edges;
+
+    void clear();
+
+    void set_offset(vec2 v);
+    void set_size(vec2 v);
+
+    vec2 get_offset();
+    vec2 get_size();
+
+    void new_contour();
+    void new_edge(AEdge e);
 };
 
 /*
  * Patch encompasses solid contours containing Bézier curves
  */
 
-struct Patch : Drawable
+struct Patch : Edges
 {
-    bool stroke_mode;
-
-    size_t num_contours();
-    Contour get_contour(size_t contour_num);
-
-    Brush get_fill_brush();
-    void set_fill_brush(Brush brush);
-    Brush get_stroke_brush();
-    void set_stroke_brush(Brush brush);
-    float get_stroke_width();
-    void set_stroke_width(float width);
-
     Patch* new_contour();
     Patch* new_line(vec2 p1, vec2 p2);
     Patch* new_quadratic_curve(vec2 p1, vec2 c1, vec2 p2);
@@ -273,18 +239,8 @@ struct Patch : Drawable
  * Path encompasses open contours containing Bézier curves
  */
 
-struct Path : Drawable
+struct Path : Edges
 {
-    bool stroke_mode;
-
-    size_t num_contours();
-    Contour get_contour(size_t contour_num);
-
-    Brush get_stroke_brush();
-    void set_stroke_brush(Brush brush);
-    float get_stroke_width();
-    void set_stroke_width(float width);
-
     Path* new_contour();
     Path* new_line(vec2 p1, vec2 p2);
     Path* new_quadratic_curve(vec2 p1, vec2 c1, vec2 p2);
@@ -346,9 +302,6 @@ struct Text : Drawable
     text_valign valign;
     std::string text;
     std::string lang;
-    Brush fill_brush;
-    Brush stroke_brush;
-    float stroke_width;
 
     text_segment segment;
     std::vector<glyph_shape> shapes;
@@ -360,9 +313,6 @@ struct Text : Drawable
     text_valign get_valign();
     std::string get_text();
     std::string get_lang();
-    Brush get_fill_brush();
-    Brush get_stroke_brush();
-    float get_stroke_width();
 
     void set_text_style(TextStyle style);
     void set_size(float size);
@@ -371,9 +321,6 @@ struct Text : Drawable
     void set_valign(text_valign valign);
     void set_text(std::string text);
     void set_lang(std::string lang);
-    void set_fill_brush(Brush brush);
-    void set_stroke_brush(Brush brush);
-    void set_stroke_width(float width);
 
     text_segment& get_text_segment();
     std::vector<glyph_shape>& get_glyph_shapes();
@@ -386,50 +333,42 @@ struct Text : Drawable
 
 struct Primitive : Drawable
 {
-    vec2 get_origin();
-    void set_origin(vec2 origin);
-    vec2 get_vec(size_t offset);
-    void set_vec(size_t offset, vec2 val);
-
-    Brush get_fill_brush();
-    void set_fill_brush(Brush brush);
-    Brush get_stroke_brush();
-    void set_stroke_brush(Brush brush);
-    float get_stroke_width();
-    void set_stroke_width(float width);
 };
 
 struct Circle : Primitive
 {
-    vec2 get_origin();
-    void set_origin(vec2 origin);
-    float get_radius();
-    void set_radius(float radius);
+    vec2 origin;
+    float radius;
 
-    void update_circle(vec2 pos, float radius);
+    vec2 get_origin();
+    void set_origin(vec2 v);
+    float get_radius();
+    void set_radius(float v);
 };
 
 struct Ellipse : Primitive
 {
-    vec2 get_origin();
-    void set_origin(vec2 origin);
-    vec2 get_halfsize();
-    void set_halfsize(vec2 radius);
+    vec2 origin;
+    vec2 half_size;
 
-    void update_ellipse(vec2 pos, vec2 half_size);
+    vec2 get_origin();
+    void set_origin(vec2 v);
+    vec2 get_halfsize();
+    void set_halfsize(vec2 v);
 };
 
 struct Rectangle : Primitive
 {
-    vec2 get_origin();
-    void set_origin(vec2 origin);
-    vec2 get_halfsize();
-    void set_halfsize(vec2 radius);
-    float get_radius();
-    void set_radius(float radius);
+    vec2 origin;
+    vec2 half_size;
+    float radius;
 
-    void update_rectangle(vec2 pos, vec2 half_size);
-    void update_rounded_rectangle(vec2 pos, vec2 half_size, float radius);
+    vec2 get_origin();
+    void set_origin(vec2 v);
+    vec2 get_halfsize();
+    void set_halfsize(vec2 v);
+    float get_radius();
+    void set_radius(float v);
 };
 
 /*
@@ -445,7 +384,6 @@ struct Canvas
     text_renderer_canvas text_renderer_c;
     text_renderer_ft text_renderer_r;
     font_manager *manager;
-    bool dirty;
     Brush fill_brush;
     Brush stroke_brush;
     float stroke_width;
@@ -467,12 +405,6 @@ struct Canvas
     /* interface to low-level objects shared with the gpu */
     Brush get_brush(int brush_num);
     int get_brush_num(Brush p);
-    size_t num_shapes();
-    Shape get_shape(int shape_num);
-    size_t num_contours();
-    Contour get_contour(int shape_num, int contour_num);
-    size_t num_edges();
-    Edge get_edge(int shape_num, int contour_num, int edge_num);
 
     /* types used by canvas drawables */
     enum drawable_type {
@@ -509,5 +441,4 @@ struct Canvas
 
     /* emit canvas to draw list */
     void emit(draw_list &batch);
-    void sync(std::function<void(void)> dirty_cb);
 };
