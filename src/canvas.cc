@@ -401,7 +401,7 @@ bool Drawable::is_visible() { return visible; }
 
 void Drawable::set_z(float z) { this->z = z; }
 void Drawable::set_position(vec2 pos) { this->pos = pos; }
-void Drawable::set_visible(bool v) { this->visible = visible; }
+void Drawable::set_visible(bool v) { visible = v; }
 
 Brush Drawable::get_fill_brush() { return fill_brush; }
 Brush Drawable::get_stroke_brush() { return stroke_brush; }
