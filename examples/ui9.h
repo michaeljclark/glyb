@@ -1,5 +1,8 @@
 #pragma once
 
+#include <sstream>
+#include <iomanip>
+
 namespace ui9 {
 
 using vec3 = glm::vec3;
@@ -839,8 +842,8 @@ struct Frame : Container
         vec3 frame_dist = me->pos - vec3(rect->pos,0);
         bool in_title = frame_dist.x >= -half_size.x && frame_dist.x <= half_size.x &&
                         frame_dist.y >= -half_size.y && frame_dist.y <= half_size.y;
-        bool in_corner = fabsf(frame_dist.x) < half_size.x &&
-                         fabsf(frame_dist.y) < half_size.y &&
+        bool in_corner = fabsf(frame_dist.x) < half_size.x + border[0] &&
+                         fabsf(frame_dist.y) < half_size.y + border[1] &&
                          fabsf(frame_dist.x) > half_size.x - click_radius &&
                          fabsf(frame_dist.y) > half_size.y - click_radius;
 
@@ -1642,6 +1645,213 @@ struct Switch : Visible
     }
 };
 
+struct ChartData
+{
+    virtual size_t num_rows() = 0;
+    virtual size_t num_columns() = 0;
+    virtual float get_data(size_t col, size_t row) = 0;
+};
+
+struct ChartDataSimple : ChartData
+{
+    std::vector<float> data;
+
+    ChartDataSimple(std::vector<float> data) : data(data) {}
+
+    virtual size_t num_rows() { return data.size(); }
+    virtual size_t num_columns() { return 1; }
+    virtual float get_data(size_t col, size_t row) { return data[row]; }
+};
+
+struct ChartAxis : Visible
+{
+    static const bool debug = false;
+
+    float value_min;
+    float value_max;
+    float value_range;
+    float scale_min;
+    float scale_max;
+    float scale_incr;
+    float scale_range;
+    float preset_scale_min;
+    float preset_scale_max;
+    size_t num_labels;
+    int precision;
+    color line_color;
+
+    std::shared_ptr<ChartData> data;
+    std::vector<float> scale_values;
+
+    Path *line_path;
+    std::vector<Text*> labels;
+
+    ChartAxis() :
+        Visible("ChartAxis"),
+        value_min(std::numeric_limits<float>::quiet_NaN()),
+        value_max(std::numeric_limits<float>::quiet_NaN()),
+        value_range(std::numeric_limits<float>::quiet_NaN()),
+        scale_min(std::numeric_limits<float>::quiet_NaN()),
+        scale_max(std::numeric_limits<float>::quiet_NaN()),
+        scale_incr(std::numeric_limits<float>::quiet_NaN()),
+        preset_scale_min(std::numeric_limits<float>::quiet_NaN()),
+        preset_scale_max(std::numeric_limits<float>::quiet_NaN()),
+        num_labels(0),
+        precision(2),
+        data(),
+        scale_values(),
+        line_path(nullptr),
+        labels()
+    {
+        load_properties();
+    }
+
+    virtual void load_properties()
+    {
+        Visible::load_properties();
+        Defaults *d = get_defaults();
+        set_line_color(d->get_color(class_name, "line-color", color(1,1,1,1)));
+        set_precision(d->get_integer(class_name, "precision", 2));
+    }
+
+    virtual void set_data(std::shared_ptr<ChartData> data) { this->data = data; }
+
+    virtual void set_line_color(color c) { line_color = c; invalidate(); }
+    virtual void set_precision(int v) { precision = v; }
+
+    virtual int get_precision() { return precision; }
+    virtual color get_line_color() { return line_color; }
+
+    void calc_scale(size_t column, float incr_size, float incr_space)
+    {
+        scale_values.clear();
+
+        size_t n = data->num_rows();
+        value_min = std::numeric_limits<float>::max();
+        value_max = std::numeric_limits<float>::min();
+        for (size_t i = 0; i < n; i++) {
+            float v = data->get_data(column, i);
+            value_min = std::min(value_min,v);
+            value_max = std::max(value_max,v);
+        }
+        value_range = value_max - value_min;
+
+        size_t max_labels = (size_t)(incr_space / incr_size);
+        if (max_labels <= 0) {
+            return;
+        }
+
+        float round_mag = powf(10, (float)precision);
+        float round_incr = 1.0f / round_mag;
+
+        scale_min = (preset_scale_min == preset_scale_min) ?
+            preset_scale_min : floorf(value_min * round_mag) * round_incr;
+        scale_max = (preset_scale_max == preset_scale_max) ?
+            preset_scale_max : ceilf(value_max * round_mag) * round_incr;
+
+        if (scale_min == scale_max) {
+            scale_min -= round_incr;
+            scale_max += round_incr;
+        }
+        scale_incr = round_incr;
+
+        size_t num_labels = (size_t)(value_range / scale_incr);
+        while (num_labels > max_labels) {
+            scale_incr *= 10;
+            num_labels = (size_t)(value_range / scale_incr);
+        }
+
+        scale_min = floorf(scale_min / scale_incr) * scale_incr;
+        scale_max = ceilf(scale_max / scale_incr) * scale_incr;
+        scale_range = scale_max - scale_min;
+        if (debug) {
+            Debug("scale_min=%f scale_max=%f scale_incr=%f scale_range=%f\n",
+                scale_min, scale_max, scale_incr, scale_range);
+        }
+        for (float scale_val = scale_min; scale_val <= scale_max; scale_val += scale_incr) {
+            scale_values.push_back(scale_val);
+        }
+    }
+
+    virtual void layout(Canvas *c)
+    {
+        if (valid) return;
+
+        TextStyle text_style_default{
+            get_font_size(),
+            get_font_face(),
+            text_halign_right,
+            text_valign_center,
+            "en",
+            Brush{BrushSolid, { }, { color(1.0f,1.0f,1.0f,1.0f) }},
+            Brush{BrushNone, { }, { }}
+        };
+
+        Brush line_brush{BrushSolid, {}, { line_color }};
+
+        float axis_left_space = 50.0f;
+        float axis_right_space = 0.0f;
+        float axis_top_space = 0.0f;
+        float axis_bottom_space = 30.0f;
+
+        float axis_text_margin = 10.0f;
+        float axis_tick_length = 5.0f;
+
+        vec3 axis_space(axis_left_space + axis_right_space, axis_top_space + axis_bottom_space, 0);
+        vec3 axis_top_left(axis_left_space, axis_top_space, 0);
+
+        vec3 size_remaining = assigned_size;
+        vec3 half_size = size_remaining / 2.0f;
+
+        vec3 az = size_remaining - p() - b() - m();
+        vec3 sz = az - axis_space;
+        vec3 bz = vec3(padding[0] + border[0] + margin[0], padding[1] + border[1] + margin[1], 0);
+        vec3 tz = bz + axis_top_left;
+
+        size_t n = data->num_rows();
+
+        if (!line_path) {
+            line_path = c->new_path(vec2(0), vec2(0));
+        } else {
+            line_path->clear();
+        }
+        line_path->pos = position;
+        line_path->set_offset({0, 0});
+        line_path->set_size(size_remaining);
+        line_path->set_fill_brush(line_brush);
+        line_path->set_stroke_brush(line_brush);
+        line_path->set_stroke_width(border[0]);
+
+        for (size_t i = 0; i < scale_values.size(); i++) {
+            float value = scale_values[i];
+            std::stringstream ss;
+            ss << std::setprecision(precision) << std::fixed << value;
+            Text *text = nullptr;
+            if (labels.size() < i + 1) {
+                text = c->new_text();
+                labels.push_back(text);
+            } else {
+                text = labels[i];
+            }
+            text->set_text(ss.str());
+            text->set_text_style(text_style_default);
+
+            float x = tz.x - axis_text_margin;
+            float y = tz.y + sz.y * (scale_max - value - scale_min)/scale_range;
+            vec3 pos = position - half_size + vec3(x,y,0);
+            text->set_position(pos);
+            text->set_visible(true);
+
+            float x1 = tz.x;
+            float x2 = tz.x - axis_tick_length;
+            line_path->new_line({x1,y},{x2,y});
+        }
+        for (size_t j = scale_values.size(); j < labels.size(); j++) {
+            labels[j]->set_visible(false);
+        }
+    }
+};
+
 struct Chart : Visible
 {
     color grid_color;
@@ -1649,12 +1859,15 @@ struct Chart : Visible
     color point_color;
     float point_size;
     bool interpolate;
-    std::vector<float> data;
+
+    std::shared_ptr<ChartData> data;
 
     Rectangle *rect;
     Path *line_path;
     Path *grid_path;
+    Path *left_axis_path;
     std::vector<Circle*> circles;
+    ChartAxis left_axis;
 
     Chart() :
         Visible("Chart"),
@@ -1676,6 +1889,8 @@ struct Chart : Visible
         set_interpolate(d->get_boolean(class_name, "interpolate", 1));
     }
 
+    virtual void set_data(std::shared_ptr<ChartData> data) { this->data = data; }
+
     virtual void set_grid_color(color c) { grid_color = c; invalidate(); }
     virtual void set_line_color(color c) { line_color = c; invalidate(); }
     virtual void set_point_color(color c) { point_color = c; invalidate(); }
@@ -1687,16 +1902,6 @@ struct Chart : Visible
     virtual color get_point_color() { return point_color; }
     virtual float get_point_size() { return point_size; }
     virtual bool get_interpolate() { return interpolate; }
-
-    void set_data(std::vector<float> data)
-    {
-        this->data = data;
-    }
-
-    std::vector<float> get_data()
-    {
-        return data;
-    }
 
     virtual Sizing calc_size()
     {
@@ -1731,8 +1936,36 @@ struct Chart : Visible
         Brush point_brush{BrushSolid, {}, { point_color }};
         Brush grid_brush{BrushSolid, {}, { grid_color }};
 
-        vec3 size_remaining = assigned_size - m();
+        float axis_left_space = 50.0f;
+        float axis_right_space = 0.0f;
+        float axis_top_space = 0.0f;
+        float axis_bottom_space = 30.0f;
+
+        vec3 axis_space(axis_left_space + axis_right_space, axis_top_space + axis_bottom_space, 0);
+        vec3 axis_top_left(axis_left_space, axis_top_space, 0);
+
+        vec3 size_remaining = assigned_size;
         vec3 half_size = size_remaining / 2.0f;
+
+        vec3 az = size_remaining - p() - b() - m();
+        vec3 sz = az - axis_space;
+        vec3 bz = vec3(padding[0] + border[0] + margin[0], padding[1] + border[1] + margin[1], 0);
+        vec3 tz = bz + axis_top_left;
+
+        left_axis.set_data(data);
+        left_axis.grant_size(assigned_size);
+        left_axis.set_position(get_position());
+        left_axis.set_padding(get_padding());
+        left_axis.set_border(get_border());
+        left_axis.set_margin(get_margin());
+        left_axis.calc_scale(0, font_size * 1.5f, size_remaining.y);
+        left_axis.layout(c);
+
+        float scale_min = left_axis.scale_min;
+        float scale_max = left_axis.scale_max;
+        float scale_range = left_axis.scale_range;
+
+        size_t n = data->num_rows();
 
         rect->pos = position;
         rect->set_origin(half_size);
@@ -1748,14 +1981,12 @@ struct Chart : Visible
         } else {
             grid_path->clear();
         }
+        grid_path->pos = position;
         grid_path->new_contour();
-        vec3 sz = size_remaining - p() - b() - m();
-        vec3 tz = vec3(padding[0] + border[0] + margin[0], padding[1] + border[1] + margin[1], 0);
         grid_path->new_line({tz.x       ,tz.y       },{tz.x + sz.x,tz.y       });
         grid_path->new_line({tz.x + sz.x,tz.y       },{tz.x + sz.x,tz.y + sz.y});
         grid_path->new_line({tz.x + sz.x,tz.y + sz.y},{tz.x       ,tz.y + sz.y});
         grid_path->new_line({tz.x       ,tz.y + sz.y},{tz.x       ,tz.y       });
-        grid_path->pos = position;
         grid_path->set_offset({0, 0});
         grid_path->set_size(size_remaining);
         grid_path->set_fill_brush(grid_brush);
@@ -1770,29 +2001,20 @@ struct Chart : Visible
         if (interpolate)
         {
             line_path->new_contour();
-            float vmin = std::numeric_limits<float>::max();
-            float vmax = std::numeric_limits<float>::min();
-            for (float v : data) {
-                vmin = std::min(vmin,v);
-                vmax = std::max(vmax,v);
-            }
-            vec3 sz = size_remaining - p() - b() - m();
-            vec3 tz = vec3(padding[0] + border[0] + margin[0], padding[1] + border[1] + margin[1], 0);
-            size_t n = data.size();
-            for (size_t i = 0; i < data.size(); i++) {
-                float v1 = i == 0 ? data[i] : data[i-1];
-                float v2 = data[i];
-                float v3 = i == n-1 ? data[i] : data[i+1];
-                float x1  = tz.x + sz.x * ((float)i-1.0f) / (float)(data.size()-1);
-                float x12 = tz.x + sz.x * ((float)i-0.5f) / (float)(data.size()-1);
-                float x12c = tz.x + sz.x * ((float)i-0.25f) / (float)(data.size()-1);
-                float x2  = tz.x + sz.x * ((float)i)      / (float)(data.size()-1);
-                float x23c = tz.x + sz.x * ((float)i+0.25f) / (float)(data.size()-1);
-                float x23 = tz.x + sz.x * ((float)i+0.5f) / (float)(data.size()-1);
-                float x3  = tz.x + sz.x * ((float)i+1.0f) / (float)(data.size()-1);
-                float y1 = tz.y + sz.y * (vmax - v1)/vmax;
-                float y2 = tz.y + sz.y * (vmax - v2)/vmax;
-                float y3 = tz.y + sz.y * (vmax - v3)/vmax;
+            for (size_t i = 0; i < n; i++) {
+                float v1 = data->get_data(0, i == 0 ? i : i-1);
+                float v2 = data->get_data(0, i);
+                float v3 = data->get_data(0, i == n-1 ? i : i+1);
+                float x1  = tz.x + sz.x * ((float)i-1.0f) / (float)(n-1);
+                float x12 = tz.x + sz.x * ((float)i-0.5f) / (float)(n-1);
+                float x12c = tz.x + sz.x * ((float)i-0.25f) / (float)(n-1);
+                float x2  = tz.x + sz.x * ((float)i)      / (float)(n-1);
+                float x23c = tz.x + sz.x * ((float)i+0.25f) / (float)(n-1);
+                float x23 = tz.x + sz.x * ((float)i+0.5f) / (float)(n-1);
+                float x3  = tz.x + sz.x * ((float)i+1.0f) / (float)(n-1);
+                float y1 = tz.y + sz.y * (scale_max - v1 - scale_min)/scale_range;
+                float y2 = tz.y + sz.y * (scale_max - v2 - scale_min)/scale_range;
+                float y3 = tz.y + sz.y * (scale_max - v3 - scale_min)/scale_range;
                 float dy = (y3 - y1) / 2.0f;
                 float y12 = (y1 + y2) / 2.0f;
                 float y23 = (y2 + y3) / 2.0f;
@@ -1805,21 +2027,13 @@ struct Chart : Visible
         else
         {
             line_path->new_contour();
-            float vmin = std::numeric_limits<float>::max();
-            float vmax = std::numeric_limits<float>::min();
-            for (float v : data) {
-                vmin = std::min(vmin,v);
-                vmax = std::max(vmax,v);
-            }
-            vec3 sz = size_remaining - p() - b() - m();
-            vec3 tz = vec3(padding[0] + border[0] + margin[0], padding[1] + border[1] + margin[1], 0);
-            for (size_t i = 1; i < data.size(); i++) {
-                float v1 = data[i-1];
-                float v2 = data[i];
-                float x1 = tz.x + sz.x * (float)(i-1) / (float)(data.size()-1);
-                float x2 = tz.x + sz.x * (float)i     / (float)(data.size()-1);
-                float y1 = tz.y + sz.y * (vmax - v1)/vmax;
-                float y2 = tz.y + sz.y * (vmax - v2)/vmax;
+            for (size_t i = 1; i < n; i++) {
+                float v1 = data->get_data(0, i-1);
+                float v2 = data->get_data(0, i);
+                float x1 = tz.x + sz.x * (float)(i-1) / (float)(n-1);
+                float x2 = tz.x + sz.x * (float)i     / (float)(n-1);
+                float y1 = tz.y + sz.y * (scale_max - v1 - scale_min)/scale_range;
+                float y2 = tz.y + sz.y * (scale_max - v2 - scale_min)/scale_range;
                 line_path->new_line({x1,y1},{x2,y2});
             }
         }
@@ -1830,20 +2044,11 @@ struct Chart : Visible
         line_path->set_stroke_brush(line_brush);
         line_path->set_stroke_width(border[0]);
 
-        //if (circles.size() == 0)
         {
-            float vmin = std::numeric_limits<float>::max();
-            float vmax = std::numeric_limits<float>::min();
-            for (float v : data) {
-                vmin = std::min(vmin,v);
-                vmax = std::max(vmax,v);
-            }
-            vec3 sz = size_remaining - p() - b() - m();
-            vec3 tz = vec3(padding[0] + border[0] + margin[0], padding[1] + border[1] + margin[1], 0);
-            for (size_t i = 0; i < data.size(); i++) {
-                float v = data[i];
-                float x = tz.x + sz.x * (float)i     / (float)(data.size()-1);
-                float y = tz.y + sz.y * (vmax - v)/vmax;
+            for (size_t i = 0; i < n; i++) {
+                float value = data->get_data(0,i);
+                float x = tz.x + sz.x * (float)i     / (float)(n-1);
+                float y = tz.y + sz.y * (scale_max - value - scale_min)/scale_range;
                 vec3 pos = position - half_size + vec3(x,y,0);
                 Circle *circle = nullptr;
                 if (circles.size() < i + 1) {
@@ -1857,6 +2062,10 @@ struct Chart : Visible
                 circle->set_fill_brush(point_brush);
                 circle->set_stroke_brush(none_brush);
                 circle->set_stroke_width(0);
+                circle->set_visible(true);
+            }
+            for (size_t j = n; j < circles.size(); j++) {
+                circles[j]->set_visible(false);
             }
         }
 

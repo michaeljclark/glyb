@@ -229,13 +229,14 @@ static void create_layout(ui9::Root &root)
     root.add_child(frame2);
 
     auto chart1 = new ui9::Chart();
-    chart1->set_preferred_size({500,200,0});
-    //chart1->set_data({0.00f, 0.06f, 0.25f, 0.56f, 1.00f, 1.56f,
-    //                  2.25f, 3.06f, 4.00f, 5.06f, 6.25f, 7.49f});
-    //chart1->set_data({0.00f, 0.26f, 0.35f, 0.76f, 1.10f, 1.96f,
-    //                  2.35f, 3.46f, 4.10f, 5.56f, 6.35f, 7.79f});
-    chart1->set_data({0.00f, 3.26f, 0.35f, 3.76f, 1.10f, 4.96f,
-                      2.35f, 7.46f, 4.10f, 9.56f, 6.35f, 10.79f});
+    chart1->set_preferred_size({500,250,0});
+    //std::vector<float> data = {0.00f, 0.06f, 0.25f, 0.56f, 1.00f, 1.56f,
+    //                           2.25f, 3.06f, 4.00f, 5.06f, 6.25f, 7.49f});
+    //std::vector<float> data = {0.00f, 0.26f, 0.35f, 0.76f, 1.10f, 1.96f,
+    //                           2.35f, 3.46f, 4.10f, 5.56f, 6.35f, 7.79f});
+    std::vector<float> data = {0.00f, 3.26f, 0.35f, 3.76f, 1.10f, 4.96f,
+                               2.35f, 7.46f, 4.10f, 9.56f, 6.35f, 10.79f};
+    chart1->set_data(std::make_shared<ui9::ChartDataSimple>(data));
     frame2->add_child(chart1);
 }
 
