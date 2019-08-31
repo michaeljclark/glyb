@@ -211,6 +211,8 @@ static void create_layout(ui9::Root &root)
         l2->set_text(s1->get_value() ? "On" : "Off");
         l2->set_preferred_size({100,50,0});
         grid->add_child(l2, 2, 5);
+
+        s1->set_callback([=](float v) { l2->set_text(s1->get_value() ? "On" : "Off"); });
     }
 
     auto l3 = new ui9::Label();
