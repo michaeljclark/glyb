@@ -411,14 +411,14 @@ static void scroll(GLFWwindow* window, double xoffset, double yoffset)
     }
 }
 
-static char q = ui9::none;
-static char b = ui9::none;
+static char q;
+static char b;
 
 static bool mouse_button_ui9(int button, int action, int mods, vec3 pos)
 {
     switch(button) {
-    case GLFW_MOUSE_BUTTON_LEFT:  b = ui9::left;  break;
-    case GLFW_MOUSE_BUTTON_RIGHT: b = ui9::right; break;
+    case GLFW_MOUSE_BUTTON_LEFT:  b = ui9::left_button;  break;
+    case GLFW_MOUSE_BUTTON_RIGHT: b = ui9::right_button; break;
     }
     switch(action) {
     case GLFW_PRESS:   q = ui9::pressed;  break;

@@ -65,11 +65,6 @@ static std::string trim(std::string str, trim_options opts = trim_both)
     return str.substr(start, len);
 }
 
-enum {
-    all = -1,
-    none = 0,
-};
-
 enum event_type
 {
     keyboard = 1,
@@ -85,9 +80,9 @@ enum event_qualifier
 
 enum button
 {
-    left = 1,
-    center = 2,
-    right = 3,
+    left_button = 1,
+    center_button = 2,
+    right_button = 3,
     wheel = 4,
 };
 
@@ -833,7 +828,7 @@ struct Frame : Container
             return true;
         }
 
-        if (!is_moveable() || e->type != mouse || me->button != left) {
+        if (!is_moveable() || e->type != mouse || me->button != left_button) {
             return false;
         }
 
@@ -1663,6 +1658,14 @@ struct ChartDataSimple : ChartData
     virtual float get_data(size_t col, size_t row) { return data[row]; }
 };
 
+enum location_2d
+{
+    top,
+    bottom,
+    left,
+    right
+};
+
 struct ChartAxis : Visible
 {
     static const bool debug = false;
@@ -1676,9 +1679,16 @@ struct ChartAxis : Visible
     float scale_range;
     float preset_scale_min;
     float preset_scale_max;
-    size_t num_labels;
+    float left_space;
+    float right_space;
+    float top_space;
+    float bottom_space;
+    location_2d location;
     int precision;
-    color line_color;
+    float text_margin;
+    float tick_length;
+    color tick_color;
+    size_t num_labels;
 
     std::shared_ptr<ChartData> data;
     std::vector<float> scale_values;
@@ -1696,8 +1706,12 @@ struct ChartAxis : Visible
         scale_incr(std::numeric_limits<float>::quiet_NaN()),
         preset_scale_min(std::numeric_limits<float>::quiet_NaN()),
         preset_scale_max(std::numeric_limits<float>::quiet_NaN()),
+        left_space(0),
+        right_space(0),
+        top_space(0),
+        bottom_space(0),
+        location(left),
         num_labels(0),
-        precision(2),
         data(),
         scale_values(),
         line_path(nullptr),
@@ -1710,17 +1724,33 @@ struct ChartAxis : Visible
     {
         Visible::load_properties();
         Defaults *d = get_defaults();
-        set_line_color(d->get_color(class_name, "line-color", color(1,1,1,1)));
-        set_precision(d->get_integer(class_name, "precision", 2));
+        set_precision(d->get_integer(class_name, "precision", 0));
+        set_text_margin(d->get_float(class_name, "text-margin", 10.0f));
+        set_tick_length(d->get_float(class_name, "tick-length", 5.0f));
+        set_tick_color(d->get_color(class_name, "tick-color", color(1,1,1,1)));
     }
 
     virtual void set_data(std::shared_ptr<ChartData> data) { this->data = data; }
 
-    virtual void set_line_color(color c) { line_color = c; invalidate(); }
-    virtual void set_precision(int v) { precision = v; }
-
+    virtual location_2d get_location() { return location; }
     virtual int get_precision() { return precision; }
-    virtual color get_line_color() { return line_color; }
+    virtual float get_left_space() { return left_space; }
+    virtual float get_right_space() { return right_space; }
+    virtual float get_top_space() { return top_space; }
+    virtual float get_bottom_space() { return bottom_space; }
+    virtual float get_text_margin() { return text_margin; }
+    virtual float get_tick_length() { return tick_length; }
+    virtual color get_tick_color() { return tick_color; }
+
+    virtual void set_location(location_2d v) { location = v; invalidate(); }
+    virtual void set_precision(int v) { precision = v; }
+    virtual void set_left_space(float v) { left_space = v; invalidate(); }
+    virtual void set_right_space(float v) { right_space = v; invalidate(); }
+    virtual void set_top_space(float v) { top_space = v; invalidate(); }
+    virtual void set_bottom_space(float v) { bottom_space = v; invalidate(); }
+    virtual void set_text_margin(float v) { text_margin = v; invalidate(); }
+    virtual void set_tick_length(float v) { tick_length = v; invalidate(); }
+    virtual void set_tick_color(color c) { tick_color = c; invalidate(); }
 
     void calc_scale(size_t column, float incr_size, float incr_space)
     {
@@ -1730,7 +1760,7 @@ struct ChartAxis : Visible
         value_min = std::numeric_limits<float>::max();
         value_max = std::numeric_limits<float>::min();
         for (size_t i = 0; i < n; i++) {
-            float v = data->get_data(column, i);
+            float v = (column == -1) ? i : data->get_data(column, i);
             value_min = std::min(value_min,v);
             value_max = std::max(value_max,v);
         }
@@ -1777,28 +1807,23 @@ struct ChartAxis : Visible
     {
         if (valid) return;
 
-        TextStyle text_style_default{
-            get_font_size(),
-            get_font_face(),
-            text_halign_right,
-            text_valign_center,
-            "en",
+        TextStyle text_style_left_default{
+            get_font_size(), get_font_face(),
+            text_halign_right, text_valign_center, "en",
             Brush{BrushSolid, { }, { color(1.0f,1.0f,1.0f,1.0f) }},
             Brush{BrushNone, { }, { }}
         };
 
-        Brush line_brush{BrushSolid, {}, { line_color }};
+        TextStyle text_style_bottom_default{
+            get_font_size(), get_font_face(),
+            text_halign_center, text_valign_bottom, "en",
+            Brush{BrushSolid, { }, { color(1.0f,1.0f,1.0f,1.0f) }},
+            Brush{BrushNone, { }, { }}
+        };
 
-        float axis_left_space = 50.0f;
-        float axis_right_space = 0.0f;
-        float axis_top_space = 0.0f;
-        float axis_bottom_space = 30.0f;
+        Brush tick_brush{BrushSolid, {}, { tick_color }};
 
-        float axis_text_margin = 10.0f;
-        float axis_tick_length = 5.0f;
-
-        vec3 axis_space(axis_left_space + axis_right_space, axis_top_space + axis_bottom_space, 0);
-        vec3 axis_top_left(axis_left_space, axis_top_space, 0);
+        vec3 axis_space(left_space + right_space, top_space + bottom_space, 0);
 
         vec3 size_remaining = assigned_size;
         vec3 half_size = size_remaining / 2.0f;
@@ -1806,9 +1831,7 @@ struct ChartAxis : Visible
         vec3 az = size_remaining - p() - b() - m();
         vec3 sz = az - axis_space;
         vec3 bz = vec3(padding[0] + border[0] + margin[0], padding[1] + border[1] + margin[1], 0);
-        vec3 tz = bz + axis_top_left;
-
-        size_t n = data->num_rows();
+        vec3 tz = bz + vec3(left_space, top_space, 0);
 
         if (!line_path) {
             line_path = c->new_path(vec2(0), vec2(0));
@@ -1818,8 +1841,8 @@ struct ChartAxis : Visible
         line_path->pos = position;
         line_path->set_offset({0, 0});
         line_path->set_size(size_remaining);
-        line_path->set_fill_brush(line_brush);
-        line_path->set_stroke_brush(line_brush);
+        line_path->set_fill_brush(tick_brush);
+        line_path->set_stroke_brush(tick_brush);
         line_path->set_stroke_width(border[0]);
 
         for (size_t i = 0; i < scale_values.size(); i++) {
@@ -1834,17 +1857,29 @@ struct ChartAxis : Visible
                 text = labels[i];
             }
             text->set_text(ss.str());
-            text->set_text_style(text_style_default);
 
-            float x = tz.x - axis_text_margin;
-            float y = tz.y + sz.y * (scale_max - value - scale_min)/scale_range;
-            vec3 pos = position - half_size + vec3(x,y,0);
-            text->set_position(pos);
-            text->set_visible(true);
-
-            float x1 = tz.x;
-            float x2 = tz.x - axis_tick_length;
-            line_path->new_line({x1,y},{x2,y});
+            if (location == left)
+            {
+                float x = tz.x - text_margin;
+                float y = tz.y + sz.y * (scale_max - value - scale_min)/scale_range;
+                float tick_x1 = tz.x, tick_x2 = tick_x1 - tick_length;
+                vec3 text_pos = position - half_size + vec3(x,y,0);
+                text->set_text_style(text_style_left_default);
+                text->set_position(text_pos);
+                text->set_visible(true);
+                line_path->new_line({tick_x1,y},{tick_x2,y});
+            }
+            else if (location == bottom)
+            {
+                float y = tz.y + sz.y + text_margin;
+                float x = tz.x + sz.x * (value - scale_min)/scale_range;
+                float tick_y1 = tz.y + sz.y, tick_y2 = tick_y1 + tick_length;
+                vec3 text_pos = position - half_size + vec3(x,y,0);
+                text->set_text_style(text_style_bottom_default);
+                text->set_position(text_pos);
+                text->set_visible(true);
+                line_path->new_line({x,tick_y1},{x,tick_y2});
+            }
         }
         for (size_t j = scale_values.size(); j < labels.size(); j++) {
             labels[j]->set_visible(false);
@@ -1858,6 +1893,10 @@ struct Chart : Visible
     color line_color;
     color point_color;
     float point_size;
+    float axis_left_space;
+    float axis_right_space;
+    float axis_top_space;
+    float axis_bottom_space;
     bool interpolate;
 
     std::shared_ptr<ChartData> data;
@@ -1865,15 +1904,18 @@ struct Chart : Visible
     Rectangle *rect;
     Path *line_path;
     Path *grid_path;
-    Path *left_axis_path;
     std::vector<Circle*> circles;
     ChartAxis left_axis;
+    ChartAxis bottom_axis;
 
     Chart() :
         Visible("Chart"),
         rect(nullptr),
         line_path(nullptr),
-        grid_path(nullptr)
+        grid_path(nullptr),
+        circles(),
+        left_axis(),
+        bottom_axis()
     {
         load_properties();
     }
@@ -1886,6 +1928,10 @@ struct Chart : Visible
         set_line_color(d->get_color(class_name, "line-color", color(1,1,1,1)));
         set_point_color(d->get_color(class_name, "point-color", color(1,1,1,1)));
         set_point_size(d->get_float(class_name, "point-size", 1));
+        set_axis_left_space(d->get_float(class_name, "axis-left-space", 60.0f));
+        set_axis_right_space(d->get_float(class_name, "axis-right-space", 10.0f));
+        set_axis_top_space(d->get_float(class_name, "axis-top-space", 0.0f));
+        set_axis_bottom_space(d->get_float(class_name, "axis-bottom-space", 30.0f));
         set_interpolate(d->get_boolean(class_name, "interpolate", 1));
     }
 
@@ -1895,12 +1941,20 @@ struct Chart : Visible
     virtual void set_line_color(color c) { line_color = c; invalidate(); }
     virtual void set_point_color(color c) { point_color = c; invalidate(); }
     virtual void set_point_size(float s) { point_size = s; invalidate(); }
+    virtual void set_axis_left_space(float v) { axis_left_space = v; invalidate(); }
+    virtual void set_axis_right_space(float v) { axis_right_space = v; invalidate(); }
+    virtual void set_axis_top_space(float v) { axis_top_space = v; invalidate(); }
+    virtual void set_axis_bottom_space(float v) { axis_bottom_space = v; invalidate(); }
     virtual void set_interpolate(bool b) { interpolate = b; invalidate(); }
 
     virtual color get_grid_color() { return grid_color; }
     virtual color get_line_color() { return line_color; }
     virtual color get_point_color() { return point_color; }
     virtual float get_point_size() { return point_size; }
+    virtual float get_axis_left_space() { return axis_left_space; }
+    virtual float get_axis_right_space() { return axis_right_space; }
+    virtual float get_axis_top_space() { return axis_top_space; }
+    virtual float get_axis_bottom_space() { return axis_bottom_space; }
     virtual bool get_interpolate() { return interpolate; }
 
     virtual Sizing calc_size()
@@ -1936,13 +1990,7 @@ struct Chart : Visible
         Brush point_brush{BrushSolid, {}, { point_color }};
         Brush grid_brush{BrushSolid, {}, { grid_color }};
 
-        float axis_left_space = 50.0f;
-        float axis_right_space = 0.0f;
-        float axis_top_space = 0.0f;
-        float axis_bottom_space = 30.0f;
-
         vec3 axis_space(axis_left_space + axis_right_space, axis_top_space + axis_bottom_space, 0);
-        vec3 axis_top_left(axis_left_space, axis_top_space, 0);
 
         vec3 size_remaining = assigned_size;
         vec3 half_size = size_remaining / 2.0f;
@@ -1950,7 +1998,22 @@ struct Chart : Visible
         vec3 az = size_remaining - p() - b() - m();
         vec3 sz = az - axis_space;
         vec3 bz = vec3(padding[0] + border[0] + margin[0], padding[1] + border[1] + margin[1], 0);
-        vec3 tz = bz + axis_top_left;
+        vec3 tz = bz + vec3(axis_left_space, axis_top_space, 0);
+
+        bottom_axis.set_data(data);
+        bottom_axis.grant_size(assigned_size);
+        bottom_axis.set_position(get_position());
+        bottom_axis.set_padding(get_padding());
+        bottom_axis.set_border(get_border());
+        bottom_axis.set_margin(get_margin());
+        bottom_axis.set_precision(0);
+        bottom_axis.set_location(bottom);
+        bottom_axis.set_left_space(get_axis_left_space());
+        bottom_axis.set_right_space(get_axis_right_space());
+        bottom_axis.set_top_space(get_axis_top_space());
+        bottom_axis.set_bottom_space(get_axis_bottom_space());
+        bottom_axis.calc_scale(-1, font_size * 1.5f, size_remaining.x);
+        bottom_axis.layout(c);
 
         left_axis.set_data(data);
         left_axis.grant_size(assigned_size);
@@ -1958,6 +2021,12 @@ struct Chart : Visible
         left_axis.set_padding(get_padding());
         left_axis.set_border(get_border());
         left_axis.set_margin(get_margin());
+        left_axis.set_precision(1);
+        left_axis.set_location(left);
+        left_axis.set_left_space(get_axis_left_space());
+        left_axis.set_right_space(get_axis_right_space());
+        left_axis.set_top_space(get_axis_top_space());
+        left_axis.set_bottom_space(get_axis_bottom_space());
         left_axis.calc_scale(0, font_size * 1.5f, size_remaining.y);
         left_axis.layout(c);
 
