@@ -1620,8 +1620,11 @@ struct Switch : Visible
 
         vec3 size_remaining = assigned_size - m();
         vec3 half_size = size_remaining / 2.0f;
-        float control_dist = glm::distance(vec3(circle->pos,0), me->pos);
-        bool in_control = control_dist < control_radius;
+
+        vec3 ctrl_dist = me->pos - vec3(rect->pos,0);
+        bool in_control =
+            ctrl_dist.y >= -control_size.y && ctrl_dist.y <= control_size.y &&
+            ctrl_dist.x >= -control_size.x && ctrl_dist.x <= control_size.x;
 
         if (e->qualifier == pressed && !inside) {
             inside = in_control;
