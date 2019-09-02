@@ -2,6 +2,7 @@
 
 #include <sstream>
 #include <iomanip>
+#include <cmath>
 
 namespace ui9 {
 
@@ -837,19 +838,17 @@ struct Frame : Container
         vec3 frame_dist = me->pos - vec3(rect->pos,0);
         bool in_title = frame_dist.x >= -half_size.x && frame_dist.x <= half_size.x &&
                         frame_dist.y >= -half_size.y && frame_dist.y <= half_size.y;
-        bool in_corner = fabsf(frame_dist.x) < half_size.x + border[0] &&
-                         fabsf(frame_dist.y) < half_size.y + border[1] &&
+        bool in_corner = fabsf(frame_dist.x) < half_size.x + click_radius &&
+                         fabsf(frame_dist.y) < half_size.y + click_radius &&
                          fabsf(frame_dist.x) > half_size.x - click_radius &&
                          fabsf(frame_dist.y) > half_size.y - click_radius;
 
         if (e->qualifier == pressed) {
-            if (!_in_corner && in_corner) {
-                if (frame_dist.x > 0 && frame_dist.y > 0) { /* bottom-right */
-                    _in_corner = in_corner;
-                    delta = frame_dist;
-                    orig_size = assigned_size;
-                }
-            } else if (!_in_title && in_title) {
+            if (!_in_title && !_in_corner && in_corner) {
+                _in_corner = in_corner;
+                delta = frame_dist;
+                orig_size = assigned_size;
+            } else if (!_in_title && !_in_corner && in_title) {
                 _in_title = in_title;
                 delta = frame_dist;
             }
@@ -858,10 +857,13 @@ struct Frame : Container
         if (_in_title) {
             set_position(me->pos - delta);
         }
-
         if (_in_corner) {
-            if (frame_dist.x > 0 && frame_dist.y > 0) { /* bottom-right */
-                vec3 d = me->pos - delta - vec3(rect->pos,0);
+            vec3 d = me->pos - delta - vec3(rect->pos,0);
+            d *= vec3(1.0f - std::signbit(frame_dist.x) * 2.0f,
+                      1.0f - std::signbit(frame_dist.y) * 2.0f, 1);
+            if (std::signbit(frame_dist.x) == std::signbit(delta.x) &&
+                std::signbit(frame_dist.y) == std::signbit(delta.y))
+            {
                 set_preferred_size(orig_size + d*2.0f);
             }
         }
