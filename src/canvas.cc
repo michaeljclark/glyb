@@ -773,14 +773,14 @@ void Canvas::emit(draw_list &batch)
             ctx->shapes[shape_num].stroke_brush = (float)stroke_brush_num;
             ctx->shapes[shape_num].stroke_width = shape->stroke_width * scale;
             ctx->shapes[shape_num].stroke_mode = 0.0f; /* interior */
-            ctx->shapes[shape_num].contour_offset = ctx->contours.size();
-            ctx->shapes[shape_num].contour_count = shape->contours.size();
+            ctx->shapes[shape_num].contour_offset = (float)ctx->contours.size();
+            ctx->shapes[shape_num].contour_count = (float)shape->contours.size();
             for (size_t i = 0; i < shape->contours.size(); i++) {
                 ctx->contours.push_back(shape->contours[i]);
                 ctx->contours.back().edge_offset += ctx->edges.size();
             }
-            ctx->shapes[shape_num].edge_offset = ctx->edges.size();
-            ctx->shapes[shape_num].edge_count = shape->edges.size();
+            ctx->shapes[shape_num].edge_offset = (float)ctx->edges.size();
+            ctx->shapes[shape_num].edge_count = (float)shape->edges.size();
             for (size_t i = 0; i < shape->edges.size(); i++) {
                 ctx->edges.push_back(shape->edges[i]);
             }
@@ -807,14 +807,14 @@ void Canvas::emit(draw_list &batch)
             ctx->shapes[shape_num].stroke_brush = (float)stroke_brush_num;
             ctx->shapes[shape_num].stroke_width = shape->stroke_width * scale;
             ctx->shapes[shape_num].stroke_mode = 1.0f; /* no interior */
-            ctx->shapes[shape_num].contour_offset = ctx->contours.size();
-            ctx->shapes[shape_num].contour_count = shape->contours.size();
+            ctx->shapes[shape_num].contour_offset = (float)ctx->contours.size();
+            ctx->shapes[shape_num].contour_count = (float)shape->contours.size();
             for (size_t i = 0; i < shape->contours.size(); i++) {
                 ctx->contours.push_back(shape->contours[i]);
                 ctx->contours.back().edge_offset += ctx->edges.size();
             }
-            ctx->shapes[shape_num].edge_offset = ctx->edges.size();
-            ctx->shapes[shape_num].edge_count = shape->edges.size();
+            ctx->shapes[shape_num].edge_offset = (float)ctx->edges.size();
+            ctx->shapes[shape_num].edge_count = (float)shape->edges.size();
             for (size_t i = 0; i < shape->edges.size(); i++) {
                 ctx->edges.push_back(shape->edges[i]);
             }
