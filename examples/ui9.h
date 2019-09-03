@@ -7,6 +7,7 @@
 namespace ui9 {
 
 using vec3 = glm::vec3;
+using ivec2 = glm::ivec2;
 
 bool operator<(const vec3 &a, const vec3 &b)
 {
@@ -651,7 +652,7 @@ struct Container : Visible
                        std::max(chp.y, hp.y),
                        std::max(chp.z, hp.z));
         }
-        return Sizing{ .minimum = hm - lb, .preferred = hp - lb };
+        return Sizing{ hm - lb, hp - lb };
     }
 
     virtual void grant_size(vec3 size)
@@ -877,15 +878,39 @@ struct Frame : Container
     }
 };
 
-struct GridData
+enum size_hint_type { preferred, minimum, fixed, ratio };
+
+struct grid_data
 {
     size_t left;
     size_t top;
     size_t width;
     size_t height;
+
+    struct { ivec2 type; vec2 value; } hint;
     
     Sizing sz;
     Rect rect;
+
+    vec2 size()
+    {
+        float x = 0.0f, y = 0.0f;
+        switch (hint.type.x) {
+        case preferred: x = sz.preferred.x; break;
+        case minimum:   x = sz.minimum.x; break;
+        case fixed:     x = hint.value.x; break;
+        case ratio:     x = sz.preferred.x; break;
+        default: break;
+        }
+        switch (hint.type.y) {
+        case preferred: y = sz.preferred.y; break;
+        case minimum:   y = sz.minimum.y; break;
+        case fixed:     y = hint.value.y; break;
+        case ratio:     y = sz.preferred.y; break;
+        default: break;
+        }
+        return vec2(x,y);
+    }
 };
 
 struct Grid : Container
@@ -897,12 +922,13 @@ struct Grid : Container
     bool rows_expand;
     bool cols_expand;
 
-    std::map<Visible*,GridData> datamap;
+    std::map<Visible*,grid_data> datamap;
     std::vector<float> col_widths;
     std::vector<float> row_heights;
     float max_col_width;
     float max_row_height;
     std::vector<Rect> sizes;
+    std::vector<grid_data*> datas;
     Sizing s;
 
     Grid() :
@@ -912,21 +938,17 @@ struct Grid : Container
         max_col_width(0),
         max_row_height(0),
         sizes(),
-        s{.minimum = vec3(0), .preferred = vec3(0)}
+        s{vec3(0), vec3(0)}
     {
         load_properties();
     }
 
     virtual size_t get_rows_count() { return rows_count; }
     virtual size_t get_cols_count() { return cols_count; }
-    virtual bool is_rows_expand() { return rows_expand; }
-    virtual bool is_cols_expand() { return cols_expand; }
     virtual bool is_rows_homogenous() { return rows_homogeneous; }
     virtual bool is_cols_homogeneous() { return cols_homogeneous; }
     virtual void set_rows_count(size_t n) { rows_count = n; invalidate(); }
     virtual void set_cols_count(size_t n) { cols_count = n; invalidate(); }
-    virtual void set_rows_expand(bool n) { rows_expand = n; invalidate(); }
-    virtual void set_cols_expand(bool n) { cols_expand = n; invalidate(); }
     virtual void set_rows_homogeneous(bool n) { rows_homogeneous = n; invalidate(); }
     virtual void set_cols_homogeneous(bool n) { cols_homogeneous = n; invalidate(); }
 
@@ -934,16 +956,26 @@ struct Grid : Container
     {
         Container::load_properties();
         Defaults *d = get_defaults();
-        set_rows_expand(d->get_boolean(class_name, "rows-expand", true));
-        set_cols_expand(d->get_boolean(class_name, "cols-expand", true));
         set_rows_homogeneous(d->get_boolean(class_name, "rows-homogeneous", true));
         set_cols_homogeneous(d->get_boolean(class_name, "cols-homogeneous", true));
     }
 
-    void add_child(Visible *c, size_t left, size_t top, size_t width = 1, size_t height = 1)
+    void add_child(Visible *c, size_t left, size_t top,
+        size_t width = 1, size_t height = 1,
+        ivec2 hint = ivec2(preferred), vec2 value = vec2(0.0f))
     {
         Container::add_child(c);
-        datamap[c] = GridData{ left, top, width, height };
+        datamap[c] = { left, top, width, height, { hint, value } };
+    }
+
+    Rect& rect(const size_t row, const size_t col)
+    {
+        return sizes[row * cols_count + col];
+    }
+
+    grid_data*& data(const size_t row, const size_t col)
+    {
+        return datas[row * cols_count + col];
     }
 
     virtual Sizing calc_size()
@@ -953,15 +985,17 @@ struct Grid : Container
         for (auto &o : children) {
             auto di = datamap.find(o.get());
             if (di == datamap.end()) continue;
-            GridData &grid_data = di->second;
-            grid_data.sz = o->calc_size();
-            cols_count = std::max(cols_count, grid_data.left + grid_data.width);
-            rows_count = std::max(rows_count, grid_data.top + grid_data.height);
+            auto &d = di->second;
+            d.sz = o->calc_size();
+            cols_count = std::max(cols_count, d.left + d.width);
+            rows_count = std::max(rows_count, d.top + d.height);
         }
 
         /* clear arrays */
         sizes.clear();
         sizes.resize(rows_count * cols_count);
+        datas.clear();
+        datas.resize(rows_count * cols_count);
         col_widths.clear();
         col_widths.resize(cols_count);
         row_heights.clear();
@@ -971,14 +1005,13 @@ struct Grid : Container
         for (auto &o : children) {
             auto di = datamap.find(o.get());
             if (di == datamap.end()) continue;
-            GridData &grid_data = di->second;
-            for (size_t i = 0; i < grid_data.width; i++) {
-                for (size_t j = 0; j < grid_data.height; j++) {
-                    size_t idx = (grid_data.top + j) * cols_count + grid_data.left + i;
-                    sizes[idx].size = vec2(
-                        grid_data.sz.preferred.x / grid_data.width,
-                        grid_data.sz.preferred.y / grid_data.height
-                    );
+            auto &d = di->second;
+            vec2 sz = d.size();
+            for (size_t i = 0; i < d.width; i++) {
+                for (size_t j = 0; j < d.height; j++) {
+                    rect(d.top + j, d.left + i).size =
+                        vec2( sz.x / d.width, sz.y / d.height );
+                    data(d.top + j, d.left + i) = &d;
                 }
             }
         }
@@ -987,7 +1020,7 @@ struct Grid : Container
         max_col_width = 0;
         for (size_t i = 0; i < cols_count; i++) {
             for (size_t j = 0; j < rows_count; j++) {
-                col_widths[i] = std::max(col_widths[i], sizes[j*cols_count+i].size.x);
+                col_widths[i] = std::max(col_widths[i], rect(j,i).size.x);
             }
             max_col_width = std::max(col_widths[i], max_col_width);
         }
@@ -996,7 +1029,7 @@ struct Grid : Container
         max_row_height = 0;
         for (size_t j = 0; j < rows_count; j++) {
             for (size_t i = 0; i < cols_count; i++) {
-                row_heights[j] = std::max(row_heights[j], sizes[j*cols_count+i].size.y);
+                row_heights[j] = std::max(row_heights[j], rect(j,i).size.y);
             }
             max_row_height = std::max(row_heights[j], max_row_height);
         }
@@ -1032,82 +1065,86 @@ struct Grid : Container
     {
         Visible::grant_size(size);
 
-        float hratio = is_cols_expand() && s.minimum.x > 0 ?
-            (float)s.preferred.x / (float)s.minimum.x : 1.0f;
-        float vratio = is_rows_expand() && s.minimum.y > 0 ?
-            (float)s.preferred.y / (float)s.minimum.y : 1.0f;
+        /*
+         * if rows or columns are homogeneous, then all rows or columns are
+         * assigned the same size.
+         * if rows or columns are not homogeneous, then size is assigned as
+         * follows:
+         *
+         * 1). for all items, assign preferred, minimum or fixed size hint
+         * 2). for all items, assign remaining space to items using ratio
+         */
+
+        /* set cell sizes horizontally */
+        for (size_t j = 0; j < rows_count; j++) {
+            for (size_t i = 0; i < cols_count; i++) {
+                rect(j,i).size.x = (int)((is_cols_homogeneous() ?
+                    max_col_width : col_widths[i]));
+            }
+        }
 
         /* expand cell sizes horizontally */
         for (size_t j = 0; j < rows_count; j++) {
+            float total_width = 0;
+            float total_ratios = 0;
             for (size_t i = 0; i < cols_count; i++) {
-                sizes[j*cols_count+i].size.x = (int)((is_cols_homogeneous() ?
-                    max_col_width : col_widths[i]) * hratio);
+                if (data(j,i) && data(j,i)->hint.type.x == ratio) {
+                    total_ratios += data(j,i)->hint.value.x;
+                }
+                total_width += rect(j,i).size.x;
+            }
+            /* todo - affects items in same column that are not expanded */
+            float remaining = assigned_size.x - total_width;
+            for (size_t i = 0; i < cols_count; i++) {
+                if (data(j,i) && data(j,i)->hint.type.x == ratio) {
+                    float ratio = data(j,i)->hint.value.x / total_ratios;
+                    rect(j,i).size.x += remaining * ratio;
+                }
             }
         }
-        if (is_cols_expand()) {
-            for (size_t j = 0; j < rows_count; j++) {
-                float total_width = 0;
-                for (int i = 0; i < cols_count; i++) {
-                    total_width += sizes[j*cols_count+i].size.x;
-                }
-                while (total_width < assigned_size.x) {
-                    for (size_t i = 0; i < cols_count && total_width < assigned_size.x; i++) {
-                        sizes[j*cols_count+i].size.x++;
-                        total_width++;
-                    }
-                }
+
+        /* set cell sizes vertically */
+        for (size_t j = 0; j < rows_count; j++) {
+            for (size_t i = 0; i < cols_count; i++) {
+                rect(j,i).size.y = (int)((is_rows_homogenous() ?
+                    max_row_height : row_heights[j]));
             }
         }
 
         /* expand cell sizes vertically */
-        for (size_t j = 0; j < rows_count; j++) {
-            for (size_t i = 0; i < cols_count; i++) {
-                sizes[j*cols_count+i].size.y = (int)((is_rows_homogenous() ?
-                    max_row_height : row_heights[j]) * vratio);
-            }
-        }
-        if (is_rows_expand()) {
-            for (size_t i = 0; i < cols_count; i++) {
-                float total_height = 0;
-                for (int j = 0; j < rows_count; j++) {
-                    total_height += sizes[j*cols_count+i].size.y;
+        for (size_t i = 0; i < cols_count; i++) {
+            float total_height = 0;
+            float total_ratios = 0;
+            for (size_t j = 0; j < rows_count; j++) {
+                if (data(j,i) && data(j,i)->hint.type.y == ratio) {
+                    total_ratios += data(j,i)->hint.value.y;
                 }
-                while (total_height < assigned_size.y) {
-                    for (size_t j = 0; j < rows_count && total_height < assigned_size.y; j++) {
-                        sizes[j*cols_count+i].size.y++;
-                        total_height++;
-                    }
+                total_height += rect(j,i).size.y;
+            }
+            /* todo - affects items in same row that are not expanded */
+            float remaining = assigned_size.y - total_height;
+            for (size_t j = 0; j < rows_count; j++) {
+                if (data(j,i) && data(j,i)->hint.type.y == ratio) {
+                    float ratio = data(j,i)->hint.value.y / total_ratios;
+                    rect(j,i).size.y += remaining * ratio;
                 }
             }
         }
         
-        /* set x and y coordinates */
-        float y = 0;
-        for (size_t j = 0; j < rows_count; j++) {
-            float x = 0;
-            for (size_t i = 0; i < cols_count; i++) {
-                size_t idx = j*cols_count+i;
-                sizes[idx].pos = vec2(x, y);
-                x += sizes[idx].size.x;
-            }
-            y += sizes[j * cols_count].size.y;
-        }
-
         /* set grant space to children */
         for (auto &o : children) {
             auto di = datamap.find(o.get());
             if (di == datamap.end()) continue;
-            GridData &grid_data = di->second;
+            auto &d = di->second;
             vec3 child_size(0);
-            for (size_t i = 0; i < grid_data.width; i++) {
-                for (size_t j = 0; j < grid_data.height; j++) {
-                    size_t idx = (grid_data.top + j) * cols_count + grid_data.left + i;
-                    child_size += vec3(sizes[idx].size, 0);
+            for (size_t i = 0; i < d.width; i++) {
+                for (size_t j = 0; j < d.height; j++) {
+                    child_size += vec3(rect(d.top + j, d.left + i).size, 0);
                 }
             }
-            if (grid_data.width > 1) child_size.y /= grid_data.width;
-            if (grid_data.height > 1) child_size.x /= grid_data.height;
-            size_t idx = grid_data.top * cols_count + grid_data.left;
+            if (d.width > 1) child_size.y /= d.width;
+            if (d.height > 1) child_size.x /= d.height;
+            size_t idx = d.top * cols_count + d.left;
             o->grant_size(child_size);
         }
     }
@@ -1121,14 +1158,38 @@ struct Grid : Container
     {
         if (valid) return;
 
+        /* gather column positions */
+        float x = 0;
+        std::vector<float> col_pos(cols_count);
+        for (size_t i = 0; i < cols_count; i++) {
+            float col_width = 0;
+            for (size_t j = 0; j < rows_count; j++) {
+                col_width = std::max(col_width,rect(j,i).size.x);
+            }
+            col_pos[i] = x;
+            x += col_width;
+        }
+
+        /* gather row positions */
+        float y = 0;
+        std::vector<float> row_pos(rows_count);
+        for (size_t j = 0; j < rows_count; j++) {
+            float row_height = 0;
+            for (size_t i = 0; i < cols_count; i++) {
+                row_height = std::max(row_height,rect(j,i).size.y);
+            }
+            row_pos[j] = y;
+            y += row_height;
+        }
+
         /* set positions for children */
         for (auto &o : children) {
             auto di = datamap.find(o.get());
             if (di != datamap.end()) {
-                GridData &grid_data = di->second;
-                size_t idx = grid_data.top * cols_count + grid_data.left;
-                o->set_position(position + vec3(sizes[idx].pos, 0) -
-                    assigned_size/2.0f + o->get_assigned_size()/2.0f);
+                auto &d = di->second;
+                vec3 grid_pos = vec3(col_pos[d.left], row_pos[d.top], 0);
+                vec3 origin = -assigned_size/2.0f + o->get_assigned_size()/2.0f;
+                o->set_position(position + grid_pos + origin);
             }
         }
 
@@ -1808,6 +1869,13 @@ struct ChartAxis : Visible
         }
     }
 
+    virtual void init(Canvas *c)
+    {
+        if (!line_path) {
+            line_path = c->new_path(vec2(0), vec2(0));
+        }
+    }
+
     virtual void layout(Canvas *c)
     {
         if (valid) return;
@@ -1838,11 +1906,7 @@ struct ChartAxis : Visible
         vec3 bz = vec3(padding[0] + border[0] + margin[0], padding[1] + border[1] + margin[1], 0);
         vec3 tz = bz + vec3(left_space, top_space, 0);
 
-        if (!line_path) {
-            line_path = c->new_path(vec2(0), vec2(0));
-        } else {
-            line_path->clear();
-        }
+        line_path->clear();
         line_path->pos = position;
         line_path->set_offset({0, 0});
         line_path->set_size(size_remaining);
@@ -1892,35 +1956,26 @@ struct ChartAxis : Visible
     }
 };
 
-struct Chart : Visible
+struct ChartGrid : Visible
 {
+    float left_space;
+    float right_space;
+    float top_space;
+    float bottom_space;
     color grid_color;
-    color line_color;
-    color point_color;
-    float point_size;
-    float axis_left_space;
-    float axis_right_space;
-    float axis_top_space;
-    float axis_bottom_space;
-    bool interpolate;
 
     std::shared_ptr<ChartData> data;
 
-    Rectangle *rect;
-    Path *line_path;
     Path *grid_path;
-    std::vector<Circle*> circles;
-    ChartAxis left_axis;
-    ChartAxis bottom_axis;
 
-    Chart() :
-        Visible("Chart"),
-        rect(nullptr),
-        line_path(nullptr),
-        grid_path(nullptr),
-        circles(),
-        left_axis(),
-        bottom_axis()
+    ChartGrid() :
+        Visible("ChartGrid"),
+        left_space(0),
+        right_space(0),
+        top_space(0),
+        bottom_space(0),
+        grid_color(),
+        grid_path(nullptr)
     {
         load_properties();
     }
@@ -1929,73 +1984,34 @@ struct Chart : Visible
     {
         Visible::load_properties();
         Defaults *d = get_defaults();
-        set_grid_color(d->get_color(class_name, "grid-color", color(1,1,1,1)));
-        set_line_color(d->get_color(class_name, "line-color", color(1,1,1,1)));
-        set_point_color(d->get_color(class_name, "point-color", color(1,1,1,1)));
-        set_point_size(d->get_float(class_name, "point-size", 1));
-        set_axis_left_space(d->get_float(class_name, "axis-left-space", 60.0f));
-        set_axis_right_space(d->get_float(class_name, "axis-right-space", 10.0f));
-        set_axis_top_space(d->get_float(class_name, "axis-top-space", 0.0f));
-        set_axis_bottom_space(d->get_float(class_name, "axis-bottom-space", 30.0f));
-        set_interpolate(d->get_boolean(class_name, "interpolate", 1));
     }
 
     virtual void set_data(std::shared_ptr<ChartData> data) { this->data = data; }
 
+    virtual void set_left_space(float v) { left_space = v; invalidate(); }
+    virtual void set_right_space(float v) { right_space = v; invalidate(); }
+    virtual void set_top_space(float v) { top_space = v; invalidate(); }
+    virtual void set_bottom_space(float v) { bottom_space = v; invalidate(); }
     virtual void set_grid_color(color c) { grid_color = c; invalidate(); }
-    virtual void set_line_color(color c) { line_color = c; invalidate(); }
-    virtual void set_point_color(color c) { point_color = c; invalidate(); }
-    virtual void set_point_size(float s) { point_size = s; invalidate(); }
-    virtual void set_axis_left_space(float v) { axis_left_space = v; invalidate(); }
-    virtual void set_axis_right_space(float v) { axis_right_space = v; invalidate(); }
-    virtual void set_axis_top_space(float v) { axis_top_space = v; invalidate(); }
-    virtual void set_axis_bottom_space(float v) { axis_bottom_space = v; invalidate(); }
-    virtual void set_interpolate(bool b) { interpolate = b; invalidate(); }
 
+    virtual float get_left_space() { return left_space; }
+    virtual float get_right_space() { return right_space; }
+    virtual float get_top_space() { return top_space; }
+    virtual float get_bottom_space() { return bottom_space; }
     virtual color get_grid_color() { return grid_color; }
-    virtual color get_line_color() { return line_color; }
-    virtual color get_point_color() { return point_color; }
-    virtual float get_point_size() { return point_size; }
-    virtual float get_axis_left_space() { return axis_left_space; }
-    virtual float get_axis_right_space() { return axis_right_space; }
-    virtual float get_axis_top_space() { return axis_top_space; }
-    virtual float get_axis_bottom_space() { return axis_bottom_space; }
-    virtual bool get_interpolate() { return interpolate; }
-
-    virtual Sizing calc_size()
-    {
-        Sizing s = {
-            get_minimum_size(),
-            get_preferred_size()
-        };
-        if (debug) {
-            Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n",
-                __PRETTY_FUNCTION__,
-                s.minimum.x, s.minimum.y,
-                s.preferred.x, s.preferred.y);
-        }
-        return s;
-    }
 
     virtual void init(Canvas *c)
     {
-        if (!rect) {
-            rect = c->new_rounded_rectangle(vec2(0), vec2(0), 0.0f);
+        if (!grid_path) {
+            grid_path = c->new_path(vec2(0), vec2(0));
         }
     }
 
     virtual void layout(Canvas *c)
     {
-        if (valid) return;
-
-        Brush none_brush{BrushNone, {}, {} };
-        Brush fill_brush{BrushSolid, {}, { fill_color }};
-        Brush stroke_brush{BrushSolid, {}, { stroke_color }};
-        Brush line_brush{BrushSolid, {}, { line_color }};
-        Brush point_brush{BrushSolid, {}, { point_color }};
         Brush grid_brush{BrushSolid, {}, { grid_color }};
 
-        vec3 axis_space(axis_left_space + axis_right_space, axis_top_space + axis_bottom_space, 0);
+        vec3 axis_space(left_space + right_space, top_space + bottom_space, 0);
 
         vec3 size_remaining = assigned_size;
         vec3 half_size = size_remaining / 2.0f;
@@ -2003,58 +2019,9 @@ struct Chart : Visible
         vec3 az = size_remaining - p() - b() - m();
         vec3 sz = az - axis_space;
         vec3 bz = vec3(padding[0] + border[0] + margin[0], padding[1] + border[1] + margin[1], 0);
-        vec3 tz = bz + vec3(axis_left_space, axis_top_space, 0);
+        vec3 tz = bz + vec3(left_space, top_space, 0);
 
-        bottom_axis.set_data(data);
-        bottom_axis.grant_size(assigned_size);
-        bottom_axis.set_position(get_position());
-        bottom_axis.set_padding(get_padding());
-        bottom_axis.set_border(get_border());
-        bottom_axis.set_margin(get_margin());
-        bottom_axis.set_precision(0);
-        bottom_axis.set_location(bottom);
-        bottom_axis.set_left_space(get_axis_left_space());
-        bottom_axis.set_right_space(get_axis_right_space());
-        bottom_axis.set_top_space(get_axis_top_space());
-        bottom_axis.set_bottom_space(get_axis_bottom_space());
-        bottom_axis.calc_scale(-1, font_size * 1.5f, size_remaining.x);
-        bottom_axis.layout(c);
-
-        left_axis.set_data(data);
-        left_axis.grant_size(assigned_size);
-        left_axis.set_position(get_position());
-        left_axis.set_padding(get_padding());
-        left_axis.set_border(get_border());
-        left_axis.set_margin(get_margin());
-        left_axis.set_precision(1);
-        left_axis.set_location(left);
-        left_axis.set_left_space(get_axis_left_space());
-        left_axis.set_right_space(get_axis_right_space());
-        left_axis.set_top_space(get_axis_top_space());
-        left_axis.set_bottom_space(get_axis_bottom_space());
-        left_axis.calc_scale(0, font_size * 1.5f, size_remaining.y);
-        left_axis.layout(c);
-
-        float scale_min = left_axis.scale_min;
-        float scale_max = left_axis.scale_max;
-        float scale_range = left_axis.scale_range;
-
-        size_t n = data->num_rows();
-
-        rect->pos = position;
-        rect->set_origin(half_size);
-        rect->set_halfsize(half_size);
-        rect->set_radius(border_radius);
-        rect->set_visible(visible);
-        rect->set_fill_brush(fill_brush);
-        rect->set_stroke_brush(stroke_brush);
-        rect->set_stroke_width(border[0]);
-
-        if (!grid_path) {
-            grid_path = c->new_path(vec2(0), vec2(0));
-        } else {
-            grid_path->clear();
-        }
+        grid_path->clear();
         grid_path->pos = position;
         grid_path->new_contour();
         grid_path->new_line({tz.x       ,tz.y       },{tz.x + sz.x,tz.y       });
@@ -2066,12 +2033,99 @@ struct Chart : Visible
         grid_path->set_fill_brush(grid_brush);
         grid_path->set_stroke_brush(grid_brush);
         grid_path->set_stroke_width(border[0]);
+    }
+};
 
+struct ChartPlot : Visible
+{
+    float left_space;
+    float right_space;
+    float top_space;
+    float bottom_space;
+    color line_color;
+    color point_color;
+    float point_size;
+    bool interpolate;
+
+    std::shared_ptr<ChartData> data;
+    ChartAxis *axis;
+
+    Path *line_path;
+    std::vector<Circle*> circles;
+
+    ChartPlot() :
+        Visible("ChartPlot"),
+        line_path(nullptr),
+        left_space(0),
+        right_space(0),
+        top_space(0),
+        bottom_space(0),
+        line_color(),
+        point_color(),
+        point_size(0),
+        interpolate(false),
+        circles()
+    {
+        load_properties();
+    }
+
+    virtual void load_properties()
+    {
+        Visible::load_properties();
+        Defaults *d = get_defaults();
+    }
+
+    virtual void set_data(std::shared_ptr<ChartData> data) { this->data = data; }
+    virtual void set_axis(ChartAxis *axis) { this->axis = axis; }
+
+    virtual void set_left_space(float v) { left_space = v; invalidate(); }
+    virtual void set_right_space(float v) { right_space = v; invalidate(); }
+    virtual void set_top_space(float v) { top_space = v; invalidate(); }
+    virtual void set_bottom_space(float v) { bottom_space = v; invalidate(); }
+    virtual void set_line_color(color c) { line_color = c; invalidate(); }
+    virtual void set_point_color(color c) { point_color = c; invalidate(); }
+    virtual void set_point_size(float s) { point_size = s; invalidate(); }
+    virtual void set_interpolate(bool b) { interpolate = b; invalidate(); }
+
+    virtual float get_left_space() { return left_space; }
+    virtual float get_right_space() { return right_space; }
+    virtual float get_top_space() { return top_space; }
+    virtual float get_bottom_space() { return bottom_space; }
+    virtual color get_line_color() { return line_color; }
+    virtual color get_point_color() { return point_color; }
+    virtual float get_point_size() { return point_size; }
+    virtual bool get_interpolate() { return interpolate; }
+
+    virtual void init(Canvas *c)
+    {
         if (!line_path) {
             line_path = c->new_path(vec2(0), vec2(0));
-        } else {
-            line_path->clear();
         }
+    }
+
+    virtual void layout(Canvas *c)
+    {
+        Brush none_brush{BrushNone, {}, {} };
+        Brush line_brush{BrushSolid, {}, { line_color }};
+        Brush point_brush{BrushSolid, {}, { point_color }};
+
+        vec3 axis_space(left_space + right_space, top_space + bottom_space, 0);
+
+        vec3 size_remaining = assigned_size;
+        vec3 half_size = size_remaining / 2.0f;
+
+        vec3 az = size_remaining - p() - b() - m();
+        vec3 sz = az - axis_space;
+        vec3 bz = vec3(padding[0] + border[0] + margin[0], padding[1] + border[1] + margin[1], 0);
+        vec3 tz = bz + vec3(left_space, top_space, 0);
+
+        float scale_min = axis->scale_min;
+        float scale_max = axis->scale_max;
+        float scale_range = axis->scale_range;
+
+        size_t n = data->num_rows();
+
+        line_path->clear();
         if (interpolate)
         {
             line_path->new_contour();
@@ -2141,6 +2195,202 @@ struct Chart : Visible
             for (size_t j = n; j < circles.size(); j++) {
                 circles[j]->set_visible(false);
             }
+        }
+    }
+};
+
+struct Chart : Visible
+{
+    float left_space;
+    float right_space;
+    float top_space;
+    float bottom_space;
+    color grid_color;
+    color tick_color;
+    color line_color;
+    color point_color;
+    float point_size;
+    bool interpolate;
+
+    std::shared_ptr<ChartData> data;
+
+    Rectangle *rect;
+    Path *line_path;
+    std::vector<Circle*> circles;
+
+    ChartAxis left_axis;
+    ChartAxis bottom_axis;
+    ChartGrid grid;
+    std::vector<std::unique_ptr<ChartPlot>> plots;
+
+    Chart() :
+        Visible("Chart"),
+        rect(nullptr),
+        line_path(nullptr),
+        circles(),
+        left_axis(),
+        bottom_axis()
+    {
+        load_properties();
+    }
+
+    virtual void load_properties()
+    {
+        Visible::load_properties();
+        Defaults *d = get_defaults();
+        set_left_space(d->get_float(class_name, "axis-left-space", 60.0f));
+        set_right_space(d->get_float(class_name, "axis-right-space", 10.0f));
+        set_top_space(d->get_float(class_name, "axis-top-space", 0.0f));
+        set_bottom_space(d->get_float(class_name, "axis-bottom-space", 30.0f));
+        set_grid_color(d->get_color(class_name, "grid-color", color(1,1,1,1)));
+        set_tick_color(d->get_color(class_name, "tick-color", color(1,1,1,1)));
+        set_line_color(d->get_color(class_name, "line-color", color(1,1,1,1)));
+        set_point_color(d->get_color(class_name, "point-color", color(1,1,1,1)));
+        set_point_size(d->get_float(class_name, "point-size", 1));
+        set_interpolate(d->get_boolean(class_name, "interpolate", true));
+    }
+
+    virtual void set_data(std::shared_ptr<ChartData> data) { this->data = data; }
+
+    virtual void set_left_space(float v) { left_space = v; invalidate(); }
+    virtual void set_right_space(float v) { right_space = v; invalidate(); }
+    virtual void set_top_space(float v) { top_space = v; invalidate(); }
+    virtual void set_bottom_space(float v) { bottom_space = v; invalidate(); }
+    virtual void set_grid_color(color c) { grid_color = c; invalidate(); }
+    virtual void set_tick_color(color c) { tick_color = c; invalidate(); }
+    virtual void set_line_color(color c) { line_color = c; invalidate(); }
+    virtual void set_point_color(color c) { point_color = c; invalidate(); }
+    virtual void set_point_size(float s) { point_size = s; invalidate(); }
+    virtual void set_interpolate(bool b) { interpolate = b; invalidate(); }
+
+    virtual float get_left_space() { return left_space; }
+    virtual float get_right_space() { return right_space; }
+    virtual float get_top_space() { return top_space; }
+    virtual float get_bottom_space() { return bottom_space; }
+    virtual color get_grid_color() { return grid_color; }
+    virtual color get_tick_color() { return tick_color; }
+    virtual color get_line_color() { return line_color; }
+    virtual color get_point_color() { return point_color; }
+    virtual float get_point_size() { return point_size; }
+    virtual bool get_interpolate() { return interpolate; }
+
+    virtual Sizing calc_size()
+    {
+        Sizing s = {
+            get_minimum_size(),
+            get_preferred_size()
+        };
+        if (debug) {
+            Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n",
+                __PRETTY_FUNCTION__,
+                s.minimum.x, s.minimum.y,
+                s.preferred.x, s.preferred.y);
+        }
+        return s;
+    }
+
+    virtual void init(Canvas *c)
+    {
+        if (!rect) {
+            rect = c->new_rounded_rectangle(vec2(0), vec2(0), 0.0f);
+        }
+        if (!line_path) {
+            line_path = c->new_path(vec2(0), vec2(0));
+        }
+        if (plots.size() == 0) {
+            plots.push_back(std::make_unique<ChartPlot>());
+        }
+    }
+
+    virtual void layout(Canvas *c)
+    {
+        if (valid) return;
+
+        Brush fill_brush{BrushSolid, {}, { fill_color }};
+        Brush stroke_brush{BrushSolid, {}, { stroke_color }};
+
+        vec3 axis_space(left_space + right_space, top_space + bottom_space, 0);
+
+        vec3 size_remaining = assigned_size;
+        vec3 half_size = size_remaining / 2.0f;
+
+        rect->pos = position;
+        rect->set_origin(half_size);
+        rect->set_halfsize(half_size);
+        rect->set_radius(border_radius);
+        rect->set_visible(visible);
+        rect->set_fill_brush(fill_brush);
+        rect->set_stroke_brush(stroke_brush);
+        rect->set_stroke_width(border[0]);
+
+        bottom_axis.set_data(data);
+        bottom_axis.grant_size(assigned_size);
+        bottom_axis.set_position(get_position());
+        bottom_axis.set_padding(get_padding());
+        bottom_axis.set_border(get_border());
+        bottom_axis.set_margin(get_margin());
+        bottom_axis.set_precision(0);
+        bottom_axis.set_location(bottom);
+        bottom_axis.set_tick_color(get_tick_color());
+        bottom_axis.set_left_space(get_left_space());
+        bottom_axis.set_right_space(get_right_space());
+        bottom_axis.set_top_space(get_top_space());
+        bottom_axis.set_bottom_space(get_bottom_space());
+        bottom_axis.calc_scale(-1, font_size * 1.5f, size_remaining.x);
+        bottom_axis.init(c);
+        bottom_axis.layout(c);
+
+        left_axis.set_data(data);
+        left_axis.grant_size(assigned_size);
+        left_axis.set_position(get_position());
+        left_axis.set_padding(get_padding());
+        left_axis.set_border(get_border());
+        left_axis.set_margin(get_margin());
+        left_axis.set_precision(1);
+        left_axis.set_location(left);
+        left_axis.set_tick_color(get_tick_color());
+        left_axis.set_left_space(get_left_space());
+        left_axis.set_right_space(get_right_space());
+        left_axis.set_top_space(get_top_space());
+        left_axis.set_bottom_space(get_bottom_space());
+        left_axis.calc_scale(0, font_size * 1.5f, size_remaining.y);
+        left_axis.init(c);
+        left_axis.layout(c);
+
+        grid.set_data(data);
+        grid.grant_size(assigned_size);
+        grid.set_position(get_position());
+        grid.set_padding(get_padding());
+        grid.set_border(get_border());
+        grid.set_margin(get_margin());
+        grid.set_position(get_position());
+        grid.set_left_space(get_left_space());
+        grid.set_right_space(get_right_space());
+        grid.set_top_space(get_top_space());
+        grid.set_bottom_space(get_bottom_space());
+        grid.set_grid_color(get_grid_color());
+        grid.init(c);
+        grid.layout(c);
+
+        for (auto &p : plots) {
+            p->grant_size(assigned_size);
+            p->set_position(get_position());
+            p->set_padding(get_padding());
+            p->set_border(get_border());
+            p->set_margin(get_margin());
+            p->set_position(get_position());
+            p->set_left_space(get_left_space());
+            p->set_right_space(get_right_space());
+            p->set_top_space(get_top_space());
+            p->set_bottom_space(get_bottom_space());
+            p->set_line_color(get_line_color());
+            p->set_point_color(get_point_color());
+            p->set_point_size(get_point_size());
+            p->set_interpolate(get_interpolate());
+            p->set_data(data);
+            p->set_axis(&left_axis);
+            p->init(c);
+            p->layout(c);
         }
 
         valid = true;

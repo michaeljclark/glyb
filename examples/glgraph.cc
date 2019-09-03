@@ -159,10 +159,10 @@ static void create_layout(ui9::Root &root)
     frame1->set_position(vec3(-350,0,0));
     root.add_child(frame1);
 
-    auto grid = new ui9::Grid();
-    grid->set_rows_homogeneous(false);
-    grid->set_cols_homogeneous(false);
-    frame1->add_child(grid);
+    auto grid1 = new ui9::Grid();
+    grid1->set_rows_homogeneous(false);
+    grid1->set_cols_homogeneous(false);
+    frame1->add_child(grid1);
 
     const char* label_names[] = {
         "Damping",
@@ -177,7 +177,7 @@ static void create_layout(ui9::Root &root)
         auto l1 = new ui9::Label();
         l1->set_text(label_names[i]);
         l1->set_preferred_size({200,50,0});
-        grid->add_child(l1, 0, i);
+        grid1->add_child(l1, 0, i);
 
         auto s1 = new ui9::Slider();
         s1->set_value((1.0f/6.0f) * (i+1));
@@ -187,59 +187,72 @@ static void create_layout(ui9::Root &root)
         } else {
             s1->set_preferred_size({300,50,0});
         }
-        grid->add_child(s1, 1, i);
+        grid1->add_child(s1, 1, i, 1, 1, { ui9::ratio, ui9::preferred }, {1,1});
 
         auto l2 = new ui9::Label();
         l2->set_text(std::to_string(s1->get_value()));
         l2->set_preferred_size({100,50,0});
-        grid->add_child(l2, 2, i);
+        grid1->add_child(l2, 2, i);
 
         s1->set_callback([=](float v) { l2->set_text(std::to_string(v)); });
     }
 
-    {
-        auto l1 = new ui9::Label();
-        l1->set_text("Switch");
-        l1->set_preferred_size({200,50,0});
-        grid->add_child(l1, 0, 5);
+    auto l1 = new ui9::Label();
+    l1->set_text("Switch");
+    l1->set_preferred_size({200,50,0});
+    grid1->add_child(l1, 0, 5);
 
-        auto s1 = new ui9::Switch();
-        s1->set_value(false);
-        grid->add_child(s1, 1, 5);
+    auto s1 = new ui9::Switch();
+    s1->set_value(false);
+    grid1->add_child(s1, 1, 5, 1, 1, { ui9::ratio, ui9::preferred }, {1,1});
 
-        auto l2 = new ui9::Label();
-        l2->set_text(s1->get_value() ? "On" : "Off");
-        l2->set_preferred_size({100,50,0});
-        grid->add_child(l2, 2, 5);
+    auto l2 = new ui9::Label();
+    l2->set_text(s1->get_value() ? "On" : "Off");
+    l2->set_preferred_size({100,50,0});
+    grid1->add_child(l2, 2, 5);
 
-        s1->set_callback([=](float v) { l2->set_text(s1->get_value() ? "On" : "Off"); });
-    }
+    s1->set_callback([=](float v) { l2->set_text(s1->get_value() ? "On" : "Off"); });
 
     auto l3 = new ui9::Label();
     l3->set_text("V1");
     l3->set_preferred_size({50,50,0});
-    grid->add_child(l3, 3, 0, 1, 2);
+    grid1->add_child(l3, 3, 0, 1, 2);
 
     auto l4 = new ui9::Label();
     l4->set_text("V2");
     l4->set_preferred_size({50,50,0});
-    grid->add_child(l4, 3, 2, 1, 3);
+    grid1->add_child(l4, 3, 2, 1, 3);
+
 
     auto frame2 = new ui9::Frame();
     frame2->set_text("Chart");
     frame2->set_position(vec3(350,0,0));
     root.add_child(frame2);
 
+    auto grid2 = new ui9::Grid();
+    grid2->set_rows_homogeneous(false);
+    grid2->set_cols_homogeneous(false);
+    frame2->add_child(grid2);
+
     auto chart1 = new ui9::Chart();
-    chart1->set_preferred_size({500,250,0});
-    //std::vector<float> data = {0.00f, 0.06f, 0.25f, 0.56f, 1.00f, 1.56f,
-    //                           2.25f, 3.06f, 4.00f, 5.06f, 6.25f, 7.49f});
-    //std::vector<float> data = {0.00f, 0.26f, 0.35f, 0.76f, 1.10f, 1.96f,
-    //                           2.35f, 3.46f, 4.10f, 5.56f, 6.35f, 7.79f});
+    chart1->set_preferred_size({250,125,0});
     std::vector<float> data = {0.00f, 3.26f, 0.35f, 3.76f, 1.10f, 4.96f,
                                2.35f, 7.46f, 4.10f, 9.56f, 6.35f, 10.79f};
     chart1->set_data(std::make_shared<ui9::ChartDataSimple>(data));
-    frame2->add_child(chart1);
+    grid2->add_child(chart1, 0, 0, 2, 1, { ui9::ratio, ui9::ratio }, {1,1});
+
+    auto l5 = new ui9::Label();
+    l5->set_text("Interpolate");
+    l5->set_preferred_size({200,50,0});
+    grid2->add_child(l5, 0, 1);
+
+    auto s2 = new ui9::Switch();
+    s2->set_value(false);
+    grid2->add_child(s2, 1, 1);
+
+    /* we need property wiring */
+    s2->set_callback([=](bool v) { chart1->set_interpolate(v); });
+    s2->set_value(chart1->get_interpolate());
 }
 
 static void populate_canvas()
