@@ -377,11 +377,13 @@ struct Visible
     bool can_focus;
     bool can_move;
     bool focused;
+    Sizing last_sizing;
     vec3 position;
     vec3 assigned_size;
     vec3 minimum_size;
     vec3 maximum_size;
     vec3 preferred_size;
+    vec3 current_size;
     vec4 padding;
     vec4 border;
     vec4 margin;
@@ -406,7 +408,20 @@ struct Visible
         can_focus(false),
         can_move(false),
         focused(false),
+        last_sizing(),
+        position(0),
+        assigned_size(0),
+        minimum_size(0),
+        maximum_size(0),
+        preferred_size(0),
+        current_size(0),
+        padding(0),
+        border(0),
+        margin(0),
         border_radius(0),
+        fill_color(1,1,1,1),
+        stroke_color(1,1,1,1),
+        text_color(1,1,1,1),
         font_size(0),
         text_leading(0)
     {}
@@ -547,10 +562,21 @@ struct Visible
     virtual vec3 get_minimum_size() { return minimum_size; }
     virtual vec3 get_maximum_size() { return maximum_size; }
     virtual vec3 get_preferred_size() { return preferred_size; }
+    virtual vec3 get_current_size() { return current_size; }
 
     virtual void set_minimum_size(vec3 v) { minimum_size = v; invalidate(); }
     virtual void set_maximum_size(vec3 v) { maximum_size = v; invalidate(); }
     virtual void set_preferred_size(vec3 v) { preferred_size = v; invalidate(); }
+
+    virtual void set_current_size(vec3 v)
+    {
+        current_size = vec3(
+            std::max(std::max(std::min(v.x,maximum_size.x),minimum_size.x),last_sizing.minimum.x),
+            std::max(std::max(std::min(v.y,maximum_size.y),minimum_size.y),last_sizing.minimum.y),
+            std::max(std::max(std::min(v.z,maximum_size.z),minimum_size.z),last_sizing.minimum.z)
+        );
+        invalidate();
+    }
 
     /*
      * get_default_size returns preferred size bounded by minimum and maximum
@@ -570,8 +596,10 @@ struct Visible
      */
     virtual Sizing calc_size()
     {
-        return Sizing{minimum_size, get_default_size()};
+        return (last_sizing = Sizing{minimum_size, get_default_size()});
     }
+
+    virtual Sizing get_last_sizing() { return last_sizing; }
 
     /*
      * grant_size assigned space, usually preferred size returned by calc_size.
@@ -652,15 +680,7 @@ struct Container : Visible
                        std::max(chp.y, hp.y),
                        std::max(chp.z, hp.z));
         }
-        return Sizing{ hm - lb, hp - lb };
-    }
-
-    virtual void grant_size(vec3 size)
-    {
-        /* set preferred sizes on all children */
-        for (size_t i = 0; i < children.size(); i++) {
-            children[i]->grant_size(sizes[i].preferred);
-        }
+        return (last_sizing = Sizing{ hm - lb, hp - lb });
     }
 
     virtual void add_child(Visible *c)
@@ -678,13 +698,25 @@ struct Root : Container
         load_properties();
     }
 
+    virtual void grant_size(vec3 size)
+    {
+        for (size_t i = 0; i < children.size(); i++) {
+            vec3 current_size = children[i]->get_current_size();
+            if (current_size.x == 0 && current_size.y == 0) {
+                current_size = sizes[i].preferred;
+                children[i]->set_current_size(current_size);
+            }
+            children[i]->grant_size(current_size);
+        }
+    }
+
     virtual void layout(Canvas *c)
     {
         if (valid) {
             return;
         }
         Container::init(c);
-        Container::grant_size(Container::calc_size().preferred);
+        grant_size(Container::calc_size().preferred);
         Container::layout(c);
         valid = true;
     }
@@ -759,7 +791,7 @@ struct Frame : Container
                 s.minimum.x, s.minimum.y,
                 s.preferred.x, s.preferred.y);
         }
-        return s;
+        return (last_sizing = s);
     }
 
     virtual void grant_size(vec3 size)
@@ -837,6 +869,7 @@ struct Frame : Container
         vec3 size_remaining = assigned_size - m();
         vec3 half_size = size_remaining / 2.0f;
         vec3 frame_dist = me->pos - vec3(rect->pos,0);
+
         bool in_title = frame_dist.x >= -half_size.x && frame_dist.x <= half_size.x &&
                         frame_dist.y >= -half_size.y && frame_dist.y <= half_size.y;
         bool in_corner = fabsf(frame_dist.x) < half_size.x + click_radius &&
@@ -859,13 +892,14 @@ struct Frame : Container
             set_position(me->pos - delta);
         }
         if (_in_corner) {
+            /* todo - scale relative to opposite corner versus center */
             vec3 d = me->pos - delta - vec3(rect->pos,0);
             d *= vec3(1.0f - std::signbit(frame_dist.x) * 2.0f,
                       1.0f - std::signbit(frame_dist.y) * 2.0f, 1);
             if (std::signbit(frame_dist.x) == std::signbit(delta.x) &&
                 std::signbit(frame_dist.y) == std::signbit(delta.y))
             {
-                set_preferred_size(orig_size + d*2.0f);
+                set_current_size(orig_size + d*2.0f);
             }
         }
 
@@ -878,7 +912,7 @@ struct Frame : Container
     }
 };
 
-enum size_hint_type { preferred, minimum, fixed, ratio };
+enum size_hint_type { dynamic, minimum, preferred, fixed, ratio };
 
 struct grid_data
 {
@@ -892,42 +926,63 @@ struct grid_data
     Sizing sz;
     Rect rect;
 
-    vec2 size()
+    Sizing sizing()
     {
-        float x = 0.0f, y = 0.0f;
+        float min_x = 0.0f, min_y = 0.0f, pref_x = 0.0f, pref_y = 0.0f;
+
         switch (hint.type.x) {
-        case preferred: x = sz.preferred.x; break;
-        case minimum:   x = sz.minimum.x; break;
-        case fixed:     x = hint.value.x; break;
-        case ratio:     x = sz.preferred.x; break;
+        case dynamic:   min_x = sz.minimum.x;    break;
+        case fixed:     min_x = hint.value.x;    break;
+        case ratio:     min_x = sz.minimum.x;    break;
         default: break;
         }
         switch (hint.type.y) {
-        case preferred: y = sz.preferred.y; break;
-        case minimum:   y = sz.minimum.y; break;
-        case fixed:     y = hint.value.y; break;
-        case ratio:     y = sz.preferred.y; break;
+        case dynamic:   min_y = sz.minimum.y;    break;
+        case fixed:     min_y = hint.value.y;    break;
+        case ratio:     min_y = sz.minimum.y;    break;
         default: break;
         }
-        return vec2(x,y);
+
+        switch (hint.type.x) {
+        case dynamic:   pref_x = sz.preferred.x; break;
+        case fixed:     pref_x = hint.value.x;   break;
+        case ratio:     pref_x = sz.preferred.x; break;
+        default: break;
+        }
+        switch (hint.type.y) {
+        case dynamic:   pref_y = sz.preferred.y; break;
+        case fixed:     pref_y = hint.value.y;   break;
+        case ratio:     pref_y = sz.preferred.y; break;
+        default: break;
+        }
+
+        return Sizing{vec3(min_x,min_y,0),vec3(pref_x,pref_y,0)};
     }
+};
+
+struct size_pair
+{
+    float minimum;
+    float preferred;
 };
 
 struct Grid : Container
 {
+    static const bool debug = false;
+
     size_t rows_count;
     size_t cols_count;
     bool rows_homogeneous;
     bool cols_homogeneous;
-    bool rows_expand;
-    bool cols_expand;
 
     std::map<Visible*,grid_data> datamap;
-    std::vector<float> col_widths;
-    std::vector<float> row_heights;
-    float max_col_width;
-    float max_row_height;
-    std::vector<Rect> sizes;
+    std::vector<size_pair> col_widths;
+    std::vector<size_pair> row_heights;
+    size_pair max_col_width;
+    size_pair max_row_height;
+    size_pair sum_col_width;
+    size_pair sum_row_height;
+    std::vector<Sizing> sizes;
     std::vector<grid_data*> datas;
     Sizing s;
 
@@ -935,8 +990,10 @@ struct Grid : Container
         Container("Grid"),
         col_widths(),
         row_heights(),
-        max_col_width(0),
-        max_row_height(0),
+        max_col_width{0},
+        max_row_height{0},
+        sum_col_width{0},
+        sum_row_height{0},
         sizes(),
         s{vec3(0), vec3(0)}
     {
@@ -962,13 +1019,13 @@ struct Grid : Container
 
     void add_child(Visible *c, size_t left, size_t top,
         size_t width = 1, size_t height = 1,
-        ivec2 hint = ivec2(preferred), vec2 value = vec2(0.0f))
+        ivec2 hint = ivec2(dynamic), vec2 value = vec2(0.0f))
     {
         Container::add_child(c);
         datamap[c] = { left, top, width, height, { hint, value } };
     }
 
-    Rect& rect(const size_t row, const size_t col)
+    Sizing& sizing(const size_t row, const size_t col)
     {
         return sizes[row * cols_count + col];
     }
@@ -1006,44 +1063,94 @@ struct Grid : Container
             auto di = datamap.find(o.get());
             if (di == datamap.end()) continue;
             auto &d = di->second;
-            vec2 sz = d.size();
+            vec3 min = d.sizing().minimum;
+            vec3 pref = d.sizing().preferred;
             for (size_t i = 0; i < d.width; i++) {
                 for (size_t j = 0; j < d.height; j++) {
-                    rect(d.top + j, d.left + i).size =
-                        vec2( sz.x / d.width, sz.y / d.height );
+                    sizing(d.top + j, d.left + i).minimum = vec3( min.x / d.width, min.y / d.height, 0 );
+                    sizing(d.top + j, d.left + i).preferred = vec3( pref.x / d.width, pref.y / d.height, 0 );
                     data(d.top + j, d.left + i) = &d;
                 }
             }
         }
 
         /* find max_col_width and max width for each column */
-        max_col_width = 0;
+        max_col_width = { 0, 0 };
+        sum_col_width = { 0, 0 };
         for (size_t i = 0; i < cols_count; i++) {
             for (size_t j = 0; j < rows_count; j++) {
-                col_widths[i] = std::max(col_widths[i], rect(j,i).size.x);
+                col_widths[i].minimum = std::max(col_widths[i].minimum, sizing(j,i).minimum.x);
+                col_widths[i].preferred = std::max(col_widths[i].preferred, sizing(j,i).preferred.x);
             }
-            max_col_width = std::max(col_widths[i], max_col_width);
+            sum_col_width.minimum += col_widths[i].minimum;
+            sum_col_width.preferred += col_widths[i].preferred;
+            max_col_width.minimum = std::max(col_widths[i].minimum, max_col_width.minimum);
+            max_col_width.preferred = std::max(col_widths[i].preferred, max_col_width.preferred);
         }
 
         /* find max_row_height and max height for each row */
-        max_row_height = 0;
+        max_row_height = { 0, 0 };
+        sum_row_height = { 0, 0 };
         for (size_t j = 0; j < rows_count; j++) {
             for (size_t i = 0; i < cols_count; i++) {
-                row_heights[j] = std::max(row_heights[j], rect(j,i).size.y);
+                row_heights[j].minimum = std::max(row_heights[j].minimum, sizing(j,i).minimum.y);
+                row_heights[j].preferred = std::max(row_heights[j].preferred, sizing(j,i).preferred.y);
             }
-            max_row_height = std::max(row_heights[j], max_row_height);
+            sum_row_height.minimum += row_heights[j].minimum;
+            sum_row_height.preferred += row_heights[j].preferred;
+            max_row_height.minimum = std::max(row_heights[j].minimum, max_row_height.minimum);
+            max_row_height.preferred = std::max(row_heights[j].preferred, max_row_height.preferred);
         }
 
         /* calculate overall size */
         vec3 min(
-            is_cols_homogeneous() ? max_col_width * cols_count :
-                std::accumulate(col_widths.begin(), col_widths.end(), 0),
-            is_rows_homogenous() ? max_row_height * rows_count :
-                std::accumulate(row_heights.begin(), row_heights.end(), 0),
+            is_cols_homogeneous() ? max_col_width.minimum * cols_count : sum_col_width.minimum,
+            is_rows_homogenous() ? max_row_height.minimum * rows_count : sum_row_height.minimum,
+            0);
+        vec3 pref(
+            is_cols_homogeneous() ? max_col_width.preferred * cols_count : sum_col_width.preferred,
+            is_rows_homogenous() ? max_row_height.preferred * rows_count : sum_row_height.preferred,
             0);
 
+        /* output statistics */
+        if (debug) {
+            printf("grid_properties {\n");
+            printf("\tcols_homogeneous=%d\n", cols_homogeneous);
+            printf("\trows_homogeneous=%d\n", rows_homogeneous);
+            printf("}\n" "col_stats {\n");
+            printf("\tmax { minimum=%f, preferred=%f }\n",
+                max_col_width.minimum, max_col_width.preferred);
+            printf("\tsum { minimum=%f, preferred=%f }\n",
+                sum_row_height.minimum, sum_row_height.preferred);
+            printf("}\n" "row_stats {\n");
+            printf("\tmax { minimum=%f, preferred=%f }\n",
+                max_row_height.minimum, max_row_height.preferred);
+            printf("\tsum { minimum=%f, preferred=%f }\n",
+                sum_col_width.minimum, sum_col_width.preferred);
+            printf("}\n" "col_widths {\n");
+            for (size_t i = 0; i < cols_count; i++) {
+                printf("\t[%zu] = { minimum=%f, preferred=%f }\n",
+                    i, col_widths[i].minimum, col_widths[i].preferred);
+            }
+            printf("}\n" "row_heights {\n");
+            for (size_t j = 0; j < rows_count; j++) {
+                printf("\t[%zu] = { minimum=%f, preferred=%f }\n",
+                    j, row_heights[j].minimum, row_heights[j].preferred);
+            }
+            printf("}\n");
+            printf("sizes {\n");
+            for (size_t i = 0; i < cols_count; i++) {
+                for (size_t j = 0; j < rows_count; j++) {
+                    size_t idx = j * cols_count + i;
+                    vec2 min = sizes[idx].minimum, pref = sizes[idx].preferred;
+                    printf("\t[%zu][%zu] { minimum=(%f,%f) preferred=(%f,%f) }\n",
+                        i, j, min.x, min.y, pref.x, pref.y);
+                }
+            }
+            printf("}\n");
+        }
+
         /* return results */
-        vec3 pref = min;
         s = {
             vec3(std::max(min.x, get_minimum_size().x),
                  std::max(min.y, get_minimum_size().y),
@@ -1058,7 +1165,7 @@ struct Grid : Container
                 s.minimum.x, s.minimum.y,
                 s.preferred.x, s.preferred.y);
         }
-        return s;
+        return (last_sizing = s);
     }
 
     virtual void grant_size(vec3 size)
@@ -1067,70 +1174,91 @@ struct Grid : Container
 
         /*
          * if rows or columns are homogeneous, then all rows or columns are
-         * assigned the same size.
-         * if rows or columns are not homogeneous, then size is assigned as
-         * follows:
+         * assigned the same size. if rows or columns are not homogeneous,
+         * then size is assigned as follows:
          *
-         * 1). for all items, assign preferred, minimum or fixed size hint
-         * 2). for all items, assign remaining space to items using ratio
+         * 1). for all items, assign minimum
+         * 2). for all items, if space remaining, assign preferred/ratio
          */
 
-        /* set cell sizes horizontally */
-        for (size_t j = 0; j < rows_count; j++) {
-            for (size_t i = 0; i < cols_count; i++) {
-                rect(j,i).size.x = (int)((is_cols_homogeneous() ?
-                    max_col_width : col_widths[i]));
-            }
-        }
+        /* set column sizes horizontally */
+        for (size_t j = 0; j < rows_count; j++)
+        {
+            float total_assigned = 0, total_ratios = 0;
+            for (size_t i = 0; i < cols_count; i++)
+            {
+                float m = (int)((is_cols_homogeneous() ?
+                    max_col_width.minimum : col_widths[i].minimum));
+                float p = (int)((is_cols_homogeneous() ?
+                    max_col_width.preferred : col_widths[i].preferred));
 
-        /* expand cell sizes horizontally */
-        for (size_t j = 0; j < rows_count; j++) {
-            float total_width = 0;
-            float total_ratios = 0;
-            for (size_t i = 0; i < cols_count; i++) {
                 if (data(j,i) && data(j,i)->hint.type.x == ratio) {
                     total_ratios += data(j,i)->hint.value.x;
+                } else {
+                    total_ratios += std::max(p,m) / m;
                 }
-                total_width += rect(j,i).size.x;
+
+                total_assigned += m;
+                sizing(j,i).preferred.x = m;
             }
-            /* todo - affects items in same column that are not expanded */
-            float remaining = assigned_size.x - total_width;
-            for (size_t i = 0; i < cols_count; i++) {
+            float remaining = size.x - total_assigned;
+            for (size_t i = 0; i < cols_count; i++)
+            {
+                float m = (int)((is_cols_homogeneous() ?
+                    max_col_width.minimum : col_widths[i].minimum));
+                float p = (int)((is_cols_homogeneous() ?
+                    max_col_width.preferred : col_widths[i].preferred));
+
+                float r = 0.0f;
                 if (data(j,i) && data(j,i)->hint.type.x == ratio) {
-                    float ratio = data(j,i)->hint.value.x / total_ratios;
-                    rect(j,i).size.x += remaining * ratio;
+                    r = data(j,i)->hint.value.x;
+                } else {
+                    r = std::max(p,m) / m;
                 }
+
+                sizing(j,i).preferred.x += remaining * (r / total_ratios);
             }
         }
 
-        /* set cell sizes vertically */
-        for (size_t j = 0; j < rows_count; j++) {
-            for (size_t i = 0; i < cols_count; i++) {
-                rect(j,i).size.y = (int)((is_rows_homogenous() ?
-                    max_row_height : row_heights[j]));
-            }
-        }
+        /* set row sizes vertically */
+        for (size_t i = 0; i < cols_count; i++)
+        {
+            float total_assigned = 0, total_ratios = 0;
+            for (size_t j = 0; j < rows_count; j++)
+            {
+                float m = (int)((is_rows_homogenous() ?
+                    max_row_height.minimum : row_heights[j].minimum));
+                float preferred = (int)((is_rows_homogenous() ?
+                    max_row_height.preferred : row_heights[j].preferred));
 
-        /* expand cell sizes vertically */
-        for (size_t i = 0; i < cols_count; i++) {
-            float total_height = 0;
-            float total_ratios = 0;
-            for (size_t j = 0; j < rows_count; j++) {
                 if (data(j,i) && data(j,i)->hint.type.y == ratio) {
                     total_ratios += data(j,i)->hint.value.y;
+                } else {
+                    total_ratios += std::max(preferred,m) / m;
                 }
-                total_height += rect(j,i).size.y;
+
+                total_assigned += m;
+                sizing(j,i).preferred.y = m;
             }
-            /* todo - affects items in same row that are not expanded */
-            float remaining = assigned_size.y - total_height;
-            for (size_t j = 0; j < rows_count; j++) {
+            float remaining = size.y - total_assigned;
+            for (size_t j = 0; j < rows_count; j++)
+            {
+                float m = (int)((is_rows_homogenous() ?
+                    max_row_height.minimum : row_heights[j].minimum));
+                float p = (int)((is_rows_homogenous() ?
+                    max_row_height.preferred : row_heights[j].preferred));
+
+                float r = 0.0f;
                 if (data(j,i) && data(j,i)->hint.type.y == ratio) {
-                    float ratio = data(j,i)->hint.value.y / total_ratios;
-                    rect(j,i).size.y += remaining * ratio;
+                    r = data(j,i)->hint.value.y;
+                } else {
+                    r = std::max(p,m) / m;
                 }
+
+                sizing(j,i).preferred.y += remaining * (r / total_ratios);
             }
         }
-        
+
         /* set grant space to children */
         for (auto &o : children) {
             auto di = datamap.find(o.get());
@@ -1139,7 +1267,7 @@ struct Grid : Container
             vec3 child_size(0);
             for (size_t i = 0; i < d.width; i++) {
                 for (size_t j = 0; j < d.height; j++) {
-                    child_size += vec3(rect(d.top + j, d.left + i).size, 0);
+                    child_size += sizing(d.top + j, d.left + i).preferred;
                 }
             }
             if (d.width > 1) child_size.y /= d.width;
@@ -1164,7 +1292,7 @@ struct Grid : Container
         for (size_t i = 0; i < cols_count; i++) {
             float col_width = 0;
             for (size_t j = 0; j < rows_count; j++) {
-                col_width = std::max(col_width,rect(j,i).size.x);
+                col_width = std::max(col_width, sizing(j,i).preferred.x);
             }
             col_pos[i] = x;
             x += col_width;
@@ -1176,7 +1304,7 @@ struct Grid : Container
         for (size_t j = 0; j < rows_count; j++) {
             float row_height = 0;
             for (size_t i = 0; i < cols_count; i++) {
-                row_height = std::max(row_height,rect(j,i).size.y);
+                row_height = std::max(row_height, sizing(j,i).preferred.y);
             }
             row_pos[j] = y;
             y += row_height;
@@ -1230,9 +1358,9 @@ struct Label : Visible
         vec3 sz = p() + b() + m() + vec3(scale, 0);
 
         Sizing s = {
-            vec3(std::max(sz.x, get_minimum_size().x),
-                 std::max(sz.y, get_minimum_size().y),
-                 std::max(sz.z, get_minimum_size().z)),
+            vec3(std::max(sz.x, get_default_size().x),
+                 std::max(sz.y, get_default_size().y),
+                 std::max(sz.z, get_default_size().z)),
             vec3(std::max(sz.x, get_default_size().x),
                  std::max(sz.y, get_default_size().y),
                  std::max(sz.z, get_default_size().z))
@@ -1243,7 +1371,7 @@ struct Label : Visible
                 s.minimum.x, s.minimum.y,
                 s.preferred.x, s.preferred.y);
         }
-        return s;
+        return (last_sizing = s);
     }
 
     virtual void init(Canvas *c)
@@ -1335,7 +1463,7 @@ struct Button : Visible
                 s.minimum.x, s.minimum.y,
                 s.preferred.x, s.preferred.y);
         }
-        return s;
+        return (last_sizing = s);
     }
 
     virtual void init(Canvas *c)
@@ -1444,17 +1572,22 @@ struct Slider : Visible
 
     virtual Sizing calc_size()
     {
-        Sizing s = {
-            get_minimum_size(),
-            get_preferred_size()
-        };
+        vec3 control_size = vec3(vec2(get_control_size() * 2), 0) +
+            m() + b() + p();
+        vec3 min_size = vec3( std::max(minimum_size.x,control_size.x),
+                              std::max(minimum_size.y,control_size.y),
+                              std::max(minimum_size.z,control_size.z) );
+        vec3 pref_size = vec3( std::max(preferred_size.x,min_size.x),
+                               std::max(preferred_size.y,min_size.y),
+                               std::max(preferred_size.z,min_size.z) );
+        Sizing s = { min_size, pref_size };
         if (debug) {
             Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n",
                 __PRETTY_FUNCTION__,
                 s.minimum.x, s.minimum.y,
                 s.preferred.x, s.preferred.y);
         }
-        return s;
+        return (last_sizing = s);
     }
 
     virtual void init(Canvas *c)
@@ -1615,17 +1748,22 @@ struct Switch : Visible
 
     virtual Sizing calc_size()
     {
-        Sizing s = {
-            get_minimum_size(),
-            get_preferred_size()
-        };
+        vec3 control_size = vec3(get_control_size() * vec2(2,1), 0) +
+            m() + b() + p();
+        vec3 min_size = vec3( std::max(minimum_size.x,control_size.x),
+                              std::max(minimum_size.y,control_size.y),
+                              std::max(minimum_size.z,control_size.z) );
+        vec3 pref_size = vec3( std::max(preferred_size.x,min_size.x),
+                               std::max(preferred_size.y,min_size.y),
+                               std::max(preferred_size.z,min_size.z) );
+        Sizing s = { min_size, pref_size };
         if (debug) {
             Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n",
                 __PRETTY_FUNCTION__,
                 s.minimum.x, s.minimum.y,
                 s.preferred.x, s.preferred.y);
         }
-        return s;
+        return (last_sizing = s);
     }
 
     virtual void init(Canvas *c)
@@ -2033,6 +2171,8 @@ struct ChartGrid : Visible
         grid_path->set_fill_brush(grid_brush);
         grid_path->set_stroke_brush(grid_brush);
         grid_path->set_stroke_width(border[0]);
+
+        /* actual grid */
     }
 };
 
@@ -2276,17 +2416,22 @@ struct Chart : Visible
 
     virtual Sizing calc_size()
     {
-        Sizing s = {
-            get_minimum_size(),
-            get_preferred_size()
-        };
+        vec3 axis_space = vec3(left_space + right_space,
+            top_space + bottom_space, 0) + m() + b() + p();
+        vec3 min_size = vec3( std::max(minimum_size.x,axis_space.x),
+                              std::max(minimum_size.y,axis_space.y),
+                              std::max(minimum_size.z,axis_space.z) );
+        vec3 pref_size = vec3( std::max(preferred_size.x,min_size.x),
+                               std::max(preferred_size.y,min_size.y),
+                               std::max(preferred_size.z,min_size.z) );
+        Sizing s = { min_size, pref_size };
         if (debug) {
             Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n",
                 __PRETTY_FUNCTION__,
                 s.minimum.x, s.minimum.y,
                 s.preferred.x, s.preferred.y);
         }
-        return s;
+        return (last_sizing = s);
     }
 
     virtual void init(Canvas *c)
@@ -2311,7 +2456,7 @@ struct Chart : Visible
 
         vec3 axis_space(left_space + right_space, top_space + bottom_space, 0);
 
-        vec3 size_remaining = assigned_size;
+        vec3 size_remaining = assigned_size - m();
         vec3 half_size = size_remaining / 2.0f;
 
         rect->pos = position;

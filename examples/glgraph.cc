@@ -187,7 +187,7 @@ static void create_layout(ui9::Root &root)
         } else {
             s1->set_preferred_size({300,50,0});
         }
-        grid1->add_child(s1, 1, i, 1, 1, { ui9::ratio, ui9::preferred }, {1,1});
+        grid1->add_child(s1, 1, i, 1, 1, { ui9::ratio, ui9::dynamic }, {1,1});
 
         auto l2 = new ui9::Label();
         l2->set_text(std::to_string(s1->get_value()));
@@ -204,7 +204,7 @@ static void create_layout(ui9::Root &root)
 
     auto s1 = new ui9::Switch();
     s1->set_value(false);
-    grid1->add_child(s1, 1, 5, 1, 1, { ui9::ratio, ui9::preferred }, {1,1});
+    grid1->add_child(s1, 1, 5, 1, 1, { ui9::ratio, ui9::dynamic }, {1,1});
 
     auto l2 = new ui9::Label();
     l2->set_text(s1->get_value() ? "On" : "Off");
@@ -223,7 +223,6 @@ static void create_layout(ui9::Root &root)
     l4->set_preferred_size({50,50,0});
     grid1->add_child(l4, 3, 2, 1, 3);
 
-
     auto frame2 = new ui9::Frame();
     frame2->set_text("Chart");
     frame2->set_position(vec3(350,0,0));
@@ -235,20 +234,25 @@ static void create_layout(ui9::Root &root)
     frame2->add_child(grid2);
 
     auto chart1 = new ui9::Chart();
-    chart1->set_preferred_size({250,125,0});
+    chart1->set_preferred_size({600,300,0});
     std::vector<float> data = {0.00f, 3.26f, 0.35f, 3.76f, 1.10f, 4.96f,
                                2.35f, 7.46f, 4.10f, 9.56f, 6.35f, 10.79f};
     chart1->set_data(std::make_shared<ui9::ChartDataSimple>(data));
-    grid2->add_child(chart1, 0, 0, 2, 1, { ui9::ratio, ui9::ratio }, {1,1});
+    grid2->add_child(chart1, 0, 0, 1, 1, { ui9::ratio, ui9::ratio }, {1,1000});
+
+    auto grid3 = new ui9::Grid();
+    grid3->set_rows_homogeneous(false);
+    grid3->set_cols_homogeneous(false);
+    grid2->add_child(grid3, 0, 1, 1, 1, { ui9::ratio, ui9::ratio }, {1,1});
 
     auto l5 = new ui9::Label();
     l5->set_text("Interpolate");
-    l5->set_preferred_size({200,50,0});
-    grid2->add_child(l5, 0, 1);
+    l5->set_preferred_size({100,50,0});
+    grid3->add_child(l5, 0, 0);
 
     auto s2 = new ui9::Switch();
     s2->set_value(false);
-    grid2->add_child(s2, 1, 1);
+    grid3->add_child(s2, 1, 0, 1, 1, { ui9::ratio, ui9::minimum }, {1,1});
 
     /* we need property wiring */
     s2->set_callback([=](bool v) { chart1->set_interpolate(v); });
