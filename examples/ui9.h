@@ -2068,7 +2068,7 @@ struct ChartAxis : Visible
             if (location == left)
             {
                 float x = tz.x - text_margin;
-                float y = tz.y + sz.y * (scale_max - value - scale_min)/scale_range;
+                float y = tz.y + sz.y * (scale_range - (value - scale_min))/scale_range;
                 float tick_x1 = tz.x, tick_x2 = tick_x1 - tick_length;
                 vec3 text_pos = position - half_size + vec3(x,y,0);
                 text->set_text_style(text_style_left_default);
@@ -2188,7 +2188,7 @@ struct ChartGrid : Visible
         } else {
             for (size_t i = 0; i < axis->scale_values.size(); i++) {
                 float v = axis->scale_values[i];
-                float y = tz.y + sz.y * (scale_max - v - scale_min)/scale_range;
+                float y = tz.y + sz.y * (scale_range - (v - scale_min))/scale_range;
                 float x1 = tz.x;
                 float x2 = tz.x + sz.x;
                 grid_path->new_line({x1,y},{x2,y});
@@ -2309,9 +2309,9 @@ struct ChartPlot : Visible
                 float x23c = tz.x + sz.x * ((float)i+0.25f) / (float)(n-1);
                 float x23 = tz.x + sz.x * ((float)i+0.5f) / (float)(n-1);
                 float x3  = tz.x + sz.x * ((float)i+1.0f) / (float)(n-1);
-                float y1 = tz.y + sz.y * (scale_max - v1 - scale_min)/scale_range;
-                float y2 = tz.y + sz.y * (scale_max - v2 - scale_min)/scale_range;
-                float y3 = tz.y + sz.y * (scale_max - v3 - scale_min)/scale_range;
+                float y1 = tz.y + sz.y * (scale_range - (v1 - scale_min))/scale_range;
+                float y2 = tz.y + sz.y * (scale_range - (v2 - scale_min))/scale_range;
+                float y3 = tz.y + sz.y * (scale_range - (v3 - scale_min))/scale_range;
                 float dy = (y3 - y1) / 2.0f;
                 float y12 = (y1 + y2) / 2.0f;
                 float y23 = (y2 + y3) / 2.0f;
@@ -2329,8 +2329,8 @@ struct ChartPlot : Visible
                 float v2 = data->get_data(0, i);
                 float x1 = tz.x + sz.x * (float)(i-1) / (float)(n-1);
                 float x2 = tz.x + sz.x * (float)i     / (float)(n-1);
-                float y1 = tz.y + sz.y * (scale_max - v1 - scale_min)/scale_range;
-                float y2 = tz.y + sz.y * (scale_max - v2 - scale_min)/scale_range;
+                float y1 = tz.y + sz.y * (scale_range - (v1 - scale_min))/scale_range;
+                float y2 = tz.y + sz.y * (scale_range - (v2 - scale_min))/scale_range;
                 line_path->new_line({x1,y1},{x2,y2});
             }
         }
@@ -2345,7 +2345,7 @@ struct ChartPlot : Visible
             for (size_t i = 0; i < n; i++) {
                 float value = data->get_data(0,i);
                 float x = tz.x + sz.x * (float)i     / (float)(n-1);
-                float y = tz.y + sz.y * (scale_max - value - scale_min)/scale_range;
+                float y = tz.y + sz.y * (scale_range - (value - scale_min))/scale_range;
                 vec3 pos = position - half_size + vec3(x,y,0);
                 Circle *circle = nullptr;
                 if (circles.size() < i + 1) {
@@ -2419,7 +2419,7 @@ struct Chart : Visible
         set_interpolate(d->get_boolean(class_name, "interpolate", true));
     }
 
-    virtual void set_data(std::shared_ptr<ChartData> data) { this->data = data; }
+    virtual void set_data(std::shared_ptr<ChartData> data) { this->data = data; invalidate(); }
 
     virtual void set_left_space(float v) { left_space = v; invalidate(); }
     virtual void set_right_space(float v) { right_space = v; invalidate(); }
