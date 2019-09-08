@@ -892,6 +892,7 @@ struct Frame : Container
             set_position(me->pos - delta);
         }
         if (_in_corner) {
+            /* todo - edge resize */
             /* todo - scale relative to opposite corner versus center */
             vec3 d = me->pos - delta - vec3(rect->pos,0);
             d *= vec3(1.0f - std::signbit(frame_dist.x) * 2.0f,
