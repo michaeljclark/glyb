@@ -2101,8 +2101,10 @@ struct ChartGrid : Visible
     float top_space;
     float bottom_space;
     color grid_color;
+    bool border_only;
 
     std::shared_ptr<ChartData> data;
+    ChartAxis *axis;
 
     Path *grid_path;
 
@@ -2113,6 +2115,9 @@ struct ChartGrid : Visible
         top_space(0),
         bottom_space(0),
         grid_color(),
+        border_only(false),
+        data(),
+        axis(),
         grid_path(nullptr)
     {
         load_properties();
@@ -2125,6 +2130,7 @@ struct ChartGrid : Visible
     }
 
     virtual void set_data(std::shared_ptr<ChartData> data) { this->data = data; }
+    virtual void set_axis(ChartAxis *axis) { this->axis = axis; }
 
     virtual void set_left_space(float v) { left_space = v; invalidate(); }
     virtual void set_right_space(float v) { right_space = v; invalidate(); }
@@ -2162,17 +2168,38 @@ struct ChartGrid : Visible
         grid_path->clear();
         grid_path->pos = position;
         grid_path->new_contour();
-        grid_path->new_line({tz.x       ,tz.y       },{tz.x + sz.x,tz.y       });
-        grid_path->new_line({tz.x + sz.x,tz.y       },{tz.x + sz.x,tz.y + sz.y});
-        grid_path->new_line({tz.x + sz.x,tz.y + sz.y},{tz.x       ,tz.y + sz.y});
-        grid_path->new_line({tz.x       ,tz.y + sz.y},{tz.x       ,tz.y       });
         grid_path->set_offset({0, 0});
         grid_path->set_size(size_remaining);
         grid_path->set_fill_brush(grid_brush);
         grid_path->set_stroke_brush(grid_brush);
         grid_path->set_stroke_width(border[0]);
 
-        /* actual grid */
+        float scale_min = axis->scale_min;
+        float scale_max = axis->scale_max;
+        float scale_range = axis->scale_range;
+
+        size_t n = data->num_rows();
+
+        if (border_only) {
+            grid_path->new_line({tz.x       ,tz.y       },{tz.x + sz.x,tz.y       });
+            grid_path->new_line({tz.x + sz.x,tz.y       },{tz.x + sz.x,tz.y + sz.y});
+            grid_path->new_line({tz.x + sz.x,tz.y + sz.y},{tz.x       ,tz.y + sz.y});
+            grid_path->new_line({tz.x       ,tz.y + sz.y},{tz.x       ,tz.y       });
+        } else {
+            for (size_t i = 0; i < axis->scale_values.size(); i++) {
+                float v = axis->scale_values[i];
+                float y = tz.y + sz.y * (scale_max - v - scale_min)/scale_range;
+                float x1 = tz.x;
+                float x2 = tz.x + sz.x;
+                grid_path->new_line({x1,y},{x2,y});
+            }
+            for (size_t i = 0; i < n; i++) {
+                float y1 = tz.y;
+                float y2 = tz.y + sz.y;
+                float x  = tz.x + sz.x * ((float)i) / (float)(n-1);
+                grid_path->new_line({x,y1},{x,y2});
+            }
+        }
     }
 };
 
@@ -2195,7 +2222,6 @@ struct ChartPlot : Visible
 
     ChartPlot() :
         Visible("ChartPlot"),
-        line_path(nullptr),
         left_space(0),
         right_space(0),
         top_space(0),
@@ -2204,6 +2230,9 @@ struct ChartPlot : Visible
         point_color(),
         point_size(0),
         interpolate(false),
+        data(),
+        axis(),
+        line_path(),
         circles()
     {
         load_properties();
@@ -2514,6 +2543,7 @@ struct Chart : Visible
         grid.set_top_space(get_top_space());
         grid.set_bottom_space(get_bottom_space());
         grid.set_grid_color(get_grid_color());
+        grid.set_axis(&left_axis);
         grid.init(c);
         grid.layout(c);
 
