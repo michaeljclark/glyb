@@ -2211,6 +2211,8 @@ struct ChartPlot : Visible
     float top_space;
     float bottom_space;
     color line_color;
+    color shape_color;
+    bool shape_fill;
     color point_color;
     float point_size;
     bool interpolate;
@@ -2218,6 +2220,7 @@ struct ChartPlot : Visible
     std::shared_ptr<ChartData> data;
     ChartAxis *axis;
 
+    Patch *line_patch;
     Path *line_path;
     std::vector<Circle*> circles;
 
@@ -2228,11 +2231,14 @@ struct ChartPlot : Visible
         top_space(0),
         bottom_space(0),
         line_color(),
+        shape_color(),
+        shape_fill(false),
         point_color(),
         point_size(0),
         interpolate(false),
         data(),
         axis(),
+        line_patch(),
         line_path(),
         circles()
     {
@@ -2253,6 +2259,8 @@ struct ChartPlot : Visible
     virtual void set_top_space(float v) { top_space = v; invalidate(); }
     virtual void set_bottom_space(float v) { bottom_space = v; invalidate(); }
     virtual void set_line_color(color c) { line_color = c; invalidate(); }
+    virtual void set_shape_color(color c) { shape_color = c; invalidate(); }
+    virtual void set_shape_fill(bool b) { shape_fill = b; invalidate(); }
     virtual void set_point_color(color c) { point_color = c; invalidate(); }
     virtual void set_point_size(float s) { point_size = s; invalidate(); }
     virtual void set_interpolate(bool b) { interpolate = b; invalidate(); }
@@ -2262,12 +2270,17 @@ struct ChartPlot : Visible
     virtual float get_top_space() { return top_space; }
     virtual float get_bottom_space() { return bottom_space; }
     virtual color get_line_color() { return line_color; }
+    virtual color get_shape_color() { return shape_color; }
+    virtual bool get_shape_fill() { return shape_fill; }
     virtual color get_point_color() { return point_color; }
     virtual float get_point_size() { return point_size; }
     virtual bool get_interpolate() { return interpolate; }
 
     virtual void init(Canvas *c)
     {
+        if (!line_patch) {
+            line_patch = c->new_patch(vec2(0), vec2(0));
+        }
         if (!line_path) {
             line_path = c->new_path(vec2(0), vec2(0));
         }
@@ -2278,6 +2291,7 @@ struct ChartPlot : Visible
         Brush none_brush{BrushNone, {}, {} };
         Brush line_brush{BrushSolid, {}, { line_color }};
         Brush point_brush{BrushSolid, {}, { point_color }};
+        Brush shape_brush{BrushSolid, {}, { shape_color }};
 
         vec3 axis_space(left_space + right_space, top_space + bottom_space, 0);
 
@@ -2296,6 +2310,7 @@ struct ChartPlot : Visible
         size_t n = data->num_rows();
 
         line_path->clear();
+        line_patch->clear();
         if (interpolate)
         {
             line_path->new_contour();
@@ -2321,6 +2336,34 @@ struct ChartPlot : Visible
                 if (i != 0) line_path->new_quadratic_curve({x12,y12},{x12c,y12c},{x2,y2});
                 if (i != n-1) line_path->new_quadratic_curve({x2,y2},{x23c,y23c},{x23,y23});
             }
+            if (shape_fill) {
+                line_patch->new_contour();
+                for (size_t i = 0; i < n; i++) {
+                    float v1 = data->get_data(0, i == 0 ? i : i-1);
+                    float v2 = data->get_data(0, i);
+                    float v3 = data->get_data(0, i == n-1 ? i : i+1);
+                    float x1  = tz.x + sz.x * ((float)i-1.0f) / (float)(n-1);
+                    float x12 = tz.x + sz.x * ((float)i-0.5f) / (float)(n-1);
+                    float x12c = tz.x + sz.x * ((float)i-0.25f) / (float)(n-1);
+                    float x2  = tz.x + sz.x * ((float)i)      / (float)(n-1);
+                    float x23c = tz.x + sz.x * ((float)i+0.25f) / (float)(n-1);
+                    float x23 = tz.x + sz.x * ((float)i+0.5f) / (float)(n-1);
+                    float x3  = tz.x + sz.x * ((float)i+1.0f) / (float)(n-1);
+                    float y1 = tz.y + sz.y * (scale_range - (v1 - scale_min))/scale_range;
+                    float y2 = tz.y + sz.y * (scale_range - (v2 - scale_min))/scale_range;
+                    float y3 = tz.y + sz.y * (scale_range - (v3 - scale_min))/scale_range;
+                    float dy = (y3 - y1) / 2.0f;
+                    float y12 = (y1 + y2) / 2.0f;
+                    float y23 = (y2 + y3) / 2.0f;
+                    float y12c = y2 - 0.25f * dy;
+                    float y23c = y2 + 0.25f * dy;
+                    if (i == 0) line_patch->new_line({x2,y2},{x2,tz.y + sz.y});
+                    if (i != 0) line_patch->new_quadratic_curve({x2,y2},{x12c,y12c},{x12,y12});
+                    if (i != n-1) line_patch->new_quadratic_curve({x23,y23},{x23c,y23c},{x2,y2});
+                    if (i == n-1) line_patch->new_line({x2,tz.y + sz.y},{x2,y2});
+                    if (i == n-1) line_patch->new_line({tz.x,tz.y + sz.y},{x2,tz.y + sz.y});
+                }
+            }
         }
         else
         {
@@ -2334,6 +2377,21 @@ struct ChartPlot : Visible
                 float y2 = tz.y + sz.y * (scale_range - (v2 - scale_min))/scale_range;
                 line_path->new_line({x1,y1},{x2,y2});
             }
+            if (shape_fill) {
+                line_patch->new_contour();
+                for (size_t i = 0; i < n; i++) {
+                    float v1 = data->get_data(0, i-1);
+                    float v2 = data->get_data(0, i);
+                    float x1 = tz.x + sz.x * (float)(i-1) / (float)(n-1);
+                    float x2 = tz.x + sz.x * (float)i     / (float)(n-1);
+                    float y1 = tz.y + sz.y * (scale_range - (v1 - scale_min))/scale_range;
+                    float y2 = tz.y + sz.y * (scale_range - (v2 - scale_min))/scale_range;
+                    if (i == 0) line_patch->new_line({x2,y2},{x2,tz.y + sz.y});
+                    line_patch->new_line({x2,y2},{x1,y1});
+                    if (i == n-1) line_patch->new_line({x2,tz.y + sz.y},{x2,y2});
+                    if (i == n-1) line_patch->new_line({tz.x,tz.y + sz.y},{x2,tz.y + sz.y});
+                }
+            }
         }
         line_path->pos = position;
         line_path->set_offset({0, 0});
@@ -2341,6 +2399,14 @@ struct ChartPlot : Visible
         line_path->set_fill_brush(line_brush);
         line_path->set_stroke_brush(line_brush);
         line_path->set_stroke_width(border[0]);
+
+        line_patch->pos = position;
+        line_patch->set_offset({0, 0});
+        line_patch->set_size(size_remaining);
+        line_patch->set_fill_brush(shape_brush);
+        line_patch->set_stroke_brush(none_brush);
+        line_patch->set_stroke_width(0);
+        line_patch->set_visible(get_shape_fill());
 
         {
             for (size_t i = 0; i < n; i++) {
@@ -2378,6 +2444,8 @@ struct Chart : Visible
     color grid_color;
     color tick_color;
     color line_color;
+    color shape_color;
+    bool shape_fill;
     color point_color;
     float point_size;
     bool interpolate;
@@ -2415,6 +2483,8 @@ struct Chart : Visible
         set_grid_color(d->get_color(class_name, "grid-color", color(1,1,1,1)));
         set_tick_color(d->get_color(class_name, "tick-color", color(1,1,1,1)));
         set_line_color(d->get_color(class_name, "line-color", color(1,1,1,1)));
+        set_shape_color(d->get_color(class_name, "shape-color", color(1,1,1,1)));
+        set_shape_fill(d->get_boolean(class_name, "shape-fill", true));
         set_point_color(d->get_color(class_name, "point-color", color(1,1,1,1)));
         set_point_size(d->get_float(class_name, "point-size", 1));
         set_interpolate(d->get_boolean(class_name, "interpolate", true));
@@ -2429,6 +2499,8 @@ struct Chart : Visible
     virtual void set_grid_color(color c) { grid_color = c; invalidate(); }
     virtual void set_tick_color(color c) { tick_color = c; invalidate(); }
     virtual void set_line_color(color c) { line_color = c; invalidate(); }
+    virtual void set_shape_color(color c) { shape_color = c; invalidate(); }
+    virtual void set_shape_fill(bool b) { shape_fill = b; invalidate(); }
     virtual void set_point_color(color c) { point_color = c; invalidate(); }
     virtual void set_point_size(float s) { point_size = s; invalidate(); }
     virtual void set_interpolate(bool b) { interpolate = b; invalidate(); }
@@ -2440,6 +2512,8 @@ struct Chart : Visible
     virtual color get_grid_color() { return grid_color; }
     virtual color get_tick_color() { return tick_color; }
     virtual color get_line_color() { return line_color; }
+    virtual color get_shape_color() { return shape_color; }
+    virtual bool get_shape_fill() { return shape_fill; }
     virtual color get_point_color() { return point_color; }
     virtual float get_point_size() { return point_size; }
     virtual bool get_interpolate() { return interpolate; }
@@ -2563,6 +2637,8 @@ struct Chart : Visible
             p->set_point_color(get_point_color());
             p->set_point_size(get_point_size());
             p->set_interpolate(get_interpolate());
+            p->set_shape_fill(get_shape_fill());
+            p->set_shape_color(get_shape_color());
             p->set_data(data);
             p->set_axis(&left_axis);
             p->init(c);

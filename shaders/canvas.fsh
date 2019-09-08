@@ -483,5 +483,5 @@ void main()
     vec4 color = shape.stroke_width == 0 ? fill_color :
         mix(stroke_color, fill_color, smoothstep(w-ps, w+ps, distance));
 
-    gl_FragColor = vec4(pow(color.rgb, vec3(1.0/v_gamma)), alpha);
+    gl_FragColor = vec4(pow(color.rgb, vec3(1.0/v_gamma)), alpha * color.a);
 }

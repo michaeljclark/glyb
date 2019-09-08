@@ -257,6 +257,19 @@ static void create_layout(ui9::Root &root)
     /* we need property wiring */
     s2->set_callback([=](bool v) { chart1->set_interpolate(v); });
     s2->set_value(chart1->get_interpolate());
+
+    auto l6 = new ui9::Label();
+    l6->set_text("Solid Fill");
+    l6->set_preferred_size({100,50,0});
+    grid3->add_child(l6, 0, 1);
+
+    auto s3 = new ui9::Switch();
+    s3->set_value(false);
+    grid3->add_child(s3, 1, 1, 1, 1, { ui9::ratio, ui9::minimum }, {1,1});
+
+    /* we need property wiring */
+    s3->set_callback([=](bool v) { chart1->set_shape_fill(v); });
+    s3->set_value(chart1->get_shape_fill());
 }
 
 static void populate_canvas()
