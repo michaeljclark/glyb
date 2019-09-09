@@ -787,7 +787,7 @@ struct Frame : Container
         };
         if (debug) {
             Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n",
-                __PRETTY_FUNCTION__,
+                __func__,
                 s.minimum.x, s.minimum.y,
                 s.preferred.x, s.preferred.y);
         }
@@ -1162,7 +1162,7 @@ struct Grid : Container
         };
         if (debug) {
             Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n",
-                __PRETTY_FUNCTION__,
+                __func__,
                 s.minimum.x, s.minimum.y,
                 s.preferred.x, s.preferred.y);
         }
@@ -1368,7 +1368,7 @@ struct Label : Visible
         };
         if (debug) {
             Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n",
-                __PRETTY_FUNCTION__,
+                __func__,
                 s.minimum.x, s.minimum.y,
                 s.preferred.x, s.preferred.y);
         }
@@ -1460,7 +1460,7 @@ struct Button : Visible
         };
         if (debug) {
             Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n",
-                __PRETTY_FUNCTION__,
+                __func__,
                 s.minimum.x, s.minimum.y,
                 s.preferred.x, s.preferred.y);
         }
@@ -1584,7 +1584,7 @@ struct Slider : Visible
         Sizing s = { min_size, pref_size };
         if (debug) {
             Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n",
-                __PRETTY_FUNCTION__,
+                __func__,
                 s.minimum.x, s.minimum.y,
                 s.preferred.x, s.preferred.y);
         }
@@ -1760,7 +1760,7 @@ struct Switch : Visible
         Sizing s = { min_size, pref_size };
         if (debug) {
             Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n",
-                __PRETTY_FUNCTION__,
+                __func__,
                 s.minimum.x, s.minimum.y,
                 s.preferred.x, s.preferred.y);
         }
@@ -2531,7 +2531,7 @@ struct Chart : Visible
         Sizing s = { min_size, pref_size };
         if (debug) {
             Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n",
-                __PRETTY_FUNCTION__,
+                __func__,
                 s.minimum.x, s.minimum.y,
                 s.preferred.x, s.preferred.y);
         }
