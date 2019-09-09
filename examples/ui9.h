@@ -484,12 +484,12 @@ struct Visible
     virtual font_face* get_font_face()
     {
         font_data d{
-            .familyName = font_family,
-            .styleName = font_style,
-            .fontWeight = font_weight_any,
-            .fontSlope = font_slope_any,
-            .fontStretch = font_stretch_any,
-            .fontSpacing = font_spacing_any
+            font_family,
+            font_style,
+            font_weight_any,
+            font_slope_any,
+            font_stretch_any,
+            font_spacing_any
         };
         assert(get_context()->manager);
         return get_context()->manager->findFontByData(d);
