@@ -2359,9 +2359,10 @@ struct ChartPlot : Visible
                     float y23c = y2 + 0.25f * dy;
                     if (i == 0) line_patch->new_line({x2,y2},{x2,tz.y + sz.y});
                     if (i != 0) line_patch->new_quadratic_curve({x2,y2},{x12c,y12c},{x12,y12});
-                    if (i != n-1) line_patch->new_quadratic_curve({x23,y23},{x23c,y23c},{x2,y2});
-                    if (i == n-1) line_patch->new_line({x2,tz.y + sz.y},{x2,y2});
                     if (i == n-1) line_patch->new_line({tz.x,tz.y + sz.y},{x2,tz.y + sz.y});
+                    if (i == n-1) line_patch->new_line({x2,tz.y + sz.y},{x2,y2});
+                    if (i != n-1) line_patch->new_quadratic_curve({x23,y23},{x23c,y23c},{x2,y2});
+
                 }
             }
         }
