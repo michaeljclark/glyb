@@ -547,8 +547,8 @@ static void initialize()
     glBindVertexArray(0);
 
     /* get font list */
-    //manager.msdf_autoload = true;
-    //manager.msdf_enabled = true;
+    manager.msdf_autoload = true;
+    manager.msdf_enabled = true;
     manager.scanFontDir("fonts");
 
     /* create shape and edge buffer textures */

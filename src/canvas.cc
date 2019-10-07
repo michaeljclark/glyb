@@ -348,13 +348,6 @@ static void rect(draw_list &batch, vec2 A, vec2 B, float Z,
 
 void text_renderer_canvas::render(draw_list &batch,
         std::vector<glyph_shape> &shapes,
-        text_segment *segment)
-{
-    return render(batch, shapes, segment, mat3(1));
-}
-
-void text_renderer_canvas::render(draw_list &batch,
-        std::vector<glyph_shape> &shapes,
         text_segment *segment, mat3 matrix)
 {
     FT_Face ftface = static_cast<font_face_ft*>(segment->face)->ftface;
@@ -500,12 +493,14 @@ text_halign Text::get_halign() { return halign; }
 text_valign Text::get_valign() { return valign; }
 std::string Text::get_text() { return text; }
 std::string Text::get_lang() { return lang; }
+Text::render_as Text::get_render_mode() { return mode;}
 
 void Text::set_size(float size) { shapes.clear(); this->size = size; }
 void Text::set_face(font_face *face) { shapes.clear(); this->face = face; }
 void Text::set_halign(text_halign halign) { this->halign = halign; }
 void Text::set_valign(text_valign valign) { this->valign = valign; }
 void Text::set_lang(std::string lang) { shapes.clear(); this->lang = lang; }
+void Text::set_render_mode(Text::render_as mode) { this->mode = mode; }
 
 void Text::set_text(std::string text)
 {
@@ -604,6 +599,16 @@ mat3 Canvas::get_transform()
 mat3 Canvas::get_inverse_transform()
 {
     return transform_inv;
+}
+
+void Canvas::set_render_mode(Text::render_as mode)
+{
+    text_mode = mode;
+}
+
+Text::render_as Canvas::get_render_mode()
+{
+    return text_mode;
 }
 
 void Canvas::set_scale(float scale)
@@ -705,6 +710,7 @@ Text* Canvas::new_text()
 {
     auto o = new Text{this, 1, drawable_text, (int)objects.size(),
         -1, vec2(0), 0.0f, fill_brush, stroke_brush, stroke_width };
+    o->set_render_mode(text_mode);
     objects.push_back(std::unique_ptr<Drawable>(o));
     return o;
 }
@@ -714,6 +720,7 @@ Text* Canvas::new_text(TextStyle text_style)
     auto o = new Text{this, 1, drawable_text, (int)objects.size(),
         -1, vec2(0), 0.0f, fill_brush, stroke_brush, stroke_width };
     o->set_text_style(text_style);
+    o->set_render_mode(text_mode);
     objects.push_back(std::unique_ptr<Drawable>(o));
     return o;
 }
@@ -786,7 +793,7 @@ void Canvas::emit(draw_list &batch)
             }
 
             AShape &llshape = ctx->shapes[shape->ll_shape_num];
-            vec2 pos = shape->pos + llshape.offset;
+            vec2 pos = shape->get_position() + llshape.offset;
             vec2 halfSize = llshape.size / 2.0f;
             float padding = ceil(llshape.stroke_width/2.0f);
             Brush fill_brush = get_brush((int)llshape.fill_brush);
@@ -820,7 +827,7 @@ void Canvas::emit(draw_list &batch)
             }
 
             AShape &llshape = ctx->shapes[shape->ll_shape_num];
-            vec2 pos = shape->pos + llshape.offset;
+            vec2 pos = shape->get_position() + llshape.offset;
             vec2 halfSize = llshape.size / 2.0f;
             float padding = ceil(llshape.stroke_width/2.0f);
             Brush fill_brush = get_brush((int)llshape.fill_brush);
@@ -834,26 +841,28 @@ void Canvas::emit(draw_list &batch)
         case drawable_text: {
             auto shape = static_cast<Text*>(o.get());
             size_t s = glyph_map.size();
+            vec2 pos = shape->get_position();
             text_segment &segment = shape->get_text_segment();
             std::vector<glyph_shape> &shapes = shape->get_glyph_shapes();
             vec2 text_size = shape->get_text_size();
             switch (shape->halign) {
-            case text_halign_left:   segment.x = shape->pos.x; break;
-            case text_halign_center: segment.x = shape->pos.x - text_size.x/2.0f; break;
-            case text_halign_right:  segment.x = shape->pos.x - text_size.x; break;
+            case text_halign_left:   segment.x = pos.x; break;
+            case text_halign_center: segment.x = pos.x - text_size.x/2.0f; break;
+            case text_halign_right:  segment.x = pos.x - text_size.x; break;
             }
             switch (shape->valign) {
-            case text_valign_top:    segment.y = shape->pos.y - text_size.y; break;
-            case text_valign_center: segment.y = shape->pos.y - text_size.y/2.0f; break;
-            case text_valign_bottom: segment.y = shape->pos.y; break;
+            case text_valign_top:    segment.y = pos.y - text_size.y; break;
+            case text_valign_center: segment.y = pos.y - text_size.y/2.0f; break;
+            case text_valign_bottom: segment.y = pos.y; break;
             }
-            if (false &&
+            if (shape->get_render_mode() == Text::render_as_text &&
                 shape->get_stroke_width() == 0 &&
                 shape->get_fill_brush().brush_type == BrushSolid)
             {
                 /* todo - use fast text renderer (currently disabled) */
+                segment.baseline_shift = -text_size.y;
                 segment.color = shape->get_fill_brush().colors[0].rgba32();
-                text_renderer_r.render(batch, shapes, &segment);
+                text_renderer_r.render(batch, shapes, &segment, transform);
             } else {
                 /* todo - brushes are stored on each glyph shape */
                 segment.color = shape->get_fill_brush().colors[0].rgba32();

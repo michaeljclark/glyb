@@ -133,9 +133,6 @@ struct text_renderer_canvas : text_renderer
 
     virtual void render(draw_list &batch,
         std::vector<glyph_shape> &shapes,
-        text_segment *segment);
-    virtual void render(draw_list &batch,
-        std::vector<glyph_shape> &shapes,
         text_segment *segment, mat3 matrix);
 };
 
@@ -296,12 +293,18 @@ struct TextStyle
 
 struct Text : Drawable
 {
+    enum render_as {
+        render_as_text,
+        render_as_contour
+    };
+
     float size;
     font_face* face;
     text_halign halign;
     text_valign valign;
     std::string text;
     std::string lang;
+    render_as mode;
 
     text_segment segment;
     std::vector<glyph_shape> shapes;
@@ -313,6 +316,7 @@ struct Text : Drawable
     text_valign get_valign();
     std::string get_text();
     std::string get_lang();
+    render_as get_render_mode();
 
     void set_text_style(TextStyle style);
     void set_size(float size);
@@ -321,6 +325,7 @@ struct Text : Drawable
     void set_valign(text_valign valign);
     void set_text(std::string text);
     void set_lang(std::string lang);
+    void set_render_mode(render_as mode);
 
     text_segment& get_text_segment();
     std::vector<glyph_shape>& get_glyph_shapes();
@@ -390,6 +395,7 @@ struct Canvas
     mat3 transform;
     mat3 transform_inv;
     float scale;
+    Text::render_as text_mode;
 
     Canvas(font_manager* manager);
 
@@ -397,6 +403,8 @@ struct Canvas
     void set_transform(mat3 m);
     mat3 get_transform();
     mat3 get_inverse_transform();
+    void set_render_mode(Text::render_as mode);
+    Text::render_as get_render_mode();
 
     /* high dpi screen scale to apply to strokes */
     void set_scale(float scale);

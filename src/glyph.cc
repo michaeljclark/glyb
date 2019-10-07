@@ -597,14 +597,24 @@ atlas_entry glyph_renderer_ft::render(font_atlas *atlas, font_face_ft *face,
  * text renderer
  */
 
+/*
+static vec2 transform(vec2 pos, mat3 matrix)
+{
+    vec3 v = vec3(pos, 1.0f) * matrix;
+    return vec2(v.x / v.z, v.y / v.z);
+}
+*/
+
 void text_renderer_ft::render(draw_list &batch,
     std::vector<glyph_shape> &shapes,
-    text_segment *segment)
+    text_segment *segment, glm::mat3 m)
 {
     font_face_ft *face = static_cast<font_face_ft*>(segment->face);
-    int font_size = segment->font_size;
-    float baseline_shift = segment->baseline_shift;
-	float tracking = segment->tracking;
+    //float scale = glm::determinant(m);
+    float scale = (m[0][0] + m[1][1]) / 2.0f;
+    int font_size = segment->font_size * scale;
+    float baseline_shift = segment->baseline_shift * scale;
+	float tracking = segment->tracking * scale;
     bool round = false;
 
     /* lookup glyphs in font atlas, creating them if they don't exist */
@@ -613,9 +623,10 @@ void text_renderer_ft::render(draw_list &batch,
         glyph_entry *ge = manager->lookup(face, font_size, shape.glyph);
         if (!ge) continue;
         /* create polygons in vertex array */
-        float x1 = segment->x + ge->ox + dx + shape.x_offset/64.0f;
+        glm::vec3 v = glm::vec3(segment->x, segment->y, 1.0f) * m;
+        float x1 = v.x / v.z + ge->ox + dx + shape.x_offset/64.0f;
         float x2 = x1 + ge->w;
-        float y1 = segment->y - ge->oy + dy + shape.y_offset/64.0f -
+        float y1 = v.y / v.z - ge->oy + dy + shape.y_offset/64.0f -
             ge->h - baseline_shift;
         float y2 = y1 + ge->h;
         if (round) {
@@ -640,7 +651,7 @@ void text_renderer_ft::render(draw_list &batch,
                 st_clamp | atlas_image_filter(ge->atlas));
         }
         /* advance */
-        dx += shape.x_advance/64.0f + tracking;
-        dy += shape.y_advance/64.0f;
+        dx += shape.x_advance/64.0f * scale + tracking;
+        dy += shape.y_advance/64.0f * scale;
     }
 }
