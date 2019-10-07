@@ -112,6 +112,7 @@ list(APPEND LIBS lib_msdfgen)
 include_directories(third_party/glm)
 
 include_directories(src)
+include_directories(examples)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
