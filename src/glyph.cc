@@ -597,14 +597,6 @@ atlas_entry glyph_renderer_ft::render(font_atlas *atlas, font_face_ft *face,
  * text renderer
  */
 
-/*
-static vec2 transform(vec2 pos, mat3 matrix)
-{
-    vec3 v = vec3(pos, 1.0f) * matrix;
-    return vec2(v.x / v.z, v.y / v.z);
-}
-*/
-
 void text_renderer_ft::render(draw_list &batch,
     std::vector<glyph_shape> &shapes,
     text_segment *segment, glm::mat3 m)
