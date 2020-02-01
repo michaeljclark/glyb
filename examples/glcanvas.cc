@@ -8,6 +8,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <cstdarg>
 #include <cstring>
 #include <cerrno>
 #include <cctype>
@@ -28,12 +29,6 @@
 #include <chrono>
 #include <numeric>
 #include <initializer_list>
-
-#include <ft2build.h>
-#include FT_FREETYPE_H
-#include FT_MODULE_H
-#include FT_GLYPH_H
-#include FT_OUTLINE_H
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
