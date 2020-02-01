@@ -1188,9 +1188,9 @@ struct Grid : Container
             float total_assigned = 0, total_ratios = 0;
             for (size_t i = 0; i < cols_count; i++)
             {
-                float m = (int)((is_cols_homogeneous() ?
+                float m = roundf((is_cols_homogeneous() ?
                     max_col_width.minimum : col_widths[i].minimum));
-                float p = (int)((is_cols_homogeneous() ?
+                float p = roundf((is_cols_homogeneous() ?
                     max_col_width.preferred : col_widths[i].preferred));
 
                 if (data(j,i) && data(j,i)->hint.type.x == ratio) {
@@ -1205,9 +1205,9 @@ struct Grid : Container
             float remaining = size.x - total_assigned;
             for (size_t i = 0; i < cols_count; i++)
             {
-                float m = (int)((is_cols_homogeneous() ?
+                float m = roundf((is_cols_homogeneous() ?
                     max_col_width.minimum : col_widths[i].minimum));
-                float p = (int)((is_cols_homogeneous() ?
+                float p = roundf((is_cols_homogeneous() ?
                     max_col_width.preferred : col_widths[i].preferred));
 
                 float r = 0.0f;
@@ -1227,9 +1227,9 @@ struct Grid : Container
             float total_assigned = 0, total_ratios = 0;
             for (size_t j = 0; j < rows_count; j++)
             {
-                float m = (int)((is_rows_homogenous() ?
+                float m = roundf((is_rows_homogenous() ?
                     max_row_height.minimum : row_heights[j].minimum));
-                float preferred = (int)((is_rows_homogenous() ?
+                float preferred = roundf((is_rows_homogenous() ?
                     max_row_height.preferred : row_heights[j].preferred));
 
                 if (data(j,i) && data(j,i)->hint.type.y == ratio) {
@@ -1244,9 +1244,9 @@ struct Grid : Container
             float remaining = size.y - total_assigned;
             for (size_t j = 0; j < rows_count; j++)
             {
-                float m = (int)((is_rows_homogenous() ?
+                float m = roundf((is_rows_homogenous() ?
                     max_row_height.minimum : row_heights[j].minimum));
-                float p = (int)((is_rows_homogenous() ?
+                float p = roundf((is_rows_homogenous() ?
                     max_row_height.preferred : row_heights[j].preferred));
 
                 float r = 0.0f;
