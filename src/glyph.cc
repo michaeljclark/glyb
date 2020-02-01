@@ -612,7 +612,7 @@ void text_renderer_ft::render(draw_list &batch,
     font_face_ft *face = static_cast<font_face_ft*>(segment->face);
     //float scale = glm::determinant(m);
     float scale = (m[0][0] + m[1][1]) / 2.0f;
-    int font_size = segment->font_size * scale;
+    int font_size = (int)roundf(segment->font_size * scale);
     float baseline_shift = segment->baseline_shift * scale;
 	float tracking = segment->tracking * scale;
     bool round = false;
