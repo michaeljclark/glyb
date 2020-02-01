@@ -275,7 +275,7 @@ static void display()
                               0,  s,  ty,
                               0,  0,  1));
     canvas.set_scale(sqrtf((framebuffer_width * framebuffer_height) /
-        (window_width * window_height)));
+        (float)(window_width * window_height)));
 
     /* emit canvas draw list */
     root.layout(&canvas);
