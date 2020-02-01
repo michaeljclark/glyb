@@ -413,8 +413,8 @@ static void make_path(Canvas &canvas, vec2 from, vec2 to,
 }
 
 static void wire_bits(Canvas &canvas,
-    int x, int y, int xi, int yi, int tyi,
-    int w, int h, int xs, int ys, int ss, int ds,
+    float x, float y, int xi, int yi, int tyi,
+    float w, float h, float xs, float ys, int ss, int ds,
     float sw = 3.0f, float cr = 5.0f, float cs = 1.0f, float l = 10.0f)
 {
     vec2 from = { x + xs*(xi-1) + w/2 - l, y + ys*yi     + ss * h/4 };
