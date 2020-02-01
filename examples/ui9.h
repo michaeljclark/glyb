@@ -286,15 +286,15 @@ inline vec4 Defaults::get_vec4(std::string qualifier, std::string key, vec4 defa
         std::vector<std::string> strvec = split(strval.c_str(), ",");
         switch(strvec.size()) {
         case 1:
-            return vec4(atof(strvec[0].c_str()));
+            return vec4((float)atof(strvec[0].c_str()));
         case 2:
-            return vec4(atof(strvec[0].c_str()), atof(strvec[1].c_str()), 0, 1);
+            return vec4((float)atof(strvec[0].c_str()), (float)atof(strvec[1].c_str()), 0, 1);
         case 3:
-            return vec4(atof(strvec[0].c_str()), atof(strvec[1].c_str()),
-                        atof(strvec[2].c_str()), 1);
+            return vec4((float)atof(strvec[0].c_str()), (float)atof(strvec[1].c_str()),
+                        (float)atof(strvec[2].c_str()), 1);
         case 4:
-            return vec4(atof(strvec[0].c_str()), atof(strvec[1].c_str()),
-                        atof(strvec[2].c_str()), atof(strvec[3].c_str()));
+            return vec4((float)atof(strvec[0].c_str()), (float)atof(strvec[1].c_str()),
+                        (float)atof(strvec[2].c_str()), (float)atof(strvec[3].c_str()));
         }
         return vec4(0);
     } else if (qualifier != "*") {
@@ -310,10 +310,10 @@ inline Rect Defaults::get_rect(std::string qualifier, std::string key, Rect defa
         std::string strval = props->get_property(prop);
         std::vector<std::string> strvec = split(strval.c_str(), ",");
         if (strvec.size() == 4) {
-            float v1 = atof(strvec[0].c_str());
-            float v2 = atof(strvec[1].c_str());
-            float v3 = atof(strvec[2].c_str());
-            float v4 = atof(strvec[3].c_str());
+            float v1 = (float)atof(strvec[0].c_str());
+            float v2 = (float)atof(strvec[1].c_str());
+            float v3 = (float)atof(strvec[2].c_str());
+            float v4 = (float)atof(strvec[3].c_str());
             return Rect{vec2(v1, v2),vec2(v3, v4)};
         }
     } else if (qualifier != "*") {
@@ -331,15 +331,15 @@ inline color Defaults::get_color(std::string qualifier, std::string key, color d
         if (strvec.size() == 1) {
             return color(strvec[0]);
         } else if (strvec.size() == 3) {
-            float r = atof(strvec[0].c_str());
-            float g = atof(strvec[1].c_str());
-            float b = atof(strvec[2].c_str());
+            float r = (float)atof(strvec[0].c_str());
+            float g = (float)atof(strvec[1].c_str());
+            float b = (float)atof(strvec[2].c_str());
             return color(r, g, b, 1);
         } else  if (strvec.size() == 4) {
-            float r = atof(strvec[0].c_str());
-            float g = atof(strvec[1].c_str());
-            float b = atof(strvec[2].c_str());
-            float a = atof(strvec[3].c_str());
+            float r = (float)atof(strvec[0].c_str());
+            float g = (float)atof(strvec[1].c_str());
+            float b = (float)atof(strvec[2].c_str());
+            float a = (float)atof(strvec[3].c_str());
             return color(r, g, b, a);
         }
     } else if (qualifier != "*") {
