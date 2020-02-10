@@ -63,9 +63,9 @@ static const char* text_lang = "en";
 static const int font_dpi = 72;
 static const int stats_font_fize = 18;
 
+static float load_factor = 1.0;
 static bool help_text = false;
 static bool overlay_stats = false;
-static bool high_scalability = false;
 static int width = 1024, height = 768;
 static double tl, tn, td, tb;
 
@@ -220,7 +220,7 @@ static void rect(draw_list &batch, font_atlas *atlas,
         {o0, o3, o1, o1, o3, o2});
 }
 
-static void draw(double tn, double td)
+static void draw(double tn, double td, bool skip = false)
 {
     std::vector<glyph_shape> shapes;
     text_shaper_hb shaper;
@@ -229,7 +229,7 @@ static void draw(double tn, double td)
     auto face = manager.findFontByPath(font_path);
     uint32_t color1 = 0xff808080;
     uint32_t color2 = 0xff000000;
-    size_t wisdom_count = high_scalability ? 36 : 9;
+    size_t wisdom_count = (size_t)((float)9 * load_factor);
     float scale = sqrtf((float)width*(float)height)/sqrtf(1024.0f*768.0f);
     float tw;
 
@@ -245,9 +245,9 @@ static void draw(double tn, double td)
 
         if (wise[j].x + wise[j].w <= 0) {
             wise[j].x = (float)width + (float)r(0,width);
-            wise[j].y = (float)(j + 1) * (high_scalability ? 20.0f : 80.0f);
+            wise[j].y = (float)(j + 1) * (80 / load_factor);
             wise[j].s = (float)r(100, 100);
-            wise[j].font_size = 12 + r(0, high_scalability ? 5 : 10) * 4;
+            wise[j].font_size = 12 + r(0, 5) * 4;
 
             wise[j].s = wise[j].s * scale;
             wise[j].y = wise[j].y * scale;
@@ -265,15 +265,19 @@ static void draw(double tn, double td)
         text_segment wisdom_segment(wise[j].book_wisdom, text_lang, face,
             wise[j].font_size * 64, 0, 0, wise[j].color);
 
-        shapes.clear();
-        shaper.shape(shapes, &wisdom_segment);
         wise[j].w = text_width(shapes, wisdom_segment);
         wisdom_segment.x = wise[j].x;
         wisdom_segment.y = wise[j].y;
-        renderer.render(batch, shapes, &wisdom_segment);
-
         wise[j].x -= wise[j].s * (float)td;
+
+        if (!skip) {
+            shapes.clear();
+            shaper.shape(shapes, &wisdom_segment);
+            renderer.render(batch, shapes, &wisdom_segment);
+        }
     }
+
+    if (skip) return;
 
     /* render pulsating glyphic text */
     float s = sinf(fmodf((float)tn, 1.f) * 4.0f * (float)M_PI);
@@ -498,7 +502,7 @@ static void glyphic_gui(int argc, char **argv)
 
 static void write_ppm(const char *filename, const uint8_t *buffer, int width, int height)
 {
-   FILE *f = fopen(filename, "wb");
+   FILE *f = fopen(filename, "wb+");
    if (!f) {
       fprintf(stderr, "error: fopen failed: %s\n", strerror(errno));
       exit(1);
@@ -549,8 +553,7 @@ static void glyphic_offline(int argc, char **argv)
 
     size_t frame_num = 0;
     for (size_t i = 1; i <= frame_skip; i++) {
-        draw(frame_num/(float)frame_rate, 1/(float)frame_rate);
-        printf("frame-%09zu : skipped\n", frame_num);
+        draw(frame_num/(float)frame_rate, 1/(float)frame_rate, true);
         frame_num++;
     }
     if (atlas_dump_template != nullptr) {
@@ -594,11 +597,13 @@ void print_help(int argc, char **argv)
         "\n"
         "Common options:\n"
         "  -f, --font <ttf-file>              font file (default %s)\n"
+        "  -l, --load-factor <float>          text load (default %f)\n"
+        "  -r, --render-text <string>         render text (default \"%s\")\n"
         "  -y, --overlay-stats                show statistics overlay\n"
         "  -m, --enable-msdf                  enable MSDF font rendering\n"
         "  -q, --quadruple                    quadruple the object count\n"
         "  -h, --help                         command line help\n",
-        argv[0], font_path);
+        argv[0], font_path, load_factor, render_text);
 }
 
 /* option parsing */
@@ -637,8 +642,14 @@ void parse_options(int argc, char **argv)
             manager.msdf_enabled = true;
             manager.msdf_autoload = true;
             i++;
+        } else if (match_opt(argv[i], "-l", "--load-factor")) {
+            if (check_param(++i == argc, "--load-factor")) break;
+            load_factor = atof(argv[i++]);
+        } else if (match_opt(argv[i], "-r", "--render-text")) {
+            if (check_param(++i == argc, "--render-text")) break;
+            render_text = argv[i++];
         } else if (match_opt(argv[i], "-q", "--quadruple")) {
-            high_scalability = true;
+            load_factor *= 4.0f;
             i++;
         } else if (match_opt(argv[i], "-s", "--frame-size")) {
             if (check_param(++i == argc, "--frame-size")) break;
