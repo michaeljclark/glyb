@@ -202,6 +202,7 @@ struct glyph_shape
     unsigned cluster;         /* offset within original string */
     int x_offset, y_offset;   /* integer with 6 fraction bits */
     int x_advance, y_advance; /* integer with 6 fraction bits */
+    glm::vec3 pos[2];
 };
 
 

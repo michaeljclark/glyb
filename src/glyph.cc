@@ -632,6 +632,8 @@ void text_renderer_ft::render(draw_list &batch,
             float u2 = ge->uv[2], v2 = ge->uv[3];
             uint o = (int)batch.vertices.size();
             uint c = segment.color;
+            shape.pos[0] = {x1p, y1p, 0};
+            shape.pos[1] = {x2p, y2p, 0};
             uint o0 = draw_list_vertex(batch, {{x1p, y1p, 0}, {u1, v1}, c});
             uint o1 = draw_list_vertex(batch, {{x2p, y1p, 0}, {u2, v1}, c});
             uint o2 = draw_list_vertex(batch, {{x2p, y2p, 0}, {u2, v2}, c});
