@@ -106,8 +106,8 @@ static void update_geometry()
         font_size * 64, x, y, color);
 
     draw_list_clear(batch);
-    shaper.shape(shapes, &segment);
-    renderer.render(batch, shapes, &segment);
+    shaper.shape(shapes, segment);
+    renderer.render(batch, shapes, segment);
 }
 
 static void vertex_array_config(program *prog)

@@ -272,8 +272,8 @@ static void draw(double tn, double td, bool skip = false)
 
         if (!skip) {
             shapes.clear();
-            shaper.shape(shapes, &wisdom_segment);
-            renderer.render(batch, shapes, &wisdom_segment);
+            shaper.shape(shapes, wisdom_segment);
+            renderer.render(batch, shapes, wisdom_segment);
         }
     }
 
@@ -287,11 +287,11 @@ static void draw(double tn, double td, bool skip = false)
     glyphic_segment.tracking = -5.0f;
 
     shapes.clear();
-    shaper.shape(shapes, &glyphic_segment);
+    shaper.shape(shapes, glyphic_segment);
     tw = text_width(shapes, glyphic_segment);
     glyphic_segment.x = (float)(width - (int)tw) / 2.0f - 10.0f;
     glyphic_segment.y =  (float)height/2.0f + (float)font_size*0.33f;
-    renderer.render(batch, shapes, &glyphic_segment);
+    renderer.render(batch, shapes, glyphic_segment);
 
     /* render stats text */
     float x = 10.0f, y = height - 10.0f;
@@ -301,13 +301,13 @@ static void draw(double tn, double td, bool skip = false)
         text_segment stats_segment(stats[i], text_lang, face,
             (int)((float)stats_font_fize * scale * 64.0f), x, y, color2);
         shapes.clear();
-        shaper.shape(shapes, &stats_segment);
+        shaper.shape(shapes, stats_segment);
         tw = text_width(shapes, stats_segment);
         font_atlas *atlas = manager.getCurrentAtlas(face);
         float h = ((float)stats_font_fize * 1.0f * scale);
         float h2 = ((float)stats_font_fize * 0.334f * scale);
         rect(batch, atlas, x, y-h-h2/2.0f, x+tw, y+h2/2.0f, -0.0001f, bg_color);
-        renderer.render(batch, shapes, &stats_segment);
+        renderer.render(batch, shapes, stats_segment);
         y -= ((float)stats_font_fize * scale * 1.334f);
     }
 

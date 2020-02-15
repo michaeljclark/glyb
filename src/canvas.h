@@ -133,7 +133,7 @@ struct text_renderer_canvas : text_renderer
 
     virtual void render(draw_list &batch,
         std::vector<glyph_shape> &shapes,
-        text_segment *segment, mat3 matrix);
+        text_segment &segment, mat3 matrix);
 };
 
 inline text_renderer_canvas::text_renderer_canvas(AContext &ctx,

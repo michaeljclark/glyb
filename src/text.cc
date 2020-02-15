@@ -452,7 +452,7 @@ void text_layout::layout(std::vector<text_segment> &segments,
 
             /* find fitting segment width */
             shapes.clear();
-            shaper->shape(shapes, &segment);
+            shaper->shape(shapes, segment);
             for (auto &s : shapes) {
                 segment_width += s.x_advance/64.0f + segment.tracking;
                 if (segment.text[s.cluster] == ' ') {

@@ -290,9 +290,9 @@ static void display()
             text_segment stats_segment(stats[i], text_lang, sans_norm,
                 (int)((float)stats_font_size * 64.0f), x, y, 0xffffffff);
             shapes.clear();
-            shaper.shape(shapes, &stats_segment);
+            shaper.shape(shapes, stats_segment);
             font_atlas *atlas = manager.getCurrentAtlas(sans_norm);
-            renderer.render(batch, shapes, &stats_segment);
+            renderer.render(batch, shapes, stats_segment);
             y -= (int)((float)stats_font_size * 1.334f);
         }
     }

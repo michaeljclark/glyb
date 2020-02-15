@@ -225,17 +225,17 @@ struct glyph_shape
 
 struct text_shaper
 {
-    virtual void shape(std::vector<glyph_shape> &shapes, text_segment *segment) = 0;
+    virtual void shape(std::vector<glyph_shape> &shapes, text_segment &segment) = 0;
 };
 
 struct text_shaper_ft : text_shaper
 {
-    virtual void shape(std::vector<glyph_shape> &shapes, text_segment *segment);
+    virtual void shape(std::vector<glyph_shape> &shapes, text_segment &segment);
 };
 
 struct text_shaper_hb : text_shaper
 {
-    virtual void shape(std::vector<glyph_shape> &shapes, text_segment *segment);
+    virtual void shape(std::vector<glyph_shape> &shapes, text_segment &segment);
 };
 
 
@@ -281,7 +281,7 @@ struct text_renderer
 
     virtual void render(draw_list &batch,
         std::vector<glyph_shape> &shapes,
-        text_segment *segment, glm::mat3 m = glm::mat3(1)) = 0;
+        text_segment &segment, glm::mat3 m = glm::mat3(1)) = 0;
 };
 
 struct text_renderer_ft : text_renderer
@@ -294,7 +294,7 @@ struct text_renderer_ft : text_renderer
 
     void render(draw_list &batch,
         std::vector<glyph_shape> &shapes,
-        text_segment *segment, glm::mat3 m = glm::mat3(1));
+        text_segment &segment, glm::mat3 m = glm::mat3(1));
 };
 
 inline text_renderer_ft::text_renderer_ft(font_manager* manager) :

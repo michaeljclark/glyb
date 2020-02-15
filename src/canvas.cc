@@ -348,10 +348,10 @@ static void rect(draw_list &batch, vec2 A, vec2 B, float Z,
 
 void text_renderer_canvas::render(draw_list &batch,
         std::vector<glyph_shape> &shapes,
-        text_segment *segment, mat3 matrix)
+        text_segment &segment, mat3 matrix)
 {
-    FT_Face ftface = static_cast<font_face_ft*>(segment->face)->ftface;
-    int font_size = segment->font_size;
+    FT_Face ftface = static_cast<font_face_ft*>(segment.face)->ftface;
+    int font_size = segment.font_size;
     int dpi = font_manager::dpi;
     float x_offset = 0;
 
@@ -371,13 +371,13 @@ void text_renderer_canvas::render(draw_list &batch,
         vec2 s_size = shape.size * s_scale;
         vec2 s_offset = shape.offset * s_scale;
         float y_offset = (font_size / 64.0f) - s_size.y;
-        vec2 p1 = vec2(segment->x, segment->y) + vec2(x_offset, y_offset) +
+        vec2 p1 = vec2(segment.x, segment.y) + vec2(x_offset, y_offset) +
             vec2(s_offset.x,-s_offset.y);
         vec2 p2 = p1 + vec2(s_size.x,s_size.y);
 
         /* emit geometry and advance */
-        rect(batch, p1, p2, 0, ctx, shape_num, segment->color, matrix);
-        x_offset += s.x_advance/64.0f + segment->tracking;
+        rect(batch, p1, p2, 0, ctx, shape_num, segment.color, matrix);
+        x_offset += s.x_advance/64.0f + segment.tracking;
     }
 }
 
@@ -535,7 +535,7 @@ text_segment& Text::get_text_segment() {
 
 std::vector<glyph_shape>& Text::get_glyph_shapes() {
     if (shapes.size() == 0) {
-        canvas->text_shaper.shape(shapes, &get_text_segment());
+        canvas->text_shaper.shape(shapes, get_text_segment());
     }
     return shapes;
 }
@@ -862,11 +862,11 @@ void Canvas::emit(draw_list &batch)
                 /* todo - use fast text renderer (currently disabled) */
                 segment.baseline_shift = -text_size.y;
                 segment.color = shape->get_fill_brush().colors[0].rgba32();
-                text_renderer_r.render(batch, shapes, &segment, transform);
+                text_renderer_r.render(batch, shapes, segment, transform);
             } else {
                 /* todo - brushes are stored on each glyph shape */
                 segment.color = shape->get_fill_brush().colors[0].rgba32();
-                text_renderer_c.render(batch, shapes, &segment, transform);
+                text_renderer_c.render(batch, shapes, segment, transform);
             }
             break;
         }

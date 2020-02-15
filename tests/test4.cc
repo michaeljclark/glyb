@@ -47,33 +47,33 @@ int main()
 
     /* shape (cold) */
     const auto t1 = high_resolution_clock::now();
-    shaper.shape(shapes, &segment);
+    shaper.shape(shapes, segment);
     const auto t2 = high_resolution_clock::now();
 
     shapes.clear();
 
     /* shape (hot) */
     const auto t3 = high_resolution_clock::now();
-    shaper.shape(shapes, &segment);
+    shaper.shape(shapes, segment);
     const auto t4 = high_resolution_clock::now();
 
     /* render (cold) */
     const auto t5 = high_resolution_clock::now();
-    renderer.render(batch, shapes, &segment);
+    renderer.render(batch, shapes, segment);
     const auto t6 = high_resolution_clock::now();
 
     draw_list_clear(batch);
 
     /* render (hot) */
     const auto t7 = high_resolution_clock::now();
-    renderer.render(batch, shapes, &segment);
+    renderer.render(batch, shapes, segment);
     const auto t8 = high_resolution_clock::now();
 
     /* shape (loop) */
     const auto t9 = high_resolution_clock::now();
     for (size_t i = 0; i < iterations; i++) {
         shapes.clear();
-        shaper.shape(shapes, &segment);
+        shaper.shape(shapes, segment);
     }
     const auto t10 = high_resolution_clock::now();
 
@@ -81,7 +81,7 @@ int main()
     const auto t11 = high_resolution_clock::now();
     for (size_t i = 0; i < iterations; i++) {
         draw_list_clear(batch);
-        renderer.render(batch, shapes, &segment);
+        renderer.render(batch, shapes, segment);
     }
     const auto t12 = high_resolution_clock::now();
 

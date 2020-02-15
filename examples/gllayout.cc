@@ -143,8 +143,8 @@ static void update_geometry()
     layout.layout(segments, &c, 50, 50, 900, 700);
     for (auto &segment : segments) {
         shapes.clear();
-        shaper.shape(shapes, &segment);
-        renderer.render(batch, shapes, &segment);
+        shaper.shape(shapes, segment);
+        renderer.render(batch, shapes, segment);
     }
 }
 

@@ -176,7 +176,7 @@ static void update_geometry()
             int height = static_cast<font_face_ft*>
                 (face)->get_height(render_segment->font_size) >> 6;
             std::vector<glyph_shape> shapes;
-            shaper.shape(shapes, render_segment.get());
+            shaper.shape(shapes, *render_segment);
             for (auto &s : shapes) {
                 width += s.x_advance/64;
             }
@@ -201,7 +201,7 @@ static void update_geometry()
      */
 
     for (auto &item : items) {
-        shaper.shape(*item.shapes, item.segment.get());
+        shaper.shape(*item.shapes, *item.segment);
     }
 
     if (use_multithread && manager.msdf_enabled) {
@@ -215,7 +215,7 @@ static void update_geometry()
     }
 
     for (auto &item : items) {
-        renderer.render(batch, *item.shapes, item.segment.get());
+        renderer.render(batch, *item.shapes, *item.segment);
     }
 
     if (show_atlas) {

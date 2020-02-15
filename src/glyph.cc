@@ -418,19 +418,19 @@ void font_atlas::load(font_manager *manager, font_face *face)
  */
 
 void text_shaper_ft::shape(std::vector<glyph_shape> &shapes,
-    text_segment *segment)
+    text_segment &segment)
 {
-    font_face_ft *face = static_cast<font_face_ft*>(segment->face);
+    font_face_ft *face = static_cast<font_face_ft*>(segment.face);
     FT_Face ftface = face->ftface;
     FT_GlyphSlot ftglyph = ftface->glyph;
     FT_Error fterr;
 
     /* we need to set up our font metrics */
-    face->get_metrics(segment->font_size);
+    face->get_metrics(segment.font_size);
 
     /* shape text with FreeType (does not apply glyph-glyph kerning) */
-    const char* text = segment->text.c_str();
-    size_t text_len = segment->text.size();
+    const char* text = segment.text.c_str();
+    size_t text_len = segment.text.size();
     for (size_t i = 0; i < text_len; i += utf8_codelen(text + i)) {
 
         uint32_t codepoint = utf8_to_utf32(text + i);
@@ -461,9 +461,9 @@ void text_shaper_ft::shape(std::vector<glyph_shape> &shapes,
  * text shaper (HarfBuff)
  */
 
-void text_shaper_hb::shape(std::vector<glyph_shape> &shapes, text_segment *segment)
+void text_shaper_hb::shape(std::vector<glyph_shape> &shapes, text_segment &segment)
 {
-    font_face_ft *face = static_cast<font_face_ft*>(segment->face);
+    font_face_ft *face = static_cast<font_face_ft*>(segment.face);
     FT_Face ftface = face->ftface;
 
     hb_font_t *hbfont;
@@ -473,14 +473,14 @@ void text_shaper_hb::shape(std::vector<glyph_shape> &shapes, text_segment *segme
     unsigned glyph_count;
 
     /* we need to set up font metrics */
-    face->get_metrics(segment->font_size);
+    face->get_metrics(segment.font_size);
 
     /* get text to render */
-    const char* text = segment->text.c_str();
-    size_t text_len = segment->text.size();
-    hbfont = face->get_hbfont(segment->font_size);
-    hblang = hb_language_from_string(segment->language.c_str(),
-        (int)segment->language.size());
+    const char* text = segment.text.c_str();
+    size_t text_len = segment.text.size();
+    hbfont = face->get_hbfont(segment.font_size);
+    hblang = hb_language_from_string(segment.language.c_str(),
+        (int)segment.language.size());
 
     /* create text buffers */
     hb_buffer_t *buf = hb_buffer_create();
@@ -599,23 +599,23 @@ atlas_entry glyph_renderer_ft::render(font_atlas *atlas, font_face_ft *face,
 
 void text_renderer_ft::render(draw_list &batch,
     std::vector<glyph_shape> &shapes,
-    text_segment *segment, glm::mat3 m)
+    text_segment &segment, glm::mat3 m)
 {
-    font_face_ft *face = static_cast<font_face_ft*>(segment->face);
+    font_face_ft *face = static_cast<font_face_ft*>(segment.face);
     //float scale = glm::determinant(m);
     float scale = (m[0][0] + m[1][1]) / 2.0f;
-    int font_size = (int)roundf(segment->font_size * scale);
-    float baseline_shift = segment->baseline_shift * scale;
-	float tracking = segment->tracking * scale;
+    int font_size = (int)roundf(segment.font_size * scale);
+    float baseline_shift = segment.baseline_shift * scale;
+	float tracking = segment.tracking * scale;
     bool round = false;
 
     /* lookup glyphs in font atlas, creating them if they don't exist */
     float dx = 0, dy = 0;
-    for (auto shape : shapes) {
+    for (auto &shape : shapes) {
         glyph_entry *ge = manager->lookup(face, font_size, shape.glyph);
         if (!ge) continue;
         /* create polygons in vertex array */
-        glm::vec3 v = glm::vec3(segment->x, segment->y, 1.0f) * m;
+        glm::vec3 v = glm::vec3(segment.x, segment.y, 1.0f) * m;
         float x1 = v.x / v.z + ge->ox + dx + shape.x_offset/64.0f;
         float x2 = x1 + ge->w;
         float y1 = v.y / v.z - ge->oy + dy + shape.y_offset/64.0f -
@@ -631,7 +631,7 @@ void text_renderer_ft::render(draw_list &batch,
             float u1 = ge->uv[0], v1 = ge->uv[1];
             float u2 = ge->uv[2], v2 = ge->uv[3];
             uint o = (int)batch.vertices.size();
-            uint c = segment->color;
+            uint c = segment.color;
             uint o0 = draw_list_vertex(batch, {{x1p, y1p, 0}, {u1, v1}, c});
             uint o1 = draw_list_vertex(batch, {{x2p, y1p, 0}, {u2, v1}, c});
             uint o2 = draw_list_vertex(batch, {{x2p, y2p, 0}, {u2, v2}, c});
