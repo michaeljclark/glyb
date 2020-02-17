@@ -544,7 +544,7 @@ font_atlas* font_manager_ft::getNewAtlas(font_face *face)
 
     /* if this is the first atlas for this face, then we attempt to load
      * the atlas; if unsuccessful we allocate backing store manually. */
-    if (msdf_enabled && msdf_autoload && ai->second.size() == 0) {
+    if (face && msdf_enabled && msdf_autoload && ai->second.size() == 0) {
         atlas->load(this, face);
         importAtlas(atlas.get());
     }
