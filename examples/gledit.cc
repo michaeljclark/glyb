@@ -39,6 +39,7 @@
 #include "logger.h"
 #include "utf8.h"
 #include "color.h"
+#include "geometry.h"
 #include "glcommon.h"
 
 using mat3 = glm::mat3;
@@ -49,8 +50,8 @@ using dvec2 = glm::dvec2;
 
 /* constants */
 
-static const color block_color =  color(0.8f, 0.8f, 0.8f, 1.0f);
-static const color select_color = color(0.7f, 0.7f, 1.0f, 1.0f);
+static const color block_color =  color(0.85f, 0.85f, 0.85f, 1.00f);
+static const color select_color = color(0.75f, 0.85f, 1.00f, 1.00f);
 
 static const float Inf = std::numeric_limits<float>::infinity();
 
@@ -181,6 +182,8 @@ static void create_text(text_container &c)
         {{ "tracking", "2" }, { "baseline-shift", "6" }, { "color", "#008000" }}));
     c.append(text_part("Κόσμε ",
         {{ "tracking", "2" }, { "baseline-shift", "3" }, { "color", "#000080" }}));
+    c.append(text_part("Ελευθερία, Ισότητα, Αδελφότητα",
+        {{ "font-size", "24" }, { "font-style", "bold" }, { "color", "#000000" }}));
 #endif
     c.append(text_part(
         "    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
@@ -190,6 +193,8 @@ static void create_text(text_container &c)
         "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt "
         "mollit anim id est laborum.",
         {{ "font-size", "18" }, { "font-style", "bold" }, { "color", "#000000" }}));
+    c.append(text_part("  Liberty, Equality, Fraternity",
+        {{ "font-size", "24" }, { "font-style", "bold" }, { "color", "#000000" }}));
     c.append(text_part(
         "    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
         "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud "
@@ -249,7 +254,7 @@ static void print_state(const char* state)
 static void text_range_draw_glyph_rects(text_state &ts,
     std::pair<glyph_offset,glyph_offset> r, color block_color, mat3 m)
 {
-    uint32_t col = block_color.rgba32();
+    uint col = block_color.rgba32();
     for (size_t i = r.first.segment; i <= r.second.segment; i++) {
         if (i >= ts.segments.size()) break;
         size_t start_shape = (i == r.first.segment)
@@ -269,7 +274,7 @@ static void text_range_draw_selection_rects(text_state &ts,
 {
     float xmin = Inf, xmax = -Inf;
     float xminf = Inf, xminl = -Inf;
-    uint32_t col = select_color.rgba32();
+    uint col = select_color.rgba32();
     for (size_t i = r.first.segment; i <= r.second.segment; i++) {
         if (i >= ts.segments.size()) break;
         size_t start_shape = (i == r.first.segment)
@@ -331,6 +336,42 @@ static void text_range_draw_selection_rects(text_state &ts,
 
 static auto find_glyph_selection(text_state &ts, vec2 s[2])
 {
+    /*
+     * Text selection needs to handle script direction rules
+     * for LTR (Left-To-Right) and RTL (Right-to-left) text.
+     *
+     * Text direction can be inferred from language tags on the
+     * text segment or by content analysis. The rules are simple
+     * when the lines only contain one script direction:
+     *
+     * Single-line:
+     *
+     *            a      b                     b      a
+     *            v      v                     v      v
+     *   ---- --- [ ssss ] --- ----   ---- --- [ ssss ] --- ----
+     *
+     * LTR (Left-to-right):
+     *
+     *            a                                   a
+     *            v                                   v
+     *   ---- --- [ ssss sssss ssss   ---- ----- ---- [ sss ssss
+     *   sssss ssss sssss ssss ssss   sssss ssss sssss ssss ssss
+     *   ssss sssss ssss ] --- ----   ssss sss ] ---- ----- ----
+     *                   ^                     ^
+     *                   b                     b
+     *
+     * RTL (Right-to-left):
+     *
+     *            a                                   a
+     *            v                                   v
+     *   ssss sss ] ---- ----- ----   ssss sssss ssss ] --- ----
+     *   sssss ssss sssss ssss ssss   sssss ssss sssss ssss ssss
+     *   ---- ----- ---- [ sss ssss   ---- --- [ ssss sssss ssss
+     *                   ^                     ^
+     *                   b                     b
+     *
+     * Code here is *broken* direction agnostic geometric coverage.
+     */
     size_t num_segments = ts.segments.size();
     glyph_offset min{0,0}, max{0,0};
     for (size_t i = 0; i < num_segments; i++) {
@@ -485,7 +526,6 @@ static void mouse_text_select(text_state &ts, vec2 span[2])
 
     if (range == text_selection) return; /* unchanged */
     text_selection = range;
-    if (range.second == glyph_offset{0,0}) return; /* empty */
 
     if (debug) {
         printf("mouse_text_select: (%s - %s) text=\"%s\"\n",
