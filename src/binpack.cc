@@ -101,7 +101,7 @@ std::vector<bin_rect> bin_rect::intersect_subset(bin_rect o)
      *   |   |   |   |   | o |   |   |
      *   |   |  ooo  |   |   |   |  ooo
      *   | o |   |   |   |   |   |   |
-     *   \ o-/   \---/   \---/   \---/
+     *   \-o-/   \---/   \---/   \---/
      *     o
      */
 
