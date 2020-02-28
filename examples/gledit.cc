@@ -241,8 +241,15 @@ static void rect(draw_list &batch, vec2 A, vec2 B, float z, uint color, glm::mat
         bin_rect(bin_point(1,1),bin_point(0,0)), st_clamp | filter_linear);
 }
 
-static inline vec2 min(vec2 a, vec2 b) { return vec2(std::min(a.x, b.x), std::min(a.y, b.y)); }
-static inline vec2 max(vec2 a, vec2 b) { return vec2(std::max(a.x, b.x), std::max(a.y, b.y)); }
+static inline vec2 min(const vec2 &a, const vec2 &b)
+{
+    return { std::min(a.x, b.x), std::min(a.y, b.y) };
+}
+
+static inline vec2 max(const vec2 &a, const vec2 &b)
+{
+    return { std::max(a.x, b.x), std::max(a.y, b.y) };
+}
 
 static void print_state(const char* state)
 {
@@ -334,7 +341,7 @@ static void text_range_draw_selection_rects(text_state &ts,
     }
 }
 
-static auto find_glyph_selection(text_state &ts, vec2 s[2])
+static std::pair<glyph_offset,glyph_offset> find_glyph_selection(text_state &ts, vec2 s[2])
 {
     /*
      * Text selection needs to handle script direction rules
@@ -369,11 +376,11 @@ static auto find_glyph_selection(text_state &ts, vec2 s[2])
      *   ---- ----- ---- [ sss ssss   ---- --- [ ssss sssss ssss
      *                   ^                     ^
      *                   b                     b
-     *
-     * Code here is *broken* direction agnostic geometric coverage.
      */
     size_t num_segments = ts.segments.size();
-    glyph_offset min{0,0}, max{0,0};
+
+    // find min and max bounds of text layout
+    vec2 minbox(Inf), maxbox(-Inf);
     for (size_t i = 0; i < num_segments; i++) {
         if (i >= ts.segments.size()) break;
         size_t num_shapes = ts.segment_shapes[i].size();
@@ -381,18 +388,40 @@ static auto find_glyph_selection(text_state &ts, vec2 s[2])
         for (size_t j = 0; j < num_shapes; j++) {
             auto &shape = ts.segment_shapes[i][j];
             auto &p = shape.pos;
-            bool c = std::min(p[0].x, p[1].x) <= std::max(s[0].x, s[1].x) &&
-                     std::max(p[0].x, p[1].x) >= std::min(s[0].x, s[1].x) &&
-                     std::min(p[0].y, p[1].y) <= std::max(s[0].y, s[1].y) &&
-                     std::max(p[0].y, p[1].y) >= std::min(s[0].y, s[1].y);
-            if (c) {
-                glyph_offset c{(uint)i,(uint)j};
-                if (min == glyph_offset{0,0} || c < min) min = c;
-                if (max == glyph_offset{0,0} || c > max) max = c;
-            }
+            minbox = min(minbox, min(s[0], s[1]));
+            maxbox = max(minbox, max(s[0], s[1]));
         }
     }
-    return std::pair<glyph_offset,glyph_offset>(min,max);
+
+    // find left-to-right or right-to-left intersection bounds
+    rect_2d lbox, rbox;
+    vec2 min1 = min(s[0], s[1]), max1 = max(s[0], s[1]);
+    vec2 d = s[0] - s[1];
+    if ((d.x < 0 && d.y < 0) || (d.x > 0 && d.y > 0)) {
+        lbox = rbox = rect_2d{ min1, max1 };
+    } else {
+        lbox = {{ minbox.x, min1.y }, { min1.x,   max1.y }};
+        rbox = {{ max1.x,   min1.y }, { maxbox.x, max1.y }};
+    }
+
+    // find glyph at start and end of the intersection bounds
+    glyph_offset gs{0,0}, ge{0,0}, empty{0,0};
+    for (size_t i = 0; i < num_segments; i++) {
+        if (i >= ts.segments.size()) break;
+        size_t num_shapes = ts.segment_shapes[i].size();
+        auto &segment = ts.segments[i];
+        for (size_t j = 0; j < num_shapes; j++) {
+            auto &shape = ts.segment_shapes[i][j];
+            auto &p = shape.pos;
+            rect_2d gr{ min(p[0], p[1]), max(p[0], p[1]) };
+            int li = intersect(gr, lbox), ri = intersect(gr, rbox);
+            glyph_offset o{(uint)i, (uint)j};
+            if (li & intersect_2d::inner && (ge == empty || o > ge)) ge = o;
+            if (ri & intersect_2d::inner && (gs == empty || o < gs)) gs = o;
+        }
+    }
+
+    return {gs, ge};
 }
 
 static std::string to_string(glyph_offset o)
@@ -451,7 +480,7 @@ static void update_geometry()
     if (mouse_left_drag) {
         vec2 a = min(state.mouse_pos, state_save.mouse_pos);
         vec2 b = max(state.mouse_pos, state_save.mouse_pos);
-        rect(batch, a, b, 0, 0xffeeeeee);
+        //rect(batch, a, b, 0, 0xffeeeeee);
     }
     if (text_selection.second != glyph_offset{0,0}) {
         text_range_draw_selection_rects(ts, text_selection, select_color, m);
