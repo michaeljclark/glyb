@@ -87,9 +87,9 @@ struct text_layout
     text_layout(font_manager_ft* manager,
         text_shaper* shaper, text_renderer_ft* renderer);
 
-    void style(text_segment *segment, text_part *part);
+    void style(text_segment &segment, text_part &part);
     void layout(std::vector<text_segment> &segments,
-        text_container *container, int x, int y, int width, int height);
+        text_container &container, int x, int y, int width, int height);
 };
 
 inline text_layout::text_layout(font_manager_ft* manager, text_shaper* shaper,

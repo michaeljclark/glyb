@@ -99,7 +99,7 @@ void t2()
     c.append(text_part("italic ", {{ "font-style", "Italic" }} ));
     c.append(text_part("bold ", {{ "font-weight", "bold" }} ));
 
-    layout.layout(segments, &c, 10, 10, 300, 500);
+    layout.layout(segments, c, 10, 10, 300, 500);
 
     for (auto &seg : segments) {
         if (seg.face) {

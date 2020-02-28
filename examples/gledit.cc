@@ -490,7 +490,7 @@ static void update_geometry()
     }
 
     ts.segments.clear();
-    layout.layout(ts.segments, &ts.container, 50, 50, 900, 700);
+    layout.layout(ts.segments, ts.container, 50, 50, 900, 700);
     size_t num_segments = ts.segments.size();
     ts.segment_shapes.resize(num_segments);
     for (size_t i = 0; i < num_segments; i++) {

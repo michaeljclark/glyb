@@ -140,7 +140,7 @@ static void update_geometry()
         {{ "font-size", "36" }, { "font-style", "bold" }, { "color", "#7f7f9f" }}));
 
     draw_list_clear(batch);
-    layout.layout(segments, &c, 50, 50, 900, 700);
+    layout.layout(segments, c, 50, 50, 900, 700);
     for (auto &segment : segments) {
         shapes.clear();
         shaper.shape(shapes, segment);

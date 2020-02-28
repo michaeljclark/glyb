@@ -364,7 +364,7 @@ inline int lookupEnumFloat(tag_map_t &map, std::string key,
     return val;
 }
 
-void text_layout::style(text_segment *segment, text_part *part)
+void text_layout::style(text_segment &segment, text_part &part)
 {
     /* converts text part attributes into a font face and size */
 
@@ -373,71 +373,71 @@ void text_layout::style(text_segment *segment, text_part *part)
     std::string languageStr;
 
     fontData.familyName =
-        lookupString(part->tags, "font-family", font_family_any);
+        lookupString(part.tags, "font-family", font_family_any);
     fontData.styleName =
-        lookupString(part->tags, "font-style", font_style_any);
+        lookupString(part.tags, "font-style", font_style_any);
     fontData.fontWeight =
-        (font_weight)lookupEnumInteger(part->tags, "font-weight",
+        (font_weight)lookupEnumInteger(part.tags, "font-weight",
             font_manager::weightName, font_manager::weightTable,
             font_weight_count, font_weight_any);
     fontData.fontSlope =
-        (font_slope)lookupEnumInteger(part->tags, "font-slope",
+        (font_slope)lookupEnumInteger(part.tags, "font-slope",
             font_manager::slopeName, font_manager::slopeTable,
             font_slope_count, font_slope_any);
     fontData.fontStretch =
-        (font_stretch)lookupEnumFloat(part->tags, "font-stretch",
+        (font_stretch)lookupEnumFloat(part.tags, "font-stretch",
             font_manager::stretchName, font_manager::stretchPercentTable,
             font_stretch_count, font_stretch_any);
     fontData.fontSpacing =
-        (font_spacing)lookupEnumInteger(part->tags, "font-spacing", 
+        (font_spacing)lookupEnumInteger(part.tags, "font-spacing", 
             font_manager::spacingName, font_manager::spacingTable,
             font_spacing_count, font_spacing_any);
 
-    segment->face = manager->findFontByData(fontData);
-    segment->font_size = (int)ceilf(
-        lookupFloat(part->tags, "font-size", font_size_default) * 64.0f);
-    segment->baseline_shift = lookupFloat(part->tags, "baseline-shift",
+    segment.face = manager->findFontByData(fontData);
+    segment.font_size = (int)ceilf(
+        lookupFloat(part.tags, "font-size", font_size_default) * 64.0f);
+    segment.baseline_shift = lookupFloat(part.tags, "baseline-shift",
         baseline_shift_default);
-    segment->tracking = lookupFloat(part->tags, "tracking",
+    segment.tracking = lookupFloat(part.tags, "tracking",
         tracking_default);
-    segment->line_spacing = lookupFloat(part->tags, "line-spacing");
+    segment.line_spacing = lookupFloat(part.tags, "line-spacing");
 
-    if (segment->line_spacing == 0) {
-        segment->line_spacing = roundf((float)static_cast<font_face_ft*>
-            (segment->face)->get_height(segment->font_size) / 64.0f);
+    if (segment.line_spacing == 0) {
+        segment.line_spacing = roundf((float)static_cast<font_face_ft*>
+            (segment.face)->get_height(segment.font_size) / 64.0f);
     }
 
-    colorStr = lookupString(part->tags, "color");
+    colorStr = lookupString(part.tags, "color");
     if (colorStr.size() == 0) {
-        segment->color = color_default;
+        segment.color = color_default;
     } else {
-        segment->color = color(colorStr).rgba32();
+        segment.color = color(colorStr).rgba32();
     }
 
-    languageStr = lookupString(part->tags, "language");
+    languageStr = lookupString(part.tags, "language");
     if (colorStr.size() == 0) {
-        segment->language = language_default;
+        segment.language = language_default;
     } else {
-        segment->language = languageStr;
+        segment.language = languageStr;
     }
 }
 
 void text_layout::layout(std::vector<text_segment> &segments,
-    text_container *container, int x, int y, int width, int height)
+    text_container &container, int x, int y, int width, int height)
 {
     std::vector<glyph_shape> shapes;
 
     /* layout the text in the container into styled text segments */
     int dx = x, dy = y;
-    for (size_t i = 0; i < container->parts.size(); i++)
+    for (size_t i = 0; i < container.parts.size(); i++)
     {
-        text_part *part = &container->parts[i];
+        text_part &part = container.parts[i];
 
         /* make a text segment */
-        text_segment segment(part->text, language_default);
+        text_segment segment(part.text, language_default);
 
         /* get font, font size, tracking, line_height, color, etc. */
-        style(&segment, part);
+        style(segment, part);
 
         /* set segment position */
         segment.x = (float)dx;
