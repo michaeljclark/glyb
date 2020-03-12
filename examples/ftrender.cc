@@ -32,7 +32,7 @@
 #include "glyph.h"
 
 static const char* ascii_palette = " .:-=+*#%@";
-static const char *font_path = "fonts/NotoSans-Regular.ttf";
+static const char *font_path = "fonts/DejaVuSansMono.ttf";
 static const char* text_lang = "en";
 static const char *render_text = "hello";
 static const int font_dpi = 72;
