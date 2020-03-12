@@ -68,6 +68,8 @@ if(USE_BUNDLED_LIBS)
 
   # fixme: PNG_BUILD_ZLIB appears to not work so we copy headers
   set(PNG_BUILD_ZLIB third_party/zlib CACHE PATH "Enable custom Zlib" FORCE)
+  set(PNG_TESTS OFF CACHE BOOL "Build libpng tests")
+
   set(ZLIB_LIBRARY zlibstatic)
   set(ZLIB_INCLUDE_DIR third_party/zlib)
   add_subdirectory(third_party/libpng)
@@ -161,6 +163,9 @@ target_link_libraries(genatlas libglyphic ${LIBS} ${CMAKE_DL_LIBS})
 
 add_executable(fontdb examples/fontdb.cc)
 target_link_libraries(fontdb libglyphic ${LIBS} ${CMAKE_DL_LIBS})
+
+add_executable(fontscan examples/fontscan.cc)
+target_link_libraries(fontscan libglyphic ${LIBS} ${CMAKE_DL_LIBS})
 
 add_executable(ftrender examples/ftrender.cc)
 target_link_libraries(ftrender libglyphic ${LIBS} ${CMAKE_DL_LIBS})
