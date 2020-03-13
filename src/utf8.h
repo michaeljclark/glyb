@@ -4,6 +4,9 @@
 
 #include <cstdint>
 #include <cstdlib>
+#include <climits>
+
+#include <vector>
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,4 +22,19 @@ utf32_code utf8_to_utf32_code(const char *s);
 
 #ifdef __cplusplus
 }
+#endif
+
+enum {
+	emoji_block = 0x1F000,
+	emoji_mask = ~0x00fff,
+	emoji_flag = 0x1,
+};
+
+#ifdef __cplusplus
+
+struct utf8_range { uint64_t off; uint32_t len; uint32_t flags; };
+
+std::vector<utf8_range> utf8_ranges_from_text(const char* text, size_t length,
+    uint32_t code, uint32_t mask, uint32_t flag);
+
 #endif
