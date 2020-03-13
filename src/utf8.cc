@@ -68,6 +68,25 @@ uint32_t utf8_to_utf32(const char *s)
     }
 }
 
+utf32_code utf8_to_utf32_code(const char *s)
+{
+    if (!s) {
+        return { -1, 0 };
+    } else if ((s[0]&v) == 0x0) {
+        return { s[0], 1 };
+    } else if ((s[0]&u) == u) {
+        return { ((s[0]&p)<<24)|((s[1]&m)<<18)|((s[2]&m)<<12)|((s[3]&m)<<6)|(s[4]&m), 5 };
+    } else if ((s[0]&t) == t) {
+        return { ((s[0]&o)<<18)|((s[1]&m)<<12)|((s[2]&m)<<6)|(s[3]&m), 4 };
+    } else if ((s[0]&r) == r) {
+        return { ((s[0]&n)<<12)|((s[1]&m)<<6)|(s[2]&m), 3 };
+    } else if ((s[0]&q) == q) {
+        return { ((s[0]&m)<<6)|(s[1]&m), 2 };
+    } else {
+        return { -1, 1 };
+    }
+}
+
 int utf32_to_utf8(char *s, size_t len, uint32_t c)
 {
     if (c < 0x80 && len >= 2) {
