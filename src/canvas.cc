@@ -148,6 +148,7 @@ void AContext::clear()
     shapes.clear();
     contours.clear();
     edges.clear();
+    brushes.clear();
 }
 
 int AContext::new_shape(vec2 offset, vec2 size)
