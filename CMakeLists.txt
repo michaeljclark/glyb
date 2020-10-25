@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(glyphic)
+project(glyb)
 
 include(CheckCXXCompilerFlag)
 
@@ -155,48 +155,48 @@ set(GLYPHIC_SOURCES
   src/utf8.cc
   src/utf8.h
 )
-add_library(libglyphic STATIC ${GLYPHIC_SOURCES})
-set_target_properties(libglyphic PROPERTIES CXX_STANDARD 17)
+add_library(glyblib STATIC ${GLYPHIC_SOURCES})
+set_target_properties(glyblib PROPERTIES CXX_STANDARD 17)
 
 add_executable(genatlas examples/genatlas.cc)
-target_link_libraries(genatlas libglyphic ${LIBS} ${CMAKE_DL_LIBS})
+target_link_libraries(genatlas glyblib ${LIBS} ${CMAKE_DL_LIBS})
 
 add_executable(fontdb examples/fontdb.cc)
-target_link_libraries(fontdb libglyphic ${LIBS} ${CMAKE_DL_LIBS})
+target_link_libraries(fontdb glyblib ${LIBS} ${CMAKE_DL_LIBS})
 
 add_executable(fontscan examples/fontscan.cc)
-target_link_libraries(fontscan libglyphic ${LIBS} ${CMAKE_DL_LIBS})
+target_link_libraries(fontscan glyblib ${LIBS} ${CMAKE_DL_LIBS})
 
 add_executable(ftrender examples/ftrender.cc)
-target_link_libraries(ftrender libglyphic ${LIBS} ${CMAKE_DL_LIBS})
+target_link_libraries(ftrender glyblib ${LIBS} ${CMAKE_DL_LIBS})
 
 add_executable(glbinpack examples/glbinpack.cc)
-target_link_libraries(glbinpack libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})
+target_link_libraries(glbinpack glyblib ${LIBS} glad ${CMAKE_DL_LIBS})
 
 add_executable(glcanvas examples/glcanvas.cc)
-target_link_libraries(glcanvas libglyphic ${LIBS} glad ${CMAKE_DL_LIBS} imgui)
+target_link_libraries(glcanvas glyblib ${LIBS} glad ${CMAKE_DL_LIBS} imgui)
 
 add_executable(gledit examples/gledit.cc)
-target_link_libraries(gledit libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})
+target_link_libraries(gledit glyblib ${LIBS} glad ${CMAKE_DL_LIBS})
 
 add_executable(glgraph examples/glgraph.cc)
-target_link_libraries(glgraph libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})
+target_link_libraries(glgraph glyblib ${LIBS} glad ${CMAKE_DL_LIBS})
 
 add_executable(glfont examples/glfont.cc)
-target_link_libraries(glfont libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})
+target_link_libraries(glfont glyblib ${LIBS} glad ${CMAKE_DL_LIBS})
 
 add_executable(gllayout examples/gllayout.cc)
-target_link_libraries(gllayout libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})
+target_link_libraries(gllayout glyblib ${LIBS} glad ${CMAKE_DL_LIBS})
 
 add_executable(glsimple examples/glsimple.cc)
-target_link_libraries(glsimple libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})
+target_link_libraries(glsimple glyblib ${LIBS} glad ${CMAKE_DL_LIBS})
 
-add_executable(glyphic examples/glyphic.cc)
-target_link_libraries(glyphic libglyphic ${LIBS} glad ${CMAKE_DL_LIBS})
+add_executable(glyb examples/glyb.cc)
+target_link_libraries(glyb glyblib ${LIBS} glad ${CMAKE_DL_LIBS})
 
 file(GLOB BINPACK_TESTS tests/*.cc)
 foreach(src ${BINPACK_TESTS})
   get_filename_component(name ${src} NAME_WE)
   add_executable(${name} ${src})
-  target_link_libraries(${name} libglyphic ${LIBS})
+  target_link_libraries(${name} glyblib ${LIBS})
 endforeach(src)

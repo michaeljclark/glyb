@@ -1,5 +1,5 @@
 /*
- * glyphic logo
+ * glyb logo
  */
 
 #ifdef _WIN32
@@ -58,7 +58,7 @@ static GLFWwindow* window;
 static font_manager_ft manager;
 
 static const char *font_path = "fonts/DejaVuSans.ttf";
-static const char *render_text = "glyphic";
+static const char *render_text = "glyb";
 static const char* text_lang = "en";
 static const int font_dpi = 72;
 static const int stats_font_fize = 18;
@@ -66,7 +66,7 @@ static const int stats_font_fize = 18;
 static float load_factor = 1.0;
 static bool help_text = false;
 static bool overlay_stats = false;
-static int width = 1024, height = 768;
+static int width = 1024, height = 384;
 static double tl, tn, td, tb;
 
 static GLuint render_fbo = 0;
@@ -78,7 +78,7 @@ static bool batch_mode = false;
 static size_t frame_rate = 60;
 static size_t frame_skip = 15 * frame_rate;
 static size_t frame_count = 15 * frame_rate;
-static const char *filename_template = "video/ppm/glyphic-%09zu.ppm";
+static const char *filename_template = "video/ppm/glyb-%09zu.ppm";
 static const char *atlas_dump_template = nullptr;
 
 
@@ -279,19 +279,19 @@ static void draw(double tn, double td, bool skip = false)
 
     if (skip) return;
 
-    /* render pulsating glyphic text */
+    /* render pulsating glyb text */
     float s = sinf(fmodf((float)tn, 1.f) * 4.0f * (float)M_PI);
-    float font_size = 160.0f + floorf(s * 25);
-    text_segment glyphic_segment(render_text, text_lang, face,
+    float font_size = 300.0f + floorf(s * 25);
+    text_segment glyb_segment(render_text, text_lang, face,
         (int)((float)font_size * scale * 64.0f), 0, 0, color2);
-    glyphic_segment.tracking = -5.0f;
+    glyb_segment.tracking = -5.0f;
 
     shapes.clear();
-    shaper.shape(shapes, glyphic_segment);
-    tw = text_width(shapes, glyphic_segment);
-    glyphic_segment.x = (float)(width - (int)tw) / 2.0f - 10.0f;
-    glyphic_segment.y =  (float)height/2.0f + (float)font_size*0.33f;
-    renderer.render(batch, shapes, glyphic_segment);
+    shaper.shape(shapes, glyb_segment);
+    tw = text_width(shapes, glyb_segment);
+    glyb_segment.x = (float)(width - (int)tw) / 2.0f - 10.0f;
+    glyb_segment.y =  (float)height/2.0f + (float)font_size*0.225f;
+    renderer.render(batch, shapes, glyb_segment);
 
     /* render stats text */
     float x = 10.0f, y = height - 10.0f;
@@ -473,7 +473,7 @@ static void fbo_initialize()
 
 /* GLFW GUI entry point */
 
-static void glyphic_gui(int argc, char **argv)
+static void glyb_gui(int argc, char **argv)
 {
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, CTX_OPENGL_MAJOR);
@@ -529,7 +529,7 @@ static void write_ppm(const char *filename, const uint8_t *buffer, int width, in
 
 /* batch mode entry point */
 
-static void glyphic_offline(int argc, char **argv)
+static void glyb_offline(int argc, char **argv)
 {
     GLubyte *buffer = new GLubyte[width * height * 4 * sizeof(GLubyte)];
     if (!buffer) {
@@ -588,12 +588,12 @@ void print_help(int argc, char **argv)
         "\n"
         "Offline options:\n"
         "  -o, --offline                      start in offline batch mode\n"
-        "  -t, --template <name-%%05d.ppm>    offline output template\n"
+        "  -t, --template <name-%%05d.ppm>     offline output template\n"
         "  -s, --frame-size <width>x<height>  window or image size\n"
         "  -r, --frame-rate <integer>         output frame rate\n"
         "  -k, --frame-skip <integer>         output frame count start\n"
         "  -c, --frame-count <integer>        output frame count limit\n"
-        "  -d, --dump-atlases <name-%%d.png>  dump atlas textures to png files\n"
+        "  -d, --dump-atlases <name-%%d.png>   dump atlas textures to png files\n"
         "\n"
         "Common options:\n"
         "  -f, --font <ttf-file>              font file (default %s)\n"
@@ -690,9 +690,9 @@ int main(int argc, char **argv)
     parse_options(argc, argv);
 
     if (batch_mode) {
-        glyphic_offline(argc, argv);
+        glyb_offline(argc, argv);
     } else {
-        glyphic_gui(argc, argv);
+        glyb_gui(argc, argv);
     }
 
     return 0;

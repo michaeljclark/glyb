@@ -1,6 +1,6 @@
-# glyphic
+# glyb
 
-glyphic is a simple high performance graphics API agnostic text layout
+glyb is a simple high performance graphics API agnostic text layout
 and rendering library.
 
 - simple graphics library agnostic draw lists
@@ -10,24 +10,24 @@ and rendering library.
 - scalable and transparent handling of multiple glyph atlases
 - gpu-accelerated distance field based 2D canvas
 
-![glyphic](/images/glyphic.png)
+![glyb](/images/glyb.png)
 
 ## Introduction
 
-glyphic contains high level interfaces for text rendering. glyphic
+glyb contains high level interfaces for text rendering. glyb
 outputs font atlas bitmaps, vertex arrays and index arrays which can be
-used with OpenGL, Vulkan and DirectX. glyphic makes managing multiple
+used with OpenGL, Vulkan and DirectX. glyb makes managing multiple
 font atlases with complete Unicode coverage simple as the created draw
 lists contain image switching and update commands, so that any number
 of Unicode faces and glyphs can be used at one time.
 
-glyphic has online and offline font atlas glyph renderers using HarfBuzz
+glyb has online and offline font atlas glyph renderers using HarfBuzz
 and FreeType. Render time is less than one microsecond per glyph.
-glyphic's font atlas uses an online 2D _**MAXRECTS-BSSF**_ derived bin
+glyb's font atlas uses an online 2D _**MAXRECTS-BSSF**_ derived bin
 packing algorithm, as outlined in _"A Thousand Ways to Pack the Bin - A
 Practical Approach to Two-Dimensional Rectangle Bin Packing, Jukka Jylänki_.
 
-glyphic includes an MSDF (multi-channel signed distance field) glyph
+glyb includes an MSDF (multi-channel signed distance field) glyph
 renderer that uses the [msdfgen](https://github.com/Chlumsky/msdfgen)
 library to create _variable-size_ MSDF font atlases. MSDF font atlases
 are CPU-intensive to produce so an offline tool `genatlas` is included
@@ -35,7 +35,7 @@ to pregenerate MSDF font atlases. The advantage of MSDF font atlases is
 that glyphs only need to be rendered for one size. After the atlas has
 been generated, text renderering becomes extremely fast. 
 
-glyphic includes an online multi-threaded MSDF renderer. This allows
+glyb includes an online multi-threaded MSDF renderer. This allows
 online MSDF atlas generation with any truetype font. Rendering signed
 distance field font atlases from truetype contours online is typically
 prohibitive due to CPU requirements, however, when spread over 8 to 16
@@ -63,7 +63,7 @@ The project also contains several OpenGL examples using the library.
   - `glfont` - _example that displays sample text at multiple sizes_
   - `gllayout` - _example showing text layout with line breaks_
   - `glsimple` - _simplest possible example for OpenGL_
-  - `glyphic` - _scalability test for regular and MSDF font atlases_
+  - `glyb` - _scalability test for regular and MSDF font atlases_
 - `third_party`
   - `freetype` - _font rendering engine_
   - `glad` - _OpenGL extension loader used by examples_
@@ -76,7 +76,7 @@ The project also contains several OpenGL examples using the library.
 
 ### Dependencies
 
-glyphic links to: 
+glyb links to: 
 [FreeType](https://github.com/aseprite/freetype2)
 [†](https://www.freetype.org/),
 [HarfBuzz](https://github.com/harfbuzz/harfbuzz)
@@ -94,14 +94,14 @@ and the examples link to:
 
 ## Building
 
-glyphic requires cmake to build. The remaining dependencies for
+glyb requires cmake to build. The remaining dependencies for
 the library and examples are included as submodules.
 
 _**Source code**_
 
 ```
-git clone --recursive https://github.com/michaeljclark/glyphic.git
-cd glyphic
+git clone --recursive https://github.com/michaeljclark/glyb.git
+cd glyb
 mkdir build
 cd build
 ```
@@ -136,7 +136,7 @@ sudo apt-get install libfreetype6-dev libharfbuzz-dev libglfw3-dev
 
 ## Example Code
 
-The following code snippet shows glyphic's high level text layout interface:
+The following code snippet shows glyb's high level text layout interface:
 
 ```
 {
@@ -223,9 +223,9 @@ the draw list model relationships.
 ![model](/images/model.png)
 _**Figure 1: Draw List Model Diagram**_
 
-The follow examples shows OpenGL code to render a draw list. glyphic does
+The follow examples shows OpenGL code to render a draw list. glyb does
 not call any graphic APIs directly making it easy to integrate with any
-graphics API. There is _**zero**_ graphics library API code in glyphic, as
+graphics API. There is _**zero**_ graphics library API code in glyb, as
 the interface is exclusively via the draw list. This makes it trivial to
 integrate with Vulkan for example.  Note: in this example, `cmd_shader_gl`
 and `cmd_mode_gl` functions map the draw list shader and primitive types
@@ -259,7 +259,7 @@ static void display()
 
 ## Examples
 
-glyphic contains several examples programs showing how to use its API:
+glyb contains several examples programs showing how to use its API:
 
 - `fontdb` - _example demonstrates scanning font metadata_
 - `ftrender` - _example renders glyphs to the console_
@@ -269,7 +269,7 @@ glyphic contains several examples programs showing how to use its API:
 - `glfont` - _example that displays sample text at multiple sizes_
 - `gllayout` - _example showing text layout with line breaks_
 - `glsimple` - _simplest possible example for OpenGL_
-- `glyphic` - _scalability test for regular and MSDF font atlases_
+- `glyb` - _scalability test for regular and MSDF font atlases_
 
 ## Text Attributes
 
