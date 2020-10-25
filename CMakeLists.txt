@@ -158,6 +158,9 @@ set(GLYPHIC_SOURCES
 add_library(glyblib STATIC ${GLYPHIC_SOURCES})
 set_target_properties(glyblib PROPERTIES CXX_STANDARD 17)
 
+add_executable(bitcode examples/bitcode.cc)
+target_link_libraries(bitcode glyblib ${LIBS} ${CMAKE_DL_LIBS})
+
 add_executable(genatlas examples/genatlas.cc)
 target_link_libraries(genatlas glyblib ${LIBS} ${CMAKE_DL_LIBS})
 
