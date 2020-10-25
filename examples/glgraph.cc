@@ -83,9 +83,9 @@ static const int font_dpi = 72;
 static const int stats_font_size = 12;
 
 static const float min_zoom = 16.0f, max_zoom = 32768.0f;
-static float clear_color[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+static float clear_color[4];
 static float xscale, yscale;
-static int window_width = 1920, window_height = 1080;
+static int window_width = 800, window_height = 600;
 static int framebuffer_width, framebuffer_height;
 static double tl, tn, td;
 static bool help_text = false;
@@ -171,17 +171,12 @@ static void create_layout(ui9::Root &root)
     {
         auto l1 = new ui9::Label();
         l1->set_text(label_names[i]);
-        l1->set_preferred_size({200,50,0});
+        l1->set_preferred_size({100,50,0});
         grid1->add_child(l1, 0, i);
 
         auto s1 = new ui9::Slider();
         s1->set_value((1.0f/6.0f) * (i+1));
-        if (i == 0) {
-            s1->set_orientation(ui9::vertical);
-            s1->set_preferred_size({300,300,0});
-        } else {
-            s1->set_preferred_size({300,50,0});
-        }
+        s1->set_preferred_size({300,50,0});
         grid1->add_child(s1, 1, i, 1, 1, { ui9::ratio, ui9::dynamic }, {1,1});
 
         auto l2 = new ui9::Label();
@@ -192,36 +187,11 @@ static void create_layout(ui9::Root &root)
         s1->set_callback([=](float v) { l2->set_text(std::to_string(v)); });
     }
 
-    auto l1 = new ui9::Label();
-    l1->set_text("Switch");
-    l1->set_preferred_size({200,50,0});
-    grid1->add_child(l1, 0, 5);
-
-    auto s1 = new ui9::Switch();
-    s1->set_value(false);
-    grid1->add_child(s1, 1, 5, 1, 1, { ui9::ratio, ui9::dynamic }, {1,1});
-
-    auto l2 = new ui9::Label();
-    l2->set_text(s1->get_value() ? "On" : "Off");
-    l2->set_preferred_size({100,50,0});
-    grid1->add_child(l2, 2, 5);
-
-    s1->set_callback([=](float v) { l2->set_text(s1->get_value() ? "On" : "Off"); });
-
-    auto l3 = new ui9::Label();
-    l3->set_text("V1");
-    l3->set_preferred_size({50,50,0});
-    grid1->add_child(l3, 3, 0, 1, 2);
-
-    auto l4 = new ui9::Label();
-    l4->set_text("V2");
-    l4->set_preferred_size({50,50,0});
-    grid1->add_child(l4, 3, 2, 1, 3);
 }
 
 static void populate_canvas()
 {
-    set(clear_color, { 0.1f, 0.1f, 0.1f, 1.0f });
+    set(clear_color, { 1.0f, 1.0f, 1.0f, 1.0f });
 
     if (canvas.num_drawables() > 0) return;
 
