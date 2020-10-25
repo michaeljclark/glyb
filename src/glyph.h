@@ -64,7 +64,7 @@ struct atlas_entry
     atlas_entry() = default;
     atlas_entry(int bin_id);
     atlas_entry(int bin_id, int font_size, int x, int y, int ox, int oy,
-        int w, int h, float uv[4]);
+        int w, int h, const float uv[4]);
 };
 
 inline atlas_entry::atlas_entry(int bin_id) :
@@ -72,10 +72,9 @@ inline atlas_entry::atlas_entry(int bin_id) :
     w(0), h(0), uv{0} {}
 
 inline atlas_entry::atlas_entry(int bin_id, int font_size, int x, int y,
-    int ox, int oy, int w, int h, float uv[4]) :
+    int ox, int oy, int w, int h, const float uv[4]) :
     bin_id(bin_id), font_size(font_size), x(x), y(y), ox(ox), oy(oy),
     w(w), h(h), uv{uv[0], uv[1], uv[2], uv[3]} {}
-
 
 /*
  * Font Atlas
@@ -103,6 +102,7 @@ struct font_atlas
     static const int DEFAULT_WIDTH = 1024;
     static const int DEFAULT_HEIGHT = 1024;
     static const int GRAY_DEPTH = 1;
+    static const int COLOR_DEPTH = 4;
     static const int MSDF_DEPTH = 4;
 
     font_atlas();
@@ -150,8 +150,16 @@ struct font_atlas
 
 inline int atlas_image_filter(font_atlas *atlas)
 {
-    /* todo fixme - we currently use depth as an indicator of type */
-    return (atlas->depth == 4 ? filter_linear : filter_nearest);
+    /*
+     * todo fixme - we currently use depth as an indicator of type
+     *
+     * Grey bitmaps need nearest as they are 1:1
+     * MSDF bitmaps need linear as they are distances
+     * Emoji bitmaps may need nearest or linear
+     */
+
+    //return (atlas->depth == 4 ? filter_linear : filter_nearest);
+    return filter_linear;
 }
 
 /*
@@ -255,12 +263,23 @@ struct glyph_renderer
         int font_size, int glyph) = 0;
 };
 
-struct glyph_renderer_ft : glyph_renderer
+struct glyph_renderer_outline_ft : glyph_renderer
 {
     span_vector span;
 
-    glyph_renderer_ft() = default;
-    virtual ~glyph_renderer_ft() = default;
+    glyph_renderer_outline_ft() = default;
+    virtual ~glyph_renderer_outline_ft() = default;
+
+    atlas_entry render(font_atlas* atlas, font_face_ft *face,
+        int font_size, int glyph);
+};
+
+struct glyph_renderer_color_ft : glyph_renderer
+{
+    span_vector span;
+
+    glyph_renderer_color_ft() = default;
+    virtual ~glyph_renderer_color_ft() = default;
 
     atlas_entry render(font_atlas* atlas, font_face_ft *face,
         int font_size, int glyph);
@@ -278,6 +297,8 @@ struct glyph_renderer_ft : glyph_renderer
 
 struct text_renderer
 {
+    static const bool debug = false;
+
     virtual ~text_renderer() = default;
 
     virtual void render(draw_list &batch,

@@ -320,7 +320,9 @@ void font_manager::indexFace(font_face *face)
     }
     (*ffi).second.push_back(face->font_id);
     allFonts.push_back(face);
-    Debug("%s %s\n", __func__, face->fontData.toString().c_str());
+    if (debug) {
+        Debug("%s %s\n", __func__, face->fontData.toString().c_str());
+    }
 }
 
 font_face* font_manager::findFontByPath(std::string path)
@@ -429,7 +431,7 @@ std::string font_spec::toString() const
 /* Font Manager (FreeType) */
 
 font_manager_ft::font_manager_ft(std::string fontDir) : font_manager(),
-    msdf_enabled(false), msdf_autoload(false)
+    color_enabled(false), msdf_enabled(false), msdf_autoload(false)
 {
     FT_Error fterr;
     if ((fterr = FT_Init_FreeType(&ftlib))) {
@@ -551,7 +553,9 @@ font_atlas* font_manager_ft::getNewAtlas(font_face *face)
     /* if load failed, allocate backing store using default size */
     if (!atlas->pixels) {
         atlas->reset(font_atlas::DEFAULT_WIDTH, font_atlas::DEFAULT_HEIGHT,
-            msdf_enabled ? font_atlas::MSDF_DEPTH : font_atlas::GRAY_DEPTH);
+            color_enabled ? font_atlas::COLOR_DEPTH :
+            msdf_enabled ? font_atlas::MSDF_DEPTH :
+                           font_atlas::GRAY_DEPTH);
     }
     /* add to index and retain pointer */
     auto atlasp = atlas.get();
@@ -583,14 +587,17 @@ font_atlas* font_manager_ft::getCurrentAtlas(font_face *face)
     return defaulAtlas;
 }
 
-glyph_renderer* font_manager_ft::getGlyphRenderer(font_face *face)
+glyph_renderer* font_manager_ft::getGlyphRenderer(font_face *face, int glyph)
 {
-    static glyph_renderer_ft ft;
+    static glyph_renderer_color_ft color;
+    static glyph_renderer_outline_ft outline;
     static glyph_renderer_msdf msdf;
 
-    return msdf_enabled ?
-        static_cast<glyph_renderer*>(&msdf) :
-        static_cast<glyph_renderer*>(&ft);
+    /* emoji - 0x1F000 - 0x1FFFF */
+
+    return color_enabled ? static_cast<glyph_renderer*>(&color) :
+           msdf_enabled  ? static_cast<glyph_renderer*>(&msdf) :
+                           static_cast<glyph_renderer*>(&outline);
 }
 
 glyph_entry* font_manager_ft::lookup(font_face *face, int font_size, int glyph)
@@ -605,11 +612,11 @@ glyph_entry* font_manager_ft::lookup(font_face *face, int font_size, int glyph)
 
     /* lookup in the current atlas */
     auto atlas = getCurrentAtlas(face);
-    ae = atlas->lookup(face, font_size, glyph, getGlyphRenderer(face));
+    ae = atlas->lookup(face, font_size, glyph, getGlyphRenderer(face, glyph));
     if (ae.bin_id == -1) {
         /* if full, make a new atlas (fixme: we don't search all atlases) */
         atlas = getNewAtlas(face);
-        ae = atlas->lookup(face, font_size, glyph, getGlyphRenderer(face));
+        ae = atlas->lookup(face, font_size, glyph, getGlyphRenderer(face, glyph));
         if (ae.bin_id == -1) {
             /* glyph size is too big */
             return nullptr;
@@ -650,8 +657,12 @@ FT_Size_Metrics* font_face_ft::get_metrics(int font_size)
     /* get metrics for our point size */
     int font_dpi = font_manager::dpi;
     FT_Size_Metrics *metrics = &ftface->size->metrics;
-    int points = (int)(font_size * metrics->x_scale) / ftface->units_per_EM;
-    if (metrics->x_scale != metrics->y_scale || font_size != points) {
+    if (ftface->units_per_EM) {
+        int points = (int)(font_size * metrics->x_scale) / ftface->units_per_EM;
+        if (metrics->x_scale != metrics->y_scale || font_size != points) {
+            FT_Set_Char_Size(ftface, 0, font_size, font_dpi, font_dpi);
+        }
+    } else {
         FT_Set_Char_Size(ftface, 0, font_size, font_dpi, font_dpi);
     }
     return &ftface->size->metrics;

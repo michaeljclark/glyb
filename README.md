@@ -266,6 +266,7 @@ glyb contains several examples programs showing how to use its API:
 - `genatlas` - _example MSDF font atlas batch generator_
 - `glbinpack` - _visualization of the bin packing algorithm_
 - `glcanvas` - _example GPU-acceralated Bézier font rendering_
+- `glemoji` - _example that renders color emoji with alpha transparency_
 - `glfont` - _example that displays sample text at multiple sizes_
 - `gllayout` - _example showing text layout with line breaks_
 - `glsimple` - _simplest possible example for OpenGL_

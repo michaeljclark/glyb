@@ -403,6 +403,10 @@ void parse_options(int argc, char **argv)
         } else if (match_opt(argv[i], "-l", "--show-lines")) {
             show_lines = true;
             i++;
+        } else if (match_opt(argv[i], "-c", "--enable-color")) {
+            manager.color_enabled = true;
+            manager.msdf_enabled = false;
+            i++;
         } else if (match_opt(argv[i], "-m", "--disable-msdf")) {
             manager.msdf_enabled = false;
             i++;

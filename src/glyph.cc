@@ -139,7 +139,8 @@ void font_atlas::clear_pixels()
     case 4:
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
-                *(uint32_t*)&pixels[(y * width + x) * depth] = 0xff000000;
+                //*(uint32_t*)&pixels[(y * width + x) * depth] = 0xff000000;
+                *(uint32_t*)&pixels[(y * width + x) * depth] = 0x00000000;
             }
         }
         break;
@@ -232,8 +233,8 @@ atlas_entry font_atlas::create(font_face *face, int font_size, int glyph,
 
 void font_atlas::create_uvs(float uv[4], bin_rect r)
 {
-    float x1 = 0.5f + r.a.x,     y1 = 0.5f + r.a.y;
-    float x2 = 0.5f + r.b.x - 1, y2 = 0.5f + r.b.y - 1;
+    float x1 = r.a.x,       y1 = r.a.y;
+    float x2 = r.b.x - 1.0, y2 = r.b.y - 1.0;
 
     uv[0] = x1/width;
     uv[1] = y2/width;
@@ -436,24 +437,37 @@ void text_shaper_ft::shape(std::vector<glyph_shape> &shapes,
         uint32_t codepoint = utf8_to_utf32(text + i);
         uint32_t glyph = FT_Get_Char_Index(ftface, codepoint);
 
-        if ((fterr = FT_Load_Glyph(ftface, glyph, 0))) {
-            Error("error: FT_Load_Glyph failed: glyph=%d fterr=%d\n",
-                glyph, fterr);
-            return;
-        }
-        if (ftface->glyph->format != FT_GLYPH_FORMAT_OUTLINE) {
-            Error("error: FT_Load_Glyph format is not outline: format=\n",
-                ftface->glyph->format);
-            return;
-        }
+        if (ftface->num_fixed_sizes > 0) {
+            //FT_Bitmap_Size *bsize = &ftface->available_sizes[ftface->num_fixed_sizes-1];
+            //bsize->width; bsize->height;
+            shapes.push_back({
+                glyph, (unsigned)i,
+                0,
+                0,
+                segment.font_size * 10 / 8,
+                0
+            });
+        } else {
+            if ((fterr = FT_Load_Glyph(ftface, glyph,
+                FT_LOAD_NO_BITMAP | FT_LOAD_COMPUTE_METRICS))) {
+                Error("error: FT_Load_Glyph failed: glyph=%d fterr=%d\n",
+                    glyph, fterr);
+                return;
+            }
+            if (ftface->glyph->format != FT_GLYPH_FORMAT_OUTLINE) {
+                Error("error: FT_Load_Glyph format is not outline: format=\n",
+                    ftface->glyph->format);
+                return;
+            }
 
-        shapes.push_back({
-            glyph, (unsigned)i,
-            (int)ftglyph->metrics.horiBearingX,
-            0,
-            (int)ftglyph->advance.x,
-            (int)ftglyph->advance.y
-        });
+            shapes.push_back({
+                glyph, (unsigned)i,
+                (int)ftglyph->metrics.horiBearingX,
+                0,
+                (int)ftglyph->advance.x,
+                (int)ftglyph->advance.y
+            });
+        }
     }
 }
 
@@ -461,10 +475,18 @@ void text_shaper_ft::shape(std::vector<glyph_shape> &shapes,
  * text shaper (HarfBuff)
  */
 
+struct shape_data
+{
+    uint glyph;
+    int x_offset;
+    int y_offset;
+    int x_advance;
+    int y_advance;
+};
+
 void text_shaper_hb::shape(std::vector<glyph_shape> &shapes, text_segment &segment)
 {
     font_face_ft *face = static_cast<font_face_ft*>(segment.face);
-    FT_Face ftface = face->ftface;
 
     hb_font_t *hbfont;
     hb_language_t hblang;
@@ -478,6 +500,8 @@ void text_shaper_hb::shape(std::vector<glyph_shape> &shapes, text_segment &segme
     /* get text to render */
     const char* text = segment.text.c_str();
     size_t text_len = segment.text.size();
+
+    /* get font and language */
     hbfont = face->get_hbfont(segment.font_size);
     hblang = hb_language_from_string(segment.language.c_str(),
         (int)segment.language.size());
@@ -506,10 +530,10 @@ void text_shaper_hb::shape(std::vector<glyph_shape> &shapes, text_segment &segme
 }
 
 /*
- * glyph renderer
+ * glyph renderer (outlines)
  */
 
-atlas_entry glyph_renderer_ft::render(font_atlas *atlas, font_face_ft *face,
+atlas_entry glyph_renderer_outline_ft::render(font_atlas *atlas, font_face_ft *face,
     int font_size, int glyph)
 {
     FT_Library ftlib;
@@ -529,7 +553,7 @@ atlas_entry glyph_renderer_ft::render(font_atlas *atlas, font_face_ft *face,
     face->get_metrics(font_size);
 
     /* load glyph */
-    if ((fterr = FT_Load_Glyph(ftface, glyph, 0))) {
+    if ((fterr = FT_Load_Glyph(ftface, glyph, FT_LOAD_NO_BITMAP))) {
         Error("error: FT_Load_Glyph failed: glyph=%d fterr=%d\n",
             glyph, fterr);
         return atlas_entry(-1);
@@ -594,6 +618,118 @@ atlas_entry glyph_renderer_ft::render(font_atlas *atlas, font_face_ft *face,
 }
 
 /*
+ * glyph renderer (bitmap)
+ */
+
+atlas_entry glyph_renderer_color_ft::render(font_atlas *atlas, font_face_ft *face,
+    int font_size, int glyph)
+{
+    FT_Library ftlib;
+    FT_Face ftface;
+    FT_Error fterr;
+    FT_GlyphSlot ftglyph;
+    FT_Raster_Params rp;
+    FT_Bitmap *bitmap;
+    int ox, oy, w, h;
+    atlas_entry ae;
+    FT_Size_Metrics* metrics;
+
+    /* freetype library and glyph pointers */
+    ftface = face->ftface;
+    ftglyph = ftface->glyph;
+    ftlib = ftglyph->library;
+    bitmap = &ftglyph->bitmap;
+    metrics = &ftface->size->metrics;
+
+    /* we need to set up our font metrics */
+    face->get_metrics(font_size);
+
+    /* get glyph bitmap size */
+    float bitmap_size = 0;
+    if (ftface->num_fixed_sizes > 0) {
+        if ((fterr = FT_Load_Glyph(ftface, glyph, FT_LOAD_COLOR | FT_LOAD_NO_SCALE))) {
+            Error("error: FT_Load_Glyph failed: glyph=%d fterr=%d\n",
+                glyph, fterr);
+            return atlas_entry(-1);
+        }
+        FT_Bitmap_Size *bsize = &ftface->available_sizes[ftface->num_fixed_sizes-1];
+        FT_Set_Pixel_Sizes(ftface, bsize->x_ppem/64, bsize->y_ppem/64);
+        bitmap_size = bsize->x_ppem;
+    }
+
+    /* load glyph */
+    if ((fterr = FT_Load_Glyph(ftface, glyph, FT_LOAD_COLOR))) {
+        Error("error: FT_Load_Glyph failed: glyph=%d fterr=%d\n",
+            glyph, fterr);
+        return atlas_entry(-1);
+    }
+
+    /* render glyph */
+    if ((fterr = FT_Render_Glyph(ftglyph, FT_RENDER_MODE_NORMAL))) {
+        Error("error: FT_Render_Glyph error: fterr=%d\n", fterr);
+        return atlas_entry(-1);
+    }
+
+    /* font dimensions */
+    ox = ftglyph->bitmap_left;
+    oy = ftglyph->bitmap_top;
+    h = bitmap->rows;
+    w = bitmap->width;
+
+    //printf("[% 5d]\t+%d+%d %dx%d\n", glyph, ox, oy, w, h);
+
+    /* create atlas entry for glyph using dimensions from bitmap */
+    if (bitmap_size > 0) {
+        ae = atlas->create(face, 0, glyph, bitmap_size, ox, oy-h, w, h);
+    } else {
+        ae = atlas->create(face, font_size, glyph, font_size, ox, oy-h, w, h);
+    }
+
+    /* copy pixels from bitmap to atlas  */
+    if (ae.bin_id >= 0) {
+        int bit_depth;
+        switch (bitmap->pixel_mode) {
+        case FT_PIXEL_MODE_MONO: bit_depth = 1; break;
+        case FT_PIXEL_MODE_GRAY:
+        case FT_PIXEL_MODE_LCD: bit_depth = 8; break;
+        case FT_PIXEL_MODE_BGRA: bit_depth = 32; break;
+        default: abort();
+        }
+        for (int i = 0; i < h; i++) {
+            for (int j = 0; j < w; j++) {
+                size_t src = (h-i-1) * bitmap->pitch + j * (bit_depth>>3);
+                size_t dst = (ae.y + i) * atlas->width * atlas->depth + (ae.x + j) * atlas->depth;
+                uint32_t rgba = 0xffffffff;
+                switch (bit_depth) {
+                case 1:
+                    rgba = ((bitmap->buffer[src] >> (j & 7)) & 1)
+                            ? 0xffffffff : 0x00000000;
+                    break;
+                case 8:
+                    rgba = ((uint32_t)bitmap->buffer[src] << 24) |
+                           ((uint32_t)bitmap->buffer[src] << 16) |
+                           ((uint32_t)bitmap->buffer[src] << 8) |
+                           (uint32_t)bitmap->buffer[src];
+                    break;
+                case 32:
+                    rgba = ((uint32_t)bitmap->buffer[src+2]) |
+                           ((uint32_t)bitmap->buffer[src+1] << 8) |
+                           ((uint32_t)bitmap->buffer[src+0] << 16) |
+                           ((uint32_t)bitmap->buffer[src+3] << 24);
+                    break;
+                }
+                switch (atlas->depth) {
+                case 1: atlas->pixels[dst] = (uint8_t)rgba; break;
+                case 4: *(uint32_t*)&atlas->pixels[dst] = rgba; break;
+                }
+            }
+        }
+    }
+
+    return ae;
+}
+
+/*
  * text renderer
  */
 
@@ -607,7 +743,6 @@ void text_renderer_ft::render(draw_list &batch,
     int font_size = (int)roundf(segment.font_size * scale);
     float baseline_shift = segment.baseline_shift * scale;
 	float tracking = segment.tracking * scale;
-    bool round = false;
 
     /* lookup glyphs in font atlas, creating them if they don't exist */
     float dx = 0, dy = 0;
@@ -621,23 +756,17 @@ void text_renderer_ft::render(draw_list &batch,
         float y1 = v.y / v.z - ge->oy + dy + shape.y_offset/64.0f -
             ge->h - baseline_shift;
         float y2 = y1 + ge->h;
-        if (round) {
-            x1 = roundf(x1), x2 = roundf(x2);
-            y1 = roundf(x1), y2 = roundf(x2);
-        }
         if (ge->w > 0 && ge->h > 0) {
-            float x1p = 0.5f + x1, x2p = 0.5f + x2;
-            float y1p = 0.5f + y1, y2p = 0.5f + y2;
             float u1 = ge->uv[0], v1 = ge->uv[1];
             float u2 = ge->uv[2], v2 = ge->uv[3];
             uint o = (int)batch.vertices.size();
-            uint c = segment.color;
-            shape.pos[0] = {x1p, y1p, 0};
-            shape.pos[1] = {x2p, y2p, 0};
-            uint o0 = draw_list_vertex(batch, {{x1p, y1p, 0}, {u1, v1}, c});
-            uint o1 = draw_list_vertex(batch, {{x2p, y1p, 0}, {u2, v1}, c});
-            uint o2 = draw_list_vertex(batch, {{x2p, y2p, 0}, {u2, v2}, c});
-            uint o3 = draw_list_vertex(batch, {{x1p, y2p, 0}, {u1, v2}, c});
+            uint c = segment.color; /* black -> white for emoji */
+            shape.pos[0] = {x1, y1, 0};
+            shape.pos[1] = {x2, y2, 0};
+            uint o0 = draw_list_vertex(batch, {{x1, y1, 0}, {u1, v1}, c});
+            uint o1 = draw_list_vertex(batch, {{x2, y1, 0}, {u2, v1}, c});
+            uint o2 = draw_list_vertex(batch, {{x2, y2, 0}, {u2, v2}, c});
+            uint o3 = draw_list_vertex(batch, {{x1, y2, 0}, {u1, v2}, c});
             draw_list_indices(batch, ge->atlas->get_image()->iid, mode_triangles,
                 ge->atlas->depth == 4 ? shader_msdf : shader_simple,
                 {o0, o3, o1, o1, o3, o2});
@@ -647,5 +776,13 @@ void text_renderer_ft::render(draw_list &batch,
         /* advance */
         dx += shape.x_advance/64.0f * scale + tracking;
         dy += shape.y_advance/64.0f * scale;
+
+        if (text_renderer::debug) {
+            Debug("S U-%04d offsets=(%8.3f,%8.3f) advances=(%8.3f,%8.3f) "
+                "position=(%8.3f,%8.3f)-(%8.3f,%8.3f)\n", shape.glyph,
+                shape.x_offset/64.0f, shape.y_offset/64.0f,
+                shape.x_advance/64.0f, shape.y_advance/64.0f,
+                shape.pos[0].x, shape.pos[0].y, shape.pos[1].x, shape.pos[1].y);
+        }
     }
 }

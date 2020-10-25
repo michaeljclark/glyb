@@ -230,7 +230,7 @@ inline int glyph_key::glyph() const { return opaque & ((1 << 20)-1); }
 /*
  * Glyph Map Entry
  *
- * Holds the details for an entry in the Font Atlas glyph map.
+ * Holds the details for an entry in the Font Manager glyph map.
  */
 
 struct glyph_entry
@@ -299,7 +299,7 @@ struct font_manager
     virtual font_face* findFontBySpec(font_spec fontSpec);
     virtual void importAtlas(font_atlas *atlas) = 0;
     virtual font_atlas* getCurrentAtlas(font_face *face) = 0;
-    virtual glyph_renderer* getGlyphRenderer(font_face *face) = 0;
+    virtual glyph_renderer* getGlyphRenderer(font_face *face, int glyph) = 0;
     virtual glyph_entry* lookup(font_face *face, int font_size, int glyph) = 0;
 };
 
@@ -328,6 +328,7 @@ struct font_face_ft : font_face
 struct font_manager_ft : font_manager
 {
     FT_Library ftlib;
+    bool color_enabled;
     bool msdf_enabled;
     bool msdf_autoload;
 
@@ -348,7 +349,7 @@ struct font_manager_ft : font_manager
     virtual void importAtlas(font_atlas *atlas);
     virtual font_atlas* getNewAtlas(font_face *face);
     virtual font_atlas* getCurrentAtlas(font_face *face);
-    virtual glyph_renderer* getGlyphRenderer(font_face *face);
+    virtual glyph_renderer* getGlyphRenderer(font_face *face, int glyph);
     virtual glyph_entry* lookup(font_face *face, int font_size, int glyph);
 
     const std::vector<std::unique_ptr<font_face_ft>>& getFontList() { return faces; }

@@ -179,6 +179,9 @@ target_link_libraries(glcanvas glyblib ${LIBS} glad ${CMAKE_DL_LIBS} imgui)
 add_executable(gledit examples/gledit.cc)
 target_link_libraries(gledit glyblib ${LIBS} glad ${CMAKE_DL_LIBS})
 
+add_executable(glemoji examples/glemoji.cc)
+target_link_libraries(glemoji glyblib ${LIBS} glad ${CMAKE_DL_LIBS})
+
 add_executable(glgraph examples/glgraph.cc)
 target_link_libraries(glgraph glyblib ${LIBS} glad ${CMAKE_DL_LIBS})
 
