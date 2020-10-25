@@ -79,7 +79,7 @@ void parse_options(int argc, char **argv)
         } else if (match_opt(argv[i], "-b", "--block-stats")) {
             print_block_stats = true;
             i++;
-        } else if (match_opt(argv[i], "-l", "--font-list")) {
+        } else if (match_opt(argv[i], "-l", "--list")) {
             print_font_list = true;
             i++;
         } else if (match_opt(argv[i], "-h", "--help")) {
