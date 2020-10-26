@@ -268,6 +268,7 @@ glyb contains several examples programs showing how to use its API:
 - `glcanvas` - _example GPU-acceralated Bézier font rendering_
 - `glemoji` - _example that renders color emoji with alpha transparency_
 - `glfont` - _example that displays sample text at multiple sizes_
+- `glgraph` - _example showing the UI9 graphical vector toolkit_
 - `gllayout` - _example showing text layout with line breaks_
 - `glsimple` - _simplest possible example for OpenGL_
 - `glyb` - _scalability test for regular and MSDF font atlases_
