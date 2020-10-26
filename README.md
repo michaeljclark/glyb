@@ -272,3 +272,27 @@ glyb contains several examples programs showing how to use its API:
 - `gllayout` - _example showing text layout with line breaks_
 - `glsimple` - _simplest possible example for OpenGL_
 - `glyb` - _scalability test for regular and MSDF font atlases_
+
+### glfont
+
+shows sample text font size variations.
+
+![glfont](/images/glfont.png)
+
+### glgraph
+
+shows graphical toolkit using the canvas.
+
+![glgraph](/images/glgraph.png)
+
+### glcanvas
+
+shows usage of the GPU accelerated canvas.
+
+![glcanvas](/images/glcanvas.png)
+
+### glemoji
+
+shows color emoji glyph rendering.
+
+![glemoji](/images/glemoji.png)
