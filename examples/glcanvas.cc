@@ -429,7 +429,7 @@ static void wire_bits(Canvas &canvas,
 
 static void do_example_shuffle1()
 {
-    set(clear_color, { 0.1f, 0.1f, 0.1f, 1.0f });
+    set(clear_color, { 1.0f, 1.0f, 1.0f, 1.0f });
 
     if (canvas.num_drawables() > 0) return;
 
@@ -439,11 +439,11 @@ static void do_example_shuffle1()
         text_halign_center,
         text_valign_center,
         "en",
-        Brush{BrushSolid, { }, { color(1.0f,1.0f,1.0f,1.0f) }},
+        Brush{BrushSolid, { }, { color(0.0f,0.0f,0.0f,1.0f) }},
         Brush{BrushNone, { }, { }}
     };
-    canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0.15f,0.15f,0.15f,1.0f) }});
-    canvas.set_stroke_brush(Brush{BrushSolid, { }, { color(0.7f,0.7f,0.7f,1.0f) }});
+    canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0.85f,0.85f,0.85f,1.0f) }});
+    canvas.set_stroke_brush(Brush{BrushSolid, { }, { color(0.65f,0.65f,0.65f,1.0f) }});
 
     int xlim = 3, ylim = 4;
     float x = -250.0f, y = -200.0f, w = 100.0f, h = 100.0, xs = 250.0f, ys = 150.0;
@@ -458,7 +458,7 @@ static void do_example_shuffle1()
             h1->set_text(std::string("ABC").substr(xi,1) + std::to_string(yi+1));
         }
     }
-    canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0.125f,0.125f,0.125f,1.0f) }});
+    canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0.0f,0.0f,0.0f,1.0f) }});
     for (int xi = 0; xi < xlim; xi++) {
         for (int yi = 0; yi < ylim; yi++) {
             {   int tyi = (yi * 2 + 1) % ylim, ss = 1, ds = yi * 2 + 1 >= 4 ? 1 : -1;

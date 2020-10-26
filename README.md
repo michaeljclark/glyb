@@ -289,7 +289,8 @@ shows graphical toolkit using the canvas.
 
 shows usage of the GPU accelerated canvas.
 
-![glcanvas](/images/glcanvas.png)
+![glcanvas-1](/images/glcanvas-1.png)
+![glcanvas-2](/images/glcanvas-2.png)
 
 ### glemoji
 
