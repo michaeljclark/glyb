@@ -178,6 +178,9 @@ target_link_libraries(fontscan glyblib ${LIBS} ${CMAKE_DL_LIBS})
 add_executable(uniscan examples/uniscan.cc)
 target_link_libraries(uniscan glyblib ${LIBS} ${CMAKE_DL_LIBS})
 
+add_executable(ftkitty examples/ftkitty.cc)
+target_link_libraries(ftkitty glyblib ${LIBS} ${CMAKE_DL_LIBS})
+
 add_executable(ftrender examples/ftrender.cc)
 target_link_libraries(ftrender glyblib ${LIBS} ${CMAKE_DL_LIBS})
 
