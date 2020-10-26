@@ -182,8 +182,8 @@ void parse_options(int argc, char **argv)
             debug = true;
             i++;
         }
-        else if (match_opt(argv[i], "-f","--file")) {
-            if (check_param(++i == argc, "--file")) break;
+        else if (match_opt(argv[i], "-f","--font")) {
+            if (check_param(++i == argc, "--font")) break;
             font_path = argv[i++];
         }
         else if (match_opt(argv[i], "-s", "--size")) {
@@ -191,7 +191,7 @@ void parse_options(int argc, char **argv)
             font_size = atoi(argv[i++]);
         }
         else if (match_opt(argv[i], "-t", "--text")) {
-            if (check_param(++i == argc, "--font-size")) break;
+            if (check_param(++i == argc, "--text")) break;
             render_text = argv[i++];
         } else if (match_opt(argv[i], "-b", "--block")) {
             use_block = true;
