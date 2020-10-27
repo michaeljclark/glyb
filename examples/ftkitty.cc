@@ -23,10 +23,12 @@
 #include <hb.h>
 #include <hb-ft.h>
 
+#include "xcolortab.h"
 
 static const char *font_path = "fonts/DejaVuSansMono.ttf";
 static const char* text_lang = "en";
 static const char *render_text = "hello";
+static const char *color_name = "WhiteSmoke";
 static const int font_dpi = 72;
 static int font_size = 72;
 static bool help_text = false;
@@ -161,7 +163,15 @@ static int base64_encode(size_t in_len, const unsigned char *in,
  * outputs base64 encoding of image data in a span_vector
  */
 
-static void render_kitty(span_vector *s)
+static uint32_t shade_color(uint32_t c, uint32_t col)
+{
+    uint32_t r = ((col >> 0 ) & 0xff) * c / 0xff;
+    uint32_t g = ((col >> 8 ) & 0xff) * c / 0xff;
+    uint32_t b = ((col >> 16) & 0xff) * c / 0xff;
+    return (r << 0) | (g << 8)| (b << 16) | (0xff << 24);
+}
+
+static void render_kitty(span_vector *s, uint32_t rgba_col)
 {
     const size_t chunk_limit = 4096;
 
@@ -175,7 +185,7 @@ static void render_kitty(span_vector *s)
     for (int y = 0; y < s->h; y++) {
         for (int x = 0; x < s->w; x++) {
             uint8_t c = s->pixels[(s->h - y - 1) * s->w + x];
-            color_pixels[y * s->w + x] = (c<<0)|(c<<8)|(c<<16)|(0xff<<24);
+            color_pixels[y * s->w + x] = shade_color(c, rgba_col);
         }
     }
 
@@ -232,8 +242,19 @@ static void print_help(int argc, char **argv)
         "  -f, --font <ttf-file>  font file (default %s)\n"
         "  -s, --size <points>    font size (default %d)\n"
         "  -t, --text <string>    text to render (default \"%s\")\n"
+        "  -c, --color <string>   color to render (default \"%s\")\n"
         "  -h, --help             command line help\n",
-        argv[0], font_path, font_size, render_text);
+        argv[0], font_path, font_size, render_text, color_name);
+}
+
+static uint32_t xcolor_by_name(const char *xcolor_name, uint32_t notfound)
+{
+    for (struct xcolor *colp = xcolortab; colp->name; colp++) {
+        if (strcmp(xcolor_name, colp->name) == 0) {
+            return colp->rgba;
+        }
+    }
+    return notfound;
 }
 
 static bool check_param(bool cond, const char *param)
@@ -264,6 +285,10 @@ static void parse_options(int argc, char **argv)
         else if (match_opt(argv[i], "-t", "--text")) {
             if (check_param(++i == argc, "--text")) break;
             render_text = argv[i++];
+        }
+        else if (match_opt(argv[i], "-c", "--color")) {
+            if (check_param(++i == argc, "--color")) break;
+            color_name = argv[i++];
         } else if (match_opt(argv[i], "-h", "--help")) {
             help_text = true;
             i++;
@@ -376,7 +401,7 @@ int main(int argc, char **argv)
     }
 
     /* display rendered output */
-    render_kitty(&span);
+    render_kitty(&span, xcolor_by_name(color_name, 0xffffffff));
 
     /* free our buffers */
     hb_buffer_destroy(buf);
