@@ -162,12 +162,20 @@ static int base64_encode(size_t in_len, const unsigned char *in,
  * outputs base64 encoding of image data in a span_vector
  */
 
+union urgba {
+    uint32_t rgba;
+    struct { uint8_t r, g, b, a; } comp;
+};
+
 static uint32_t shade_color(uint32_t c, uint32_t col)
 {
-    uint32_t r = ((col >> 0 ) & 0xff) * c / 0xff;
-    uint32_t g = ((col >> 8 ) & 0xff) * c / 0xff;
-    uint32_t b = ((col >> 16) & 0xff) * c / 0xff;
-    return (r << 0) | (g << 8)| (b << 16) | (0xff << 24);
+    union urgba s = { .rgba = col };
+    union urgba t = { .comp = {
+        .r = (uint8_t)(s.comp.r * c >> 8),
+        .g = (uint8_t)(s.comp.g * c >> 8),
+        .b = (uint8_t)(s.comp.b * c >> 8),
+        .a = 0xff } };
+    return t.rgba;
 }
 
 static void render_kitty(span_vector *s, uint32_t rgba_col)
