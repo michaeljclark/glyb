@@ -23,7 +23,6 @@
 #include <hb.h>
 #include <hb-ft.h>
 
-#include "xcolortab.h"
 
 static const char *font_path = "fonts/DejaVuSansMono.ttf";
 static const char* text_lang = "en";
@@ -247,16 +246,6 @@ static void print_help(int argc, char **argv)
         argv[0], font_path, font_size, render_text, color_name);
 }
 
-static uint32_t xcolor_by_name(const char *xcolor_name, uint32_t notfound)
-{
-    for (struct xcolor *colp = xcolortab; colp->name; colp++) {
-        if (strcmp(xcolor_name, colp->name) == 0) {
-            return colp->rgba;
-        }
-    }
-    return notfound;
-}
-
 static bool check_param(bool cond, const char *param)
 {
     if (cond) {
@@ -303,6 +292,70 @@ static void parse_options(int argc, char **argv)
         print_help(argc, argv);
         exit(1);
     }
+}
+
+struct xcolor { const char* name; uint32_t rgba; };
+
+static struct xcolor xcolortab[] = {
+    { "Aquamarine",            0xffd4ff7f },
+    { "Azure",                 0xfffffff0 },
+    { "Beige",                 0xffdcf5f5 },
+    { "Bisque",                0xffc4e4ff },
+    { "Black",                 0xff000000 },
+    { "Blue",                  0xffff0000 },
+    { "Brown",                 0xff2a2aa5 },
+    { "Burlywood",             0xff87b8de },
+    { "Chartreuse",            0xff00ff7f },
+    { "Chocolate",             0xff1e69d2 },
+    { "Coral",                 0xff507fff },
+    { "Cornsilk",              0xffdcf8ff },
+    { "Cyan",                  0xffffff00 },
+    { "Firebrick",             0xff2222b2 },
+    { "Gainsboro",             0xffdcdcdc },
+    { "Gold",                  0xff00d7ff },
+    { "Goldenrod",             0xff20a5da },
+    { "Gray",                  0xffbebebe },
+    { "Green",                 0xff00ff00 },
+    { "Grey",                  0xffbebebe },
+    { "Honeydew",              0xfff0fff0 },
+    { "Ivory",                 0xfff0ffff },
+    { "Khaki",                 0xff8ce6f0 },
+    { "Lavender",              0xfffae6e6 },
+    { "Linen",                 0xffe6f0fa },
+    { "Magenta",               0xffff00ff },
+    { "Maroon",                0xff6030b0 },
+    { "Moccasin",              0xffb5e4ff },
+    { "Navy",                  0xff800000 },
+    { "Orange",                0xff00a5ff },
+    { "Orchid",                0xffd670da },
+    { "Peru",                  0xff3f85cd },
+    { "Pink",                  0xffcbc0ff },
+    { "Plum",                  0xffdda0dd },
+    { "Purple",                0xfff020a0 },
+    { "Red",                   0xff0000ff },
+    { "Salmon",                0xff7280fa },
+    { "Seashell",              0xffeef5ff },
+    { "Sienna",                0xff2d52a0 },
+    { "Snow",                  0xfffafaff },
+    { "Tan",                   0xff8cb4d2 },
+    { "Thistle",               0xffd8bfd8 },
+    { "Tomato",                0xff4763ff },
+    { "Turquoise",             0xffd0e040 },
+    { "Violet",                0xffee82ee },
+    { "Wheat",                 0xffb3def5 },
+    { "White",                 0xffffffff },
+    { "Yellow",                0xff00ffff },
+    { 0,                       0x00000000 },
+};
+
+static uint32_t xcolor_by_name(const char *xcolor_name, uint32_t notfound)
+{
+    for (struct xcolor *colp = xcolortab; colp->name; colp++) {
+        if (strcasecmp(xcolor_name, colp->name) == 0) {
+            return colp->rgba;
+        }
+    }
+    return notfound;
 }
 
 /*
