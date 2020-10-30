@@ -1,6 +1,11 @@
 /*
  * ftkitty - program that outputs text using kitty image protocol
  *
+ * meet `ftkitty`, a tiny example emitting graphics to the terminal
+ * using #FreeType, #HarfBuzz, and the #kitty graphics protocol.
+ * this is possible with ImageMagick and icat, but ftkitty is smaller
+ * and mostly it's just an experiment with terminal protocols.
+ *
  * g++ -O2 examples/ftkitty.cc $(pkg-config --libs freetype2 --libs harfbuzz
  *      --cflags freetype2 --cflags harfbuzz) -o build/ftkitty
  */
