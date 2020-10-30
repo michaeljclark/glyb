@@ -93,9 +93,7 @@ void span_measure::fn(int y, int count, const FT_Span* spans, void *user)
 void span_vector::reset(int width, int height)
 {
     pixels.clear();
-    pixels.resize(width * height);
-    w = width;
-    h = height;
+    pixels.resize((w = width) * (h = height));
 }
 
 void span_vector::fn(int y, int count, const FT_Span* spans, void *user)
