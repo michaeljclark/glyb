@@ -348,7 +348,7 @@ void print_help(int argc, char **argv)
         "  -f, --font <ttf-file>     font file (default %s)\n"
         "  -min, --min-size <points> font size minimum (default %d)\n"
         "  -max, --max-size <points> font size maximum (default %d)\n"
-        "  -s, --size <points>       font size (both minimum and maximum)\n"
+        "  -s, --frame-size <width>x<height>  window or image size\n"
         "  -t, --text <string>       text to render (default \"%s\")\n"
         "  -a, --show-atlas          show the atlas instead of the text\n"
         "  -l, --show-lines          show baseline, half-height and height\n"
@@ -385,9 +385,9 @@ void parse_options(int argc, char **argv)
         } else if (match_opt(argv[i], "-f","--font")) {
             if (check_param(++i == argc, "--font")) break;
             font_path = argv[i++];
-        } else if (match_opt(argv[i], "-s", "--size")) {
-            if (check_param(++i == argc, "--size")) break;
-            font_size_min = font_size_max = atoi(argv[i++]);
+        } else if (match_opt(argv[i], "-s", "--frame-size")) {
+            if (check_param(++i == argc, "--frame-size")) break;
+            sscanf(argv[i++], "%dx%d", &width, &height);
         } else if (match_opt(argv[i], "-min", "--min-size")) {
             if (check_param(++i == argc, "--size")) break;
             font_size_min  = atoi(argv[i++]);
