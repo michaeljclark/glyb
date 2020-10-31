@@ -371,13 +371,6 @@ static void do_example_node1()
     p1->pos = out_c[0] + delta_c/2.0f;
 }
 
-template <typename T>
-struct bit_char_array_t : std::array<char, (sizeof(T)<<3)+1>
-{
-    enum size_t { msb = (sizeof(T)<<3)-1 };
-    inline operator char*() { return std::array<char, (sizeof(T)<<3)+1>::data(); }
-};
-
 std::string to_binary(uint64_t v, size_t n)
 {
     std::string s;
