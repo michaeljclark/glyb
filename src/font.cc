@@ -321,7 +321,7 @@ void font_manager::indexFace(font_face *face)
     (*ffi).second.push_back(face->font_id);
     allFonts.push_back(face);
     if (debug) {
-        Debug("%s %s\n", __func__, face->fontData.toString().c_str());
+        Debug("font[%d] -> %s\n", face->font_id, face->fontData.toString().c_str());
     }
 }
 

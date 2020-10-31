@@ -381,6 +381,7 @@ void parse_options(int argc, char **argv)
     while (i < argc) {
         if (match_opt(argv[i], "-d","--debug")) {
             debug = true;
+            font_manager::debug = true;
             i++;
         } else if (match_opt(argv[i], "-f","--font")) {
             if (check_param(++i == argc, "--font")) break;
