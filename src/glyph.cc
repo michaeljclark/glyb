@@ -332,7 +332,7 @@ std::string font_atlas::get_path(font_face *face, file_type type)
 
 #define FLOAT32 "%.9g"
 
-void font_atlas::save_map(font_manager *manager, FILE *out)
+void font_atlas::save_map(font_manager *manager, font_face *face, FILE *out)
 {
     std::vector<glyph_key> v;
     for(auto i = glyph_map.begin(); i != glyph_map.end(); i++) {
@@ -344,24 +344,23 @@ void font_atlas::save_map(font_manager *manager, FILE *out)
         auto i = glyph_map.find(k);
         const glyph_key &key = i->first;
         const atlas_entry &ent = i->second;
-        fprintf(out, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
-            ent.bin_id, key.font_id(), key.glyph(),
+        fprintf(out, "%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+            ent.bin_id, key.glyph(),
             ent.font_size, ent.x, ent.y, ent.ox, ent.oy, ent.w, ent.h);
     }
 }
 
-void font_atlas::load_map(font_manager *manager, FILE *in)
+void font_atlas::load_map(font_manager *manager, font_face *face, FILE *in)
 {
-    const int num_fields = 10;
+    const int num_fields = 9;
     int ret;
     do {
-        int font_id, glyph;
+        int glyph;
         atlas_entry ent;
-        ret = fscanf(in, "%d,%d,%d,%d,%hd,%hd,%hd,%hd,%hd,%hd\n",
-            &ent.bin_id, &font_id, &glyph, &ent.font_size,
+        ret = fscanf(in, "%d,%d,%d,%hd,%hd,%hd,%hd,%hd,%hd\n",
+            &ent.bin_id, &glyph, &ent.font_size,
             &ent.x, &ent.y, &ent.ox, &ent.oy, &ent.w, &ent.h);
         if (ret == num_fields) {
-            font_face *face = manager->findFontById(font_id);
             bin_rect r(bin_point(ent.x,ent.y),
                 bin_point(ent.x+ent.w+1,ent.y+ent.h+1));
             create_uvs(ent.uv, r);
@@ -381,7 +380,7 @@ void font_atlas::save(font_manager *manager, font_face *face)
         Error("error: fopen: %s: %s\n", csv_path.c_str(), strerror(errno));
         exit(1);
     }
-    save_map(manager, fcsv);
+    save_map(manager, face, fcsv);
     fclose(fcsv);
     image::saveToFile(img_path, img);
 }
@@ -409,7 +408,7 @@ void font_atlas::load(font_manager *manager, font_face *face)
     depth = img->getBytesPerPixel();
     reset_bins();
     uv_pixel();
-    load_map(manager, fcsv);
+    load_map(manager, face, fcsv);
     fclose(fcsv);
 }
 

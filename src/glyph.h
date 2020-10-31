@@ -142,8 +142,8 @@ struct font_atlas
         png_file,
     };
     std::string get_path(font_face *face, file_type type);
-    void save_map(font_manager *manager, FILE *out);
-    void load_map(font_manager *manager, FILE *in);
+    void save_map(font_manager *manager, font_face *face, FILE *out);
+    void load_map(font_manager *manager, font_face *face, FILE *in);
     void save(font_manager *manager, font_face *face);
     void load(font_manager *manager, font_face *face);
 };
