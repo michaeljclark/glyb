@@ -114,23 +114,20 @@ static program* cmd_shader_gl(int cmd_shader)
 
 static std::string format_string(const char* fmt, ...)
 {
-    std::vector<char> buf(128);
+    std::vector<char> buf;
+    int len;
     va_list ap;
 
     va_start(ap, fmt);
-    int len = vsnprintf(buf.data(), buf.capacity(), fmt, ap);
+    len = vsnprintf(nullptr, 0, fmt, ap);
     va_end(ap);
 
-    std::string str;
-    if (len >= (int)buf.capacity()) {
-        buf.resize(len + 1);
-        va_start(ap, fmt);
-        vsnprintf(buf.data(), buf.capacity(), fmt, ap);
-        va_end(ap);
-    }
-    str = buf.data();
+    buf.resize(len+1);
+    va_start(ap, fmt);
+    vsnprintf(buf.data(), len+1, fmt, ap);
+    va_end(ap);
 
-    return str;
+    return std::string(buf.data(), len);
 }
 
 static std::vector<std::string> get_stats(font_face *face, double td)
