@@ -79,7 +79,6 @@ static const char *mono_norm_font_path = "fonts/RobotoMono-Regular.ttf";
 static const char *mono_bold_font_path = "fonts/RobotoMono-Bold.ttf";
 static const char *render_text = "πάθος λόγος ἦθος";
 static const char* text_lang = "en";
-static const int font_dpi = 72;
 static const int stats_font_size = 12;
 
 static const float min_zoom = 16.0f, max_zoom = 32768.0f;

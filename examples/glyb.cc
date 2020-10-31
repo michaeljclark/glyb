@@ -60,7 +60,6 @@ static font_manager_ft manager;
 static const char *font_path = "fonts/DejaVuSans.ttf";
 static const char *render_text = "glyb";
 static const char* text_lang = "en";
-static const int font_dpi = 72;
 static const int stats_font_fize = 18;
 
 static float load_factor = 1.0;

@@ -50,7 +50,6 @@ static std::map<int,GLuint> tex_map;
 static mat4 mvp;
 static GLFWwindow* window;
 
-static const int font_dpi = 72;
 static int font_size = 109;
 static int width = 1024, height = 768;
 static font_manager_ft manager;
