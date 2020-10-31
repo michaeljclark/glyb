@@ -19,6 +19,7 @@
 
 #include <memory>
 #include <vector>
+#include <array>
 #include <map>
 #include <set>
 #include <string>
@@ -59,10 +60,6 @@ using namespace std::chrono;
 
 using dvec2 = glm::dvec2;
 
-template <typename T>
-static inline void set(T *p, std::initializer_list<T> l)
-{ for (auto i = l.begin(); i != l.end(); i++) *p++ = *i; }
-
 /* globals */
 
 static texture_buffer shape_tb, edge_tb, brush_tb;
@@ -83,7 +80,7 @@ static const char* text_lang = "en";
 static const int stats_font_size = 18;
 
 static const float min_zoom = 16.0f, max_zoom = 32768.0f;
-static float clear_color[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+static std::array<float,4> clear_color = { 1.0f, 1.0f, 1.0f, 1.0f };
 static int width = 1024, height = 768;
 static double tl, tn, td;
 static bool help_text = false;
@@ -149,7 +146,7 @@ static void do_example_text1()
     static font_face *face = nullptr;
     static const auto &font_list = manager.getFontList();
 
-    set(clear_color, { 1.0f, 1.0f, 1.0f, 1.0f });
+    clear_color = { 1.0f, 1.0f, 1.0f, 1.0f };
 
     /* controller - cl */
 
@@ -201,7 +198,7 @@ static void do_example_circle1()
 {
     static float rot = 0.0f;
 
-    set(clear_color, { 1.0f, 1.0f, 1.0f, 1.0f });
+    clear_color = { 1.0f, 1.0f, 1.0f, 1.0f };
 
     if (ImGui::SliderFloat("rotation", &rot, 0.0f, 360.0f)) {
         canvas.clear();
@@ -234,7 +231,7 @@ static void do_example_circle1()
 
 static void do_example_curve1()
 {
-    set(clear_color, { 1.0f, 1.0f, 1.0f, 1.0f });
+    clear_color = { 1.0f, 1.0f, 1.0f, 1.0f };
 
     if (canvas.num_drawables() > 0) return;
 
@@ -261,7 +258,7 @@ static void do_example_curve1()
 
 static void do_example_node1()
 {
-    set(clear_color, { 0.1f, 0.1f, 0.1f, 1.0f });
+    clear_color = { 0.1f, 0.1f, 0.1f, 1.0f };
 
     if (canvas.num_drawables() > 0) return;
 
@@ -421,7 +418,7 @@ static void wire_bits(Canvas &canvas,
 
 static void do_example_shuffle1()
 {
-    set(clear_color, { 1.0f, 1.0f, 1.0f, 1.0f });
+    clear_color = { 1.0f, 1.0f, 1.0f, 1.0f };
 
     if (canvas.num_drawables() > 0) return;
 
