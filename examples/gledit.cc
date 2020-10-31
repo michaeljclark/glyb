@@ -193,6 +193,7 @@ static void create_text(text_container &c)
         "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt "
         "mollit anim id est laborum.",
         {{ "font-size", "18" }, { "font-style", "bold" }, { "color", "#000000" }}));
+#if 0
     c.append(text_part("  Liberty, Equality, Fraternity",
         {{ "font-size", "24" }, { "font-style", "bold" }, { "color", "#000000" }}));
     c.append(text_part(
@@ -203,6 +204,7 @@ static void create_text(text_container &c)
         "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt "
         "mollit anim id est laborum.",
         {{ "font-size", "36" }, { "font-style", "regular" }, { "color", "#1f1f5f" }}));
+#endif
 }
 
 /* geometry */
