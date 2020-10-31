@@ -147,14 +147,14 @@ std::vector<utf8_range> utf8_ranges_from_text(const char* text, size_t length,
         utf32_code cp = utf8_to_utf32_code(text + i);
         bool match = (cp.code & mask) == code;
         if (i != 0 && last != match || i == UINT_MAX ) {
-            vec.push_back({ j, uint(i - j), flag&-(uint32_t)last });
+            vec.push_back({ j, uint32_t(i - j), flag&-(uint32_t)last });
             j = i;
         }
         last = match;
         i += cp.len;
     }
     if (i - j > 0) {
-        vec.push_back({ j, uint(i - j), flag&-(uint32_t)last });
+        vec.push_back({ j, uint32_t(i - j), flag&-(uint32_t)last });
     }
 
     return vec;

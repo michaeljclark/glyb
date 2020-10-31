@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <map>
+#include <iterator>
 #include <algorithm>
 
 #include "binpack.h"

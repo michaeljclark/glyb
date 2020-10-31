@@ -57,7 +57,7 @@ static div_u32_mult_inv find_div_u32_mult_inv(uint32_t d)
     uint32_t floor_log_2_d = __builtin_clz(d) ^ 31;
 
     if ((d & (d - 1)) == 0) {
-        return (div_u32_mult_inv) { 0, (uint8_t)(floor_log_2_d - 1) };
+        return div_u32_mult_inv{ 0, (uint8_t)(floor_log_2_d - 1) };
     }
 
     uint64_t n = (1ULL << (floor_log_2_d + 32));
@@ -74,7 +74,7 @@ static div_u32_mult_inv find_div_u32_mult_inv(uint32_t d)
     // don't care about overflow here - in fact, we expect it
     magic = (magic << 1) + ((rem << 1) >= d || (rem << 1) < rem);
 
-    return (div_u32_mult_inv) { 1 + magic, (uint8_t)floor_log_2_d };
+    return div_u32_mult_inv{ 1 + magic, (uint8_t)floor_log_2_d };
 }
 
 static uint32_t div_u32(uint32_t n, div_u32_mult_inv x)
@@ -94,6 +94,7 @@ static uint32_t div_u32(uint32_t n, div_u32_mult_inv x)
 
 #if defined (_MSC_VER)
 #include <intrin.h>
+typedef long long ssize_t;
 #endif
 
 /* endian helpers using type punning */
@@ -103,10 +104,10 @@ typedef union { uint8_t a[8]; uint64_t b; } __bitcast_u64;
 static inline uint64_t le64(uint64_t x)
 {
     __bitcast_u64 y = {
-        .a = { (uint8_t)(x), (uint8_t)(x >> 8),
-               (uint8_t)(x >> 16), (uint8_t)(x >> 24),
-               (uint8_t)(x >> 32), (uint8_t)(x >> 40),
-               (uint8_t)(x >> 48), (uint8_t)(x >> 56) }
+        (uint8_t)(x), (uint8_t)(x >> 8),
+        (uint8_t)(x >> 16), (uint8_t)(x >> 24),
+        (uint8_t)(x >> 32), (uint8_t)(x >> 40),
+        (uint8_t)(x >> 48), (uint8_t)(x >> 56)
     };
     return y.b;
 }
@@ -380,8 +381,8 @@ struct bitcode_reader
     size_t mark; /* buffered bits */
     reader *in; /* input reader */
 
-    bitcode_reader() : data{.w=0}, mark(0), in(nullptr) {}
-    bitcode_reader(reader *in) : data{.w=0}, mark(0), in(in) {}
+    bitcode_reader() : data{0}, mark(0), in(nullptr) {}
+    bitcode_reader(reader *in) : data{0}, mark(0), in(in) {}
 
     /* used and available free space in buffer */
     size_t used() const { return mark; }
@@ -447,8 +448,8 @@ struct bitcode_writer
     size_t mark; /* buffered bits */
     writer *out; /* output writer */
 
-    bitcode_writer() : data{.w=0}, mark(0), out(nullptr) {}
-    bitcode_writer(writer *out) : data{.w=0}, mark(0), out(out) {}
+    bitcode_writer() : data{0}, mark(0), out(nullptr) {}
+    bitcode_writer(writer *out) : data{0}, mark(0), out(out) {}
 
     /* used and available free space in buffer */
     size_t used() const { return mark; }

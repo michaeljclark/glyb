@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <algorithm>
 
 #include "logger.h"
 #include "file.h"
