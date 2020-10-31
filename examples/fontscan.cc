@@ -139,7 +139,7 @@ static std::vector<uint> allCodepoints(FT_Face ftface)
 void do_print_font_list()
 {
     for (auto &font : manager.getFontList()) {
-        printf("%s\n", font->getFontData().toString().c_str());
+        printf("font[%d] -> %s\n", font->font_id, font->getFontData().toString().c_str());
     }
 }
 
