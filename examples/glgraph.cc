@@ -200,12 +200,19 @@ static void populate_canvas()
     root.layout(&canvas);
 }
 
-static void update()
+static void render_text_segment(draw_list &batch,
+    font_manager_ft &manager, text_segment &segment)
 {
     std::vector<glyph_shape> shapes;
     text_shaper_hb shaper;
     text_renderer_ft renderer(&manager);
 
+    shaper.shape(shapes, segment);
+    renderer.render(batch, shapes, segment);
+}
+
+static void update()
+{
     auto t = high_resolution_clock::now();
     tl = tn;
     tn = (double)duration_cast<nanoseconds>(t.time_since_epoch()).count()/1e9;
@@ -239,12 +246,9 @@ static void update()
         std::vector<std::string> stats = get_stats(sans_norm, td);
         for (size_t i = 0; i < stats.size(); i++) {
             uint32_t c = clear_color[0] == 1.0 ? 0xff404040 : 0xffc0c0c0;
-            text_segment stats_segment(stats[i], text_lang, sans_norm,
+            text_segment segment(stats[i], text_lang, sans_norm,
                 (int)((float)stats_font_size * 64.0f), x, y, c);
-            shapes.clear();
-            shaper.shape(shapes, stats_segment);
-            font_atlas *atlas = manager.getCurrentAtlas(sans_norm);
-            renderer.render(batch, shapes, stats_segment);
+            render_text_segment(batch, manager, segment);
             y -= (int)((float)stats_font_size * 1.334f);
         }
     }
