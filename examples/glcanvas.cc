@@ -494,30 +494,18 @@ static void populate_canvas()
     ImGui::End();
 }
 
-static void update_texture_buffers()
-{
-    /* synchronize canvas texture buffers */
-    buffer_texture_create(shape_tb, canvas.ctx->shapes, GL_TEXTURE0, GL_R32F);
-    buffer_texture_create(edge_tb, canvas.ctx->edges, GL_TEXTURE1, GL_R32F);
-    buffer_texture_create(brush_tb, canvas.ctx->brushes, GL_TEXTURE2, GL_R32F);
-}
-
-static void display()
+static void update()
 {
     std::vector<glyph_shape> shapes;
     text_shaper_hb shaper;
     text_renderer_ft renderer(&manager);
 
-    if (!sans_norm) {
-        sans_norm = manager.findFontByPath(sans_norm_font_path);
-    }
-
     auto t = high_resolution_clock::now();
-
     tl = tn;
     tn = (double)duration_cast<nanoseconds>(t.time_since_epoch()).count()/1e9;
     td = tn - tl;
 
+    /* start frame with empty draw list */
     draw_list_clear(batch);
 
     /* create new frame */
@@ -539,7 +527,6 @@ static void display()
 
     /* emit canvas draw list */
     canvas.emit(batch);
-    update_texture_buffers();
 
     /* render stats text */
     float x = 10.0f, y = height - 10.0f;
@@ -555,10 +542,18 @@ static void display()
         y -= (int)((float)stats_font_size * 1.334f);
     }
 
+    /* synchronize canvas texture buffers */
+    buffer_texture_create(shape_tb, canvas.ctx->shapes, GL_TEXTURE0, GL_R32F);
+    buffer_texture_create(edge_tb, canvas.ctx->edges, GL_TEXTURE1, GL_R32F);
+    buffer_texture_create(brush_tb, canvas.ctx->brushes, GL_TEXTURE2, GL_R32F);
+
     /* update vertex and index buffers arrays (idempotent) */
     vertex_buffer_create("vbo", &vbo, GL_ARRAY_BUFFER, batch.vertices);
     vertex_buffer_create("ibo", &ibo, GL_ELEMENT_ARRAY_BUFFER, batch.indices);
+}
 
+static void display()
+{
     /* okay, lets send commands to the GPU */
     glClearColor(clear_color[0], clear_color[1], clear_color[2], clear_color[3]);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -731,14 +726,10 @@ static void initialize()
     glBindVertexArray(0);
 
     /* get font list */
-    //manager.msdf_autoload = true;
-    //manager.msdf_enabled = true;
+    manager.msdf_autoload = true;
+    manager.msdf_enabled = true;
     manager.scanFontDir("fonts");
-
-    /* create shape and edge buffer textures */
-    buffer_texture_create(shape_tb, ctx.shapes, GL_TEXTURE0, GL_R32F);
-    buffer_texture_create(edge_tb, ctx.edges, GL_TEXTURE1, GL_R32F);
-    buffer_texture_create(brush_tb, ctx.brushes, GL_TEXTURE2, GL_R32F);
+    sans_norm = manager.findFontByPath(sans_norm_font_path);
 
     /* pipeline */
     glEnable(GL_CULL_FACE);
@@ -783,6 +774,7 @@ static void glcanvas(int argc, char **argv)
     initialize();
     reshape(width, height);
     while (!glfwWindowShouldClose(window)) {
+        update();
         display();
         glfwSwapBuffers(window);
         glfwPollEvents();
