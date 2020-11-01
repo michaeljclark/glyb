@@ -494,8 +494,8 @@ static void populate_canvas()
     ImGui::End();
 }
 
-static void render_text_segment(draw_list &batch,
-    font_manager_ft &manager, text_segment &segment)
+static void render_text_segment(draw_list &batch, font_manager_ft &manager,
+    text_segment &segment)
 {
     std::vector<glyph_shape> shapes;
     text_shaper_hb shaper;
@@ -503,6 +503,19 @@ static void render_text_segment(draw_list &batch,
 
     shaper.shape(shapes, segment);
     renderer.render(batch, shapes, segment);
+}
+
+static void render_stats_text(draw_list &batch, font_manager_ft &manager)
+{
+    float x = 10.0f, y = height - 10.0f;
+    std::vector<std::string> stats = get_stats(sans_norm, td);
+    uint32_t c = clear_color[0] == 1.0 ? 0xff404040 : 0xffc0c0c0;
+    for (size_t i = 0; i < stats.size(); i++) {
+        text_segment segment(stats[i], text_lang, sans_norm,
+            (int)((float)stats_font_size * 64.0f), x, y, c);
+        render_text_segment(batch, manager, segment);
+        y -= (int)((float)stats_font_size * 1.334f);
+    }
 }
 
 static void update()
@@ -536,15 +549,7 @@ static void update()
     canvas.emit(batch);
 
     /* render stats text */
-    float x = 10.0f, y = height - 10.0f;
-    std::vector<std::string> stats = get_stats(sans_norm, td);
-    uint32_t c = clear_color[0] == 1.0 ? 0xff404040 : 0xffc0c0c0;
-    for (size_t i = 0; i < stats.size(); i++) {
-        text_segment segment(stats[i], text_lang, sans_norm,
-            (int)((float)stats_font_size * 64.0f), x, y, c);
-        render_text_segment(batch, manager, segment);
-        y -= (int)((float)stats_font_size * 1.334f);
-    }
+    render_stats_text(batch, manager);
 
     /* synchronize canvas texture buffers */
     buffer_texture_create(shape_tb, canvas.ctx->shapes, GL_TEXTURE0, GL_R32F);
