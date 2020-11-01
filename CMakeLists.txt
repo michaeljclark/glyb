@@ -136,80 +136,22 @@ include_directories(examples)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(GLYPHIC_SOURCES
-  src/binpack.cc
-  src/binpack.h
-  src/canvas.cc
-  src/canvas.h
-  src/file.cc
-  src/file.h
-  src/font.cc
-  src/font.h
-  src/glyph.cc
-  src/glyph.h
-  src/image.cc
-  src/image.h
-  src/logger.cc
-  src/logger.h
-  src/msdf.cc
-  src/msdf.h
-  src/multi.cc
-  src/multi.h
-  src/text.cc
-  src/text.h
-  src/utf8.cc
-  src/utf8.h
-)
+file(GLOB GLYPHIC_SOURCES src/*.cc src/*.h)
 add_library(glyblib STATIC ${GLYPHIC_SOURCES})
 set_target_properties(glyblib PROPERTIES CXX_STANDARD 17)
 
-add_executable(bitcode examples/bitcode.cc)
-target_link_libraries(bitcode glyblib ${LIBS} ${CMAKE_DL_LIBS})
+foreach(prog IN ITEMS bitcode ftkitty ftrender fontdb fontscan genatlas uniscan)
+  add_executable(${prog} examples/${prog}.cc)
+  target_link_libraries(${prog} glyblib ${LIBS} ${CMAKE_DL_LIBS})
+endforeach(prog)
 
-add_executable(genatlas examples/genatlas.cc)
-target_link_libraries(genatlas glyblib ${LIBS} ${CMAKE_DL_LIBS})
-
-add_executable(fontdb examples/fontdb.cc)
-target_link_libraries(fontdb glyblib ${LIBS} ${CMAKE_DL_LIBS})
-
-add_executable(fontscan examples/fontscan.cc)
-target_link_libraries(fontscan glyblib ${LIBS} ${CMAKE_DL_LIBS})
-
-add_executable(uniscan examples/uniscan.cc)
-target_link_libraries(uniscan glyblib ${LIBS} ${CMAKE_DL_LIBS})
-
-add_executable(ftkitty examples/ftkitty.cc)
-target_link_libraries(ftkitty glyblib ${LIBS} ${CMAKE_DL_LIBS})
-
-add_executable(ftrender examples/ftrender.cc)
-target_link_libraries(ftrender glyblib ${LIBS} ${CMAKE_DL_LIBS})
-
-add_executable(glbinpack examples/glbinpack.cc)
-target_link_libraries(glbinpack glyblib ${LIBS} glad ${CMAKE_DL_LIBS})
+foreach(prog IN ITEMS glbinpack gledit glemoji glgraph glfont gllayout glsimple glyb)
+  add_executable(${prog} examples/${prog}.cc)
+  target_link_libraries(${prog} glyblib ${LIBS} glad ${CMAKE_DL_LIBS})
+endforeach(prog)
 
 add_executable(glcanvas examples/glcanvas.cc)
 target_link_libraries(glcanvas glyblib ${LIBS} glad ${CMAKE_DL_LIBS} imgui)
-
-add_executable(gledit examples/gledit.cc)
-target_link_libraries(gledit glyblib ${LIBS} glad ${CMAKE_DL_LIBS})
-
-add_executable(glemoji examples/glemoji.cc)
-target_link_libraries(glemoji glyblib ${LIBS} glad ${CMAKE_DL_LIBS})
-
-add_executable(glgraph examples/glgraph.cc)
-target_link_libraries(glgraph glyblib ${LIBS} glad ${CMAKE_DL_LIBS})
-
-add_executable(glfont examples/glfont.cc)
-target_link_libraries(glfont glyblib ${LIBS} glad ${CMAKE_DL_LIBS})
-
-add_executable(gllayout examples/gllayout.cc)
-target_link_libraries(gllayout glyblib ${LIBS} glad ${CMAKE_DL_LIBS})
-
-add_executable(glsimple examples/glsimple.cc)
-target_link_libraries(glsimple glyblib ${LIBS} glad ${CMAKE_DL_LIBS})
-
-add_executable(glyb examples/glyb.cc)
-target_link_libraries(glyb glyblib ${LIBS} glad ${CMAKE_DL_LIBS})
 
 file(GLOB BINPACK_TESTS tests/*.cc)
 foreach(src ${BINPACK_TESTS})
