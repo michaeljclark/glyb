@@ -18,6 +18,7 @@
 #include <unordered_set>
 
 #include "bitcode.h"
+#include "format.h"
 
 using string = std::string;
 template <typename T> using vector = std::vector<T>;
@@ -89,27 +90,6 @@ static string join(vector<string> comps,
         }
         str.append(comps[i]);
     }
-    return str;
-}
-
-static std::string format_string(const char* fmt, ...)
-{
-    std::vector<char> buf(128);
-    va_list ap;
-
-    va_start(ap, fmt);
-    int len = vsnprintf(buf.data(), buf.capacity(), fmt, ap);
-    va_end(ap);
-
-    std::string str;
-    if (len >= (int)buf.capacity()) {
-        buf.resize(len + 1);
-        va_start(ap, fmt);
-        vsnprintf(buf.data(), buf.capacity(), fmt, ap);
-        va_end(ap);
-    }
-    str = buf.data();
-
     return str;
 }
 
@@ -509,18 +489,18 @@ struct token_set
         std::string s;
         switch(node->type) {
         case type_code:
-            return format_string("U-%04zx:%s",
+            return format("U-%04zx:%s",
                 node->u.code.code,
                 stringify(node->u.code.node).c_str());
             break;
         case type_inner:
-            return format_string("%zu:{%s,%s}",
+            return format("%zu:{%s,%s}",
                 node->node_id,
                 stringify(node->u.inner.left).c_str(),
                 stringify(node->u.inner.right).c_str());
             break;
         case type_leaf:
-            return format_string("%zu:\"%s\"",
+            return format("%zu:\"%s\"",
                 node->node_id,
                 symbols[node->u.leaf.symbol].c_str());
             break;
@@ -571,7 +551,7 @@ struct token_set
             node->node_id = ++next_node_id;
             printf("code %zu <- %-32s \t# %zd\n",
                 node->node_id,
-                format_string("{ U-%04zx, %zd }",
+                format("{ U-%04zx, %zd }",
                     node->u.code.code,
                     node->node_id - node->u.code.node->node_id).c_str(),
                 node->u.code.node->node_id);
@@ -589,7 +569,7 @@ struct token_set
             node->node_id = ++next_node_id;
             printf("node %zu <- %-32s \t# { %zd, %zd } \n",
                 node->node_id,
-                format_string("{ %zd, %zd }",
+                format("{ %zd, %zd }",
                     node->node_id - node->u.inner.left->node_id,
                     node->node_id - node->u.inner.right->node_id).c_str(),
                 node->u.inner.left->node_id,
@@ -599,7 +579,7 @@ struct token_set
             node->node_id = ++next_node_id;
             printf("leaf %zu <- %-32s \t# %zd\n",
                 node->node_id,
-                format_string("{ \"%s\" }",
+                format("{ \"%s\" }",
                     symbols[node->u.leaf.symbol].c_str()).c_str(),
                 node->u.leaf.symbol);
             break;

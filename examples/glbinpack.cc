@@ -33,6 +33,7 @@
 #include "image.h"
 #include "draw.h"
 #include "logger.h"
+#include "format.h"
 #include "glcommon.h"
 
 using mat4 = glm::mat4;
@@ -401,29 +402,6 @@ static void fbo_initialize()
     glBindFramebuffer(GL_FRAMEBUFFER, render_fbo);
 }
 
-/* utility functions */
-
-static std::string format_string(const char* fmt, ...)
-{
-    std::vector<char> buf(128);
-    va_list ap;
-
-    va_start(ap, fmt);
-    int len = vsnprintf(buf.data(), buf.capacity(), fmt, ap);
-    va_end(ap);
-
-    std::string str;
-    if (len >= (int)buf.capacity()) {
-        buf.resize(len + 1);
-        va_start(ap, fmt);
-        vsnprintf(buf.data(), buf.capacity(), fmt, ap);
-        va_end(ap);
-    }
-    str = buf.data();
-
-    return str;
-}
-
 /* write image to file */
 
 static void write_ppm(const char *filename, const uint8_t *buffer, int width, int height)
@@ -481,7 +459,7 @@ static void binpack_offline(int argc, char **argv)
         update_buffers();
         display();
         glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
-        std::string filename = format_string(filename_template, i);
+        std::string filename = format(filename_template, i);
         write_ppm(filename.c_str(), buffer, width, height);
         printf("wrote output to %s\n", filename.c_str());
         for (size_t j = 0; j < frame_step; j++) {

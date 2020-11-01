@@ -51,6 +51,7 @@
 #include "color.h"
 #include "logger.h"
 #include "file.h"
+#include "format.h"
 #include "glcommon.h"
 
 #include "ui9.h"
@@ -115,31 +116,10 @@ static program* cmd_shader_gl(int cmd_shader)
     }
 }
 
-static std::string format_string(const char* fmt, ...)
-{
-    std::vector<char> buf(128);
-    va_list ap;
-
-    va_start(ap, fmt);
-    int len = vsnprintf(buf.data(), buf.capacity(), fmt, ap);
-    va_end(ap);
-
-    std::string str;
-    if (len >= (int)buf.capacity()) {
-        buf.resize(len + 1);
-        va_start(ap, fmt);
-        vsnprintf(buf.data(), buf.capacity(), fmt, ap);
-        va_end(ap);
-    }
-    str = buf.data();
-
-    return str;
-}
-
 static std::vector<std::string> get_stats(font_face *face, double td)
 {
     std::vector<std::string> stats;
-    stats.push_back(format_string("frames-per-second: %5.2f", 1.0/td));
+    stats.push_back(format("frames-per-second: %5.2f", 1.0/td));
     return stats;
 }
 

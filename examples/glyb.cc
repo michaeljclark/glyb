@@ -43,6 +43,7 @@
 #include "glyph.h"
 #include "logger.h"
 #include "file.h"
+#include "format.h"
 #include "glcommon.h"
 
 using namespace std::chrono;
@@ -110,27 +111,6 @@ static std::vector<std::string> read_file(file_ptr rsrc)
     return lines;
 }
 
-static std::string format_string(const char* fmt, ...)
-{
-    std::vector<char> buf(128);
-    va_list ap;
-
-    va_start(ap, fmt);
-    int len = vsnprintf(buf.data(), buf.capacity(), fmt, ap);
-    va_end(ap);
-
-    std::string str;
-    if (len >= (int)buf.capacity()) {
-        buf.resize(len + 1);
-        va_start(ap, fmt);
-        vsnprintf(buf.data(), buf.capacity(), fmt, ap);
-        va_end(ap);
-    }
-    str = buf.data();
-
-    return str;
-}
-
 /* on-screen stats*/
 
 static std::vector<std::string> get_stats(font_face *face, float td)
@@ -155,17 +135,17 @@ static std::vector<std::string> get_stats(font_face *face, float td)
         }
     }
 
-    stats.push_back(format_string("frames-per-second: %5.2f",
+    stats.push_back(format("frames-per-second: %5.2f",
         1.0/td));
-    stats.push_back(format_string("memory-allocated: %d KiB",
+    stats.push_back(format("memory-allocated: %d KiB",
         memory_allocated/1024));
-    stats.push_back(format_string("atlas-utilization: %5.2f %%",
+    stats.push_back(format("atlas-utilization: %5.2f %%",
         100.0f*(float)area_used / (float)area_total));
-    stats.push_back(format_string("atlas-font-sizes: %zu",
+    stats.push_back(format("atlas-font-sizes: %zu",
         font_size_set.size()));
-    stats.push_back(format_string("atlas-glyph-count: %zu",
+    stats.push_back(format("atlas-glyph-count: %zu",
         glyph_count));
-    stats.push_back(format_string("atlas-count: %zu",
+    stats.push_back(format("atlas-count: %zu",
         manager.everyAtlas.size()));
 
     return stats;
@@ -559,7 +539,7 @@ static void glyb_offline(int argc, char **argv)
         auto face = manager.findFontByPath(font_path);
         size_t i = 0;
         for (auto atlas : manager.faceAtlasMap[face]) {
-            std::string filename = format_string(atlas_dump_template, i++);
+            std::string filename = format(atlas_dump_template, i++);
             image::saveToFile(std::string(filename), atlas->img, &image::PNG);
             printf("frame-%09zu : wrote atlas to %s\n", frame_num, filename.c_str());
         }
@@ -567,7 +547,7 @@ static void glyb_offline(int argc, char **argv)
     for (size_t i = 1; i <= frame_count; i++) {
         draw(frame_num/(float)frame_rate, 1/(float)frame_rate);
         glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
-        std::string filename = format_string(filename_template, i++);
+        std::string filename = format(filename_template, i++);
         write_ppm(filename.c_str(), buffer, width, height);
         printf("frame-%09zu : wrote output to %s\n", frame_num, filename.c_str());
         frame_num++;
