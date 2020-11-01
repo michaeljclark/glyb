@@ -46,7 +46,6 @@ using mat3 = glm::mat3;
 using mat4 = glm::mat4;
 using vec2 = glm::vec2;
 using vec3 = glm::vec3;
-using dvec2 = glm::dvec2;
 
 /* constants */
 
@@ -74,7 +73,7 @@ static font_manager_ft manager;
 struct zoom_state
 {
     float zoom;
-    dvec2 mouse_pos;
+    vec2 mouse_pos;
     vec2 origin;
 };
 
@@ -586,7 +585,7 @@ static void mouse_button(GLFWwindow* window, int button, int action, int mods)
 
 static void cursor_position(GLFWwindow* window, double xpos, double ypos)
 {
-    state.mouse_pos = dvec2(xpos, ypos);
+    state.mouse_pos = vec2(xpos, ypos);
 
     if (mouse_left_drag) {
         vec2 span[2] = { vec2(state_save.mouse_pos), vec2(state.mouse_pos) };
@@ -597,7 +596,7 @@ static void cursor_position(GLFWwindow* window, double xpos, double ypos)
         state_save.mouse_pos = state.mouse_pos;
     }
     else if (mouse_right_drag) {
-        dvec2 delta = state.mouse_pos - state_save.mouse_pos;
+        vec2 delta = state.mouse_pos - state_save.mouse_pos;
         float zoom = state_save.zoom * powf(65.0f/64.0f,(float)-delta.y);
         if (zoom != state.zoom && zoom > min_zoom && zoom < max_zoom) {
             vec2 origin_delta = (state.origin - vec2(state.mouse_pos));

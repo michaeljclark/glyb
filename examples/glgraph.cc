@@ -58,7 +58,7 @@
 
 using namespace std::chrono;
 
-using dvec2 = glm::dvec2;
+using vec2 = glm::vec2;
 
 /* globals */
 
@@ -92,7 +92,7 @@ static bool overlay_stats = false;
 
 struct zoom_state {
     float zoom;
-    dvec2 mouse_pos;
+    vec2 mouse_pos;
     vec2 origin;
 };
 
@@ -382,7 +382,7 @@ static bool mouse_motion_ui9(vec3 pos)
 
 static void cursor_position(GLFWwindow* window, double xpos, double ypos)
 {
-    state.mouse_pos = dvec2(xpos, ypos);
+    state.mouse_pos = vec2(xpos, ypos);
 
     if (mouse_motion_ui9(vec3(state.mouse_pos, 1))) {
         return;
@@ -393,7 +393,7 @@ static void cursor_position(GLFWwindow* window, double xpos, double ypos)
         state_save.mouse_pos = state.mouse_pos;
     }
     else if (mouse_right_drag) {
-        dvec2 delta = state.mouse_pos - state_save.mouse_pos;
+        vec2 delta = state.mouse_pos - state_save.mouse_pos;
         float zoom = state_save.zoom * powf(65.0f/64.0f,(float)-delta.y);
         if (zoom != state.zoom && zoom > min_zoom && zoom < max_zoom) {
             state.zoom = zoom;
