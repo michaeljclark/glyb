@@ -330,6 +330,7 @@ struct Text : Drawable
     text_segment& get_text_segment();
     std::vector<glyph_shape>& get_glyph_shapes();
     vec2 get_text_size();
+    vec2 get_text_offset();
 };
 
 /*

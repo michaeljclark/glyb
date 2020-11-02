@@ -548,6 +548,22 @@ vec2 Text::get_text_size() {
     return vec2(text_width,size);
 }
 
+vec2 Text::get_text_offset() {
+    vec2 size = get_text_size();
+    vec2 offset;
+    switch (halign) {
+    case text_halign_center: offset.x = - size.x/2.0f; break;
+    case text_halign_right:  offset.x = - size.x; break;
+    default: offset.x = 0;
+    }
+    switch (valign) {
+    case text_valign_bottom: offset.y = - size.y; break;
+    case text_valign_center: offset.y = - size.y/2.0f; break;
+    default: offset.y = 0;
+    }
+    return offset;
+}
+
 /*
  * Primitive subclasses are single edge shapes with no contours
  */
@@ -796,7 +812,7 @@ void Canvas::emit(draw_list &batch)
             AShape &llshape = ctx->shapes[shape->ll_shape_num];
             vec2 pos = shape->get_position() + llshape.offset;
             vec2 halfSize = llshape.size / 2.0f;
-            float padding = ceil(llshape.stroke_width/2.0f);
+            float padding = llshape.stroke_width * 0.5;
             Brush fill_brush = get_brush((int)llshape.fill_brush);
             uint32_t c = 0xffffffff;
             rect(batch, tbo_iid,
@@ -830,7 +846,7 @@ void Canvas::emit(draw_list &batch)
             AShape &llshape = ctx->shapes[shape->ll_shape_num];
             vec2 pos = shape->get_position() + llshape.offset;
             vec2 halfSize = llshape.size / 2.0f;
-            float padding = ceil(llshape.stroke_width/2.0f);
+            float padding = llshape.stroke_width * 0.5;
             Brush fill_brush = get_brush((int)llshape.fill_brush);
             uint32_t c = 0xffffffff;
             rect(batch, tbo_iid,
@@ -842,26 +858,19 @@ void Canvas::emit(draw_list &batch)
         case drawable_text: {
             auto shape = static_cast<Text*>(o.get());
             size_t s = glyph_map.size();
-            vec2 pos = shape->get_position();
             text_segment &segment = shape->get_text_segment();
             std::vector<glyph_shape> &shapes = shape->get_glyph_shapes();
-            vec2 text_size = shape->get_text_size();
-            switch (shape->halign) {
-            case text_halign_left:   segment.x = pos.x; break;
-            case text_halign_center: segment.x = pos.x - text_size.x/2.0f; break;
-            case text_halign_right:  segment.x = pos.x - text_size.x; break;
-            }
-            switch (shape->valign) {
-            case text_valign_top:    segment.y = pos.y - text_size.y; break;
-            case text_valign_center: segment.y = pos.y - text_size.y/2.0f; break;
-            case text_valign_bottom: segment.y = pos.y; break;
-            }
+            vec2 size = shape->get_text_size();
+            vec2 offset = shape->get_text_offset();
+            vec2 pos = shape->get_position();
+            segment.x = pos.x + offset.x;
+            segment.y = pos.y + offset.y;
             if (shape->get_render_mode() == Text::render_as_text &&
                 shape->get_stroke_width() == 0 &&
                 shape->get_fill_brush().brush_type == BrushSolid)
             {
                 /* todo - use fast text renderer (currently disabled) */
-                segment.baseline_shift = -text_size.y;
+                segment.baseline_shift = -size.y;
                 segment.color = shape->get_fill_brush().colors[0].rgba32();
                 text_renderer_r.render(batch, shapes, segment, transform);
             } else {
@@ -884,7 +893,7 @@ void Canvas::emit(draw_list &batch)
             AShape &llshape = ctx->shapes[shape->ll_shape_num];
             vec2 pos = shape->get_position();
             float radius = shape->get_radius();
-            float padding = ceil(llshape.stroke_width/2.0f);
+            float padding = llshape.stroke_width * 0.5;
             Brush fill_brush = get_brush((int)llshape.fill_brush);
             uint32_t c = 0xffffffff;
             rect(batch, tbo_iid,
@@ -906,7 +915,7 @@ void Canvas::emit(draw_list &batch)
             AShape &llshape = ctx->shapes[shape->ll_shape_num];
             vec2 pos = shape->get_position();
             vec2 halfSize = shape->get_halfsize();
-            float padding = ceil(llshape.stroke_width/2.0f);
+            float padding = llshape.stroke_width * 0.5;
             Brush fill_brush = get_brush((int)llshape.fill_brush);
             uint32_t c = 0xffffffff;
             rect(batch, tbo_iid,
@@ -930,7 +939,7 @@ void Canvas::emit(draw_list &batch)
             AShape &llshape = ctx->shapes[shape->ll_shape_num];
             vec2 pos = shape->get_position();
             vec2 halfSize = shape->get_halfsize();
-            float padding = ceil(llshape.stroke_width/2.0f);
+            float padding = llshape.stroke_width * 0.5;
             Brush fill_brush = get_brush((int)llshape.fill_brush);
             uint32_t c = 0xffffffff;
             rect(batch, tbo_iid,
