@@ -390,13 +390,13 @@ void parse_options(int argc, char **argv)
             if (check_param(++i == argc, "--frame-size")) break;
             sscanf(argv[i++], "%dx%d", &width, &height);
         } else if (match_opt(argv[i], "-min", "--min-size")) {
-            if (check_param(++i == argc, "--size")) break;
+            if (check_param(++i == argc, "--min-size")) break;
             font_size_min  = atoi(argv[i++]);
         } else if (match_opt(argv[i], "-max", "--max-size")) {
-            if (check_param(++i == argc, "--size")) break;
+            if (check_param(++i == argc, "--max-size")) break;
             font_size_max = atoi(argv[i++]);
         } else if (match_opt(argv[i], "-t", "--text")) {
-            if (check_param(++i == argc, "--font-size")) break;
+            if (check_param(++i == argc, "--text")) break;
             render_text = argv[i++];
         } else if (match_opt(argv[i], "-a", "--show-atlas")) {
             show_atlas = true;
