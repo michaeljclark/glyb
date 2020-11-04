@@ -180,7 +180,7 @@ static void populate_canvas()
 
     /* grid frame */
     canvas.set_stroke_brush(Brush{BrushSolid, { }, { color(0,0,0,1) }});
-    canvas.set_stroke_width(0.75f);
+    canvas.set_stroke_width(1.0f);
     float um = 10;
     vec2 grid_size = vec2(text_size.x*0.5f+um, text_size.y*0.625f+um);
     vec2 grid_pos = vec2(text_pos.x, text_pos.y+text_size.y*0.125f);
@@ -192,7 +192,7 @@ static void populate_canvas()
 
     /* grid lines */
     canvas.set_stroke_brush(Brush{BrushSolid, { }, { color(0.7,0.7,0.9,1) }});
-    canvas.set_stroke_width(0.25f);
+    canvas.set_stroke_width(0.5f);
     float v = 20;
     int xlines = floorf(grid_size.x/v)*2+1; /* odd */
     int ylines = floorf(grid_size.y/v)*2+1; /* odd */
