@@ -74,17 +74,20 @@ static Canvas canvas(&manager);
 
 static mat4 mvp;
 static GLFWwindow* window;
+static GLFWcursor* beam_cursor;
 
-static const char *sans_norm_font_path = "fonts/Roboto-Medium.ttf";
+static const char *font_path = "fonts/Roboto-Medium.ttf";
 static const char *render_text = "qffifflLTA"; // "πάθος λόγος ἦθος";
 static const char* text_lang = "en";
 static const int stats_font_size = 18;
-
+static int font_size = 256.0f;
 static const float min_zoom = 16.0f, max_zoom = 32768.0f;
 static std::array<float,4> clear_color = { 1.0f, 1.0f, 1.0f, 1.0f };
 static int width = 2560, height = 1440;
 static double tl, tn, td;
+static bool needs_update = false;
 static bool help_text = false;
+static bool glyph_meta = false;
 
 /* canvas state */
 
@@ -135,7 +138,12 @@ static void populate_canvas()
     FT_Error fterr;
     FT_GlyphSlot ftglyph;
 
-    if (canvas.num_drawables() > 0) return;
+    if (needs_update) {
+        canvas.clear();
+        needs_update = false;
+    } else if (canvas.num_drawables() > 0) {
+        return;
+    }
 
     color colors[] = {
         color("#251F39"),
@@ -157,7 +165,7 @@ static void populate_canvas()
     t->set_lang("en");
     //t->set_position(vec2(0,0));
     t->set_position(vec2(0,-32.0f));
-    t->set_size(256.0f);
+    t->set_size(font_size);
 
     /* need text size for gradient and rounded rectangle size */
     vec2 text_pos = t->get_position();
@@ -181,9 +189,9 @@ static void populate_canvas()
     /* grid frame */
     canvas.set_stroke_brush(Brush{BrushSolid, { }, { color(0,0,0,1) }});
     canvas.set_stroke_width(1.0f);
-    float um = 10;
-    vec2 grid_size = vec2(text_size.x*0.5f+um, text_size.y*0.625f+um);
-    vec2 grid_pos = vec2(text_pos.x, text_pos.y+text_size.y*0.125f);
+    float um = 10, lr = 1.25f;
+    vec2 grid_size = vec2(text_size.x*0.5f+um, text_size.y*0.5f*lr+um);
+    vec2 grid_pos = vec2(text_pos.x, text_pos.y+text_size.y*(lr*0.5f-0.5f));
     float xs = grid_size.x, ys = grid_size.y;
     vec2 p1 = grid_pos + vec2(-xs,-ys), p2 = grid_pos + vec2(xs,-ys);
     vec2 p3 = grid_pos + vec2(-xs,ys),  p4 = grid_pos + vec2(xs,ys);
@@ -211,7 +219,9 @@ static void populate_canvas()
 
     /* get glyph internal dimensions */
     vec2 pos = text_pos + text_offset;
-    for (auto &shape : shapes) {
+    for (size_t i = 0; i < shapes.size(); i++)
+    {
+        auto &shape = shapes[i];
 
         if ((fterr = FT_Load_Glyph(ftface, shape.glyph, FT_LOAD_NO_BITMAP))) {
             Panic("error: FT_Load_Glyph failed: glyph=%d fterr=%d\n",
@@ -226,6 +236,30 @@ static void populate_canvas()
         float width = ftglyph->metrics.width / 64.0f;
         float height = ftglyph->metrics.height / 64.0f;
         float descend = (height - y_hbearing);
+
+        if (glyph_meta)
+        {
+            char hexbuf[64];
+            size_t index = shape.cluster;
+            size_t end_index = i < (shapes.size()-1) ? shapes[i+1].cluster : index + 1;
+            size_t s = 0;
+            while (index < end_index)
+            {
+                struct utf32_code u = utf8_to_utf32_code(render_text + index);
+                if (s != 0) s += snprintf(hexbuf+s, sizeof(hexbuf)-s, ",");
+                s += snprintf(hexbuf+s, sizeof(hexbuf)-s, "0x%02x", (int)u.code);
+                index += u.len;
+            }
+            canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0.2f,0.2f,0.2f,1) }});
+            Text *t = canvas.new_text();
+            t->set_face(sans_norm);
+            t->set_halign(text_halign_left);
+            t->set_valign(text_valign_top);
+            t->set_text(hexbuf);
+            t->set_lang("en");
+            t->set_position(vec2(2,2)+pos);
+            t->set_size(12.0f);
+        }
 
         /* glyph box */
         canvas.set_stroke_brush(Brush{BrushSolid, { }, { color(0.3f,0.3f,0.7f,1) }});
@@ -476,7 +510,7 @@ static void initialize()
     manager.msdf_autoload = true;
     manager.msdf_enabled = true;
     manager.scanFontDir("fonts");
-    sans_norm = manager.findFontByPath(sans_norm_font_path);
+    sans_norm = manager.findFontByPath(font_path);
 
     /* pipeline */
     glEnable(GL_CULL_FACE);
@@ -511,6 +545,9 @@ static void glcanvas(int argc, char **argv)
     glfwSetFramebufferSizeCallback(window, resize);
     glfwGetFramebufferSize(window, &width, &height);
 
+    beam_cursor = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
+    glfwSetCursor(window, beam_cursor);
+
     initialize();
     reshape(width, height);
     while (!glfwWindowShouldClose(window)) {
@@ -530,9 +567,12 @@ void print_help(int argc, char **argv)
 {
     fprintf(stderr,
         "Usage: %s [options]\n"
+        "  -f, --font <ttf-file>     font file (default %s)\n"
+        "  -s, --size <integer>      font size (default %d)\n"
         "  -t, --text <string>       text to render (default \"%s\")\n"
+        "  -m, --meta                display glyph metadata\n"
         "  -h, --help            command line help\n",
-        argv[0], render_text);
+        argv[0], font_path, font_size, render_text);
 }
 
 /* option parsing */
@@ -557,6 +597,15 @@ void parse_options(int argc, char **argv)
         if (match_opt(argv[i], "-h", "--help")) {
             help_text = true;
             i++;
+        } else if (match_opt(argv[i], "-m", "--meta")) {
+            glyph_meta = true;
+            i++;
+        } else if (match_opt(argv[i], "-f","--font")) {
+            if (check_param(++i == argc, "--font")) break;
+            font_path = argv[i++];
+        } else if (match_opt(argv[i], "-s", "--size")) {
+            if (check_param(++i == argc, "--size")) break;
+            font_size = atoi(argv[i++]);
         } else if (match_opt(argv[i], "-t", "--text")) {
             if (check_param(++i == argc, "--text")) break;
             render_text = argv[i++];
