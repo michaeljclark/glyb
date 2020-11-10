@@ -14,6 +14,11 @@ if (CMAKE_PROFILE AND has_gprof)
   add_compiler_flags(-pg)
 endif()
 
+check_cxx_compiler_flag("-fno-omit-frame-pointer" has_no_omit_fp "int main() { return 0; }")
+if (has_no_omit_fp)
+  add_compiler_flags(-fno-omit-frame-pointer)
+endif()
+
 if(UNIX AND NOT APPLE)
   set(LINUX true)
 endif()
