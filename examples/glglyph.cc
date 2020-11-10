@@ -587,16 +587,27 @@ static void mouse_button(GLFWwindow* window, int button, int action, int mods)
 {
     switch (button) {
     case GLFW_MOUSE_BUTTON_LEFT:
-        mouse_left_drag = (action == GLFW_PRESS);
+        if (action == GLFW_PRESS) {
+            mouse_middle_drag = ((mods & GLFW_MOD_SHIFT) > 0);
+            mouse_left_drag = ((mods & GLFW_MOD_SHIFT) == 0);
+        } else {
+            mouse_middle_drag = false;
+            mouse_left_drag = false;
+        }
         state_save = state;
         break;
     case GLFW_MOUSE_BUTTON_MIDDLE:
-        /* FIXME - don't use middle button */
         mouse_middle_drag = (action == GLFW_PRESS);
         state_save = state;
         break;
     case GLFW_MOUSE_BUTTON_RIGHT:
-        mouse_right_drag = (action == GLFW_PRESS);
+        if (action == GLFW_PRESS) {
+            mouse_middle_drag = ((mods & GLFW_MOD_SHIFT) > 0);
+            mouse_right_drag = ((mods & GLFW_MOD_SHIFT) == 0);
+        } else {
+            mouse_middle_drag = false;
+            mouse_right_drag = false;
+        }
         state_save = state;
         break;
     }
