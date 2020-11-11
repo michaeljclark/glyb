@@ -71,8 +71,7 @@ template <typename ITEM> struct pool_worker
 template <typename ITEM, typename WORKER>
 struct pool_executor
 {
-    typedef std::unique_ptr<pool_worker<ITEM>> worker_ptr;
-    typedef std::function<worker_ptr()> worker_factory_fn;
+    typedef std::function<WORKER*()> worker_factory_fn;
 
     /*
      * multithreaded work queue specific structure members
@@ -99,7 +98,7 @@ struct pool_executor
 
     pool_executor(size_t num_threads, size_t queue_size,
         const worker_factory_fn &worker_factory = [](){
-        return std::unique_ptr<pool_worker<ITEM>>(new WORKER());
+        return new WORKER();
     });
     virtual ~pool_executor();
 
@@ -117,8 +116,7 @@ struct pool_executor
 template <typename ITEM, typename WORKER>
 struct pool_worker_thread
 {
-    typedef std::unique_ptr<pool_worker<ITEM>> worker_ptr;
-    typedef std::function<worker_ptr()> worker_factory_fn;
+    typedef std::function<WORKER*()> worker_factory_fn;
 
     pool_executor<ITEM,WORKER>& dispatcher;
     const worker_factory_fn worker_factory;
@@ -134,7 +132,7 @@ struct pool_worker_thread
 template <typename ITEM, typename WORKER>
 pool_worker_thread<ITEM,WORKER>::pool_worker_thread(
     pool_executor<ITEM,WORKER>& dispatcher,
-    const std::function<std::unique_ptr<pool_worker<ITEM>>()> &worker_factory,
+    const std::function<WORKER*()> &worker_factory,
     size_t worker_num
 ) :
     dispatcher(dispatcher),
@@ -146,7 +144,7 @@ pool_worker_thread<ITEM,WORKER>::pool_worker_thread(
 template <typename ITEM, typename WORKER>
 void pool_worker_thread<ITEM,WORKER>::mainloop()
 {
-    std::unique_ptr<pool_worker<ITEM>> worker = worker_factory();
+    std::unique_ptr<pool_worker<ITEM>> worker(worker_factory());
 
     while (dispatcher.running) {
         size_t total, processing, workitem, processed;

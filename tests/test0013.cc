@@ -43,7 +43,7 @@ int main(int argc, const char **argv)
     const size_t queue_size = num_threads * 2;
 
     pool_executor<mule_item,mule_worker> pool(num_threads, queue_size, [](){
-        return std::unique_ptr<pool_worker<mule_item>>(new mule_worker());
+        return new mule_worker();
     });
 
     /* enqueue work items to the pool.
