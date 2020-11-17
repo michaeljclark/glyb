@@ -73,8 +73,6 @@ static mat4 mvp;
 static GLFWwindow* window;
 
 static const char *sans_norm_font_path = "fonts/DejaVuSans.ttf";
-static const char *mono_norm_font_path = "fonts/RobotoMono-Regular.ttf";
-static const char *mono_bold_font_path = "fonts/RobotoMono-Bold.ttf";
 static const char *render_text = "πάθος λόγος ἦθος";
 static const char* text_lang = "en";
 static const int stats_font_size = 12;
@@ -168,11 +166,6 @@ static void create_layout(ui9::Root &root)
 static void populate_canvas()
 {
     if (canvas.num_drawables() > 0) return;
-
-    if (!mono_norm) {
-        mono_norm = manager.findFontByPath(mono_norm_font_path);
-        mono_bold = manager.findFontByPath(mono_bold_font_path);
-    }
 
     if (root.has_children()) return;
 
@@ -442,10 +435,16 @@ static void initialize()
     vertex_array_1f(p, "a_gamma", 1.0f);
     glBindVertexArray(0);
 
-    /* get font list */
-    manager.msdf_autoload = false;
-    manager.msdf_enabled = false;
-    manager.scanFontDir("fonts");
+    /*
+     * we need to scan font directory for caching to work, as it uses
+     * font ids assigned during scanning. this also means that if the
+     * font directory has changed, then cached font ids will be wrong
+     */
+    if (manager.msdf_enabled) {
+        manager.scanFontDir("fonts");
+    }
+
+    /* fetch our sans font */
     sans_norm = manager.findFontByPath(sans_norm_font_path);
 
     /* pipeline */
@@ -501,8 +500,10 @@ void print_help(int argc, char **argv)
 {
     fprintf(stderr,
         "Usage: %s [options]\n"
-        "  -h, --help            command line help\n"
-        "  -y, --overlay-stats   show statistics overlay\n",
+        "  -h, --help                command line help\n"
+        "  -y, --overlay-stats       show statistics overlay\n"
+        "  -m, --disable-msdf        disable MSDF font rendering\n"
+        "  -M, --disable-autoload    disable MSDF atlas autoloading\n",
         argv[0]);
 }
 
@@ -531,6 +532,12 @@ void parse_options(int argc, char **argv)
         } else if (match_opt(argv[i], "-y", "--overlay-stats")) {
             overlay_stats = true;
             i++;
+        } else if (match_opt(argv[i], "-m", "--disable-msdf")) {
+            manager.msdf_enabled = false;
+            i++;
+        } else if (match_opt(argv[i], "-M", "--disable-autoload")) {
+            manager.msdf_autoload = false;
+            i++;
         } else {
             fprintf(stderr, "error: unknown option: %s\n", argv[i]);
             help_text = true;
@@ -549,6 +556,13 @@ void parse_options(int argc, char **argv)
 
 int main(int argc, char **argv)
 {
+    /*
+     * enable MSDF font atlases. note: this requires that client
+     * code configures MSDF shaders, so it is disabled by default.
+     */
+    manager.msdf_enabled = true;
+    manager.msdf_autoload = true;
+
     parse_options(argc, argv);
     glcanvas(argc, argv);
     return 0;
