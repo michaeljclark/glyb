@@ -334,7 +334,6 @@ static void initialize()
     glFrontFace(GL_CCW);
     glCullFace(GL_BACK);
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_MULTISAMPLE);
     glLineWidth(1.0);
 }
 

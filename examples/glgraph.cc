@@ -443,8 +443,8 @@ static void initialize()
     glBindVertexArray(0);
 
     /* get font list */
-    manager.msdf_autoload = true;
-    manager.msdf_enabled = true;
+    manager.msdf_autoload = false;
+    manager.msdf_enabled = false;
     manager.scanFontDir("fonts");
     sans_norm = manager.findFontByPath(sans_norm_font_path);
 
