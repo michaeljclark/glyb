@@ -57,11 +57,9 @@ static GLFWwindow* window;
 static const char *font_path = "fonts/RobotoMono-Regular.ttf";
 static const char *render_text = "the quick brown fox jumps over the lazy dog";
 static const char* text_lang = "en";
-static int font_size_min = 12;
+static int font_size_min = 9;
 static int font_size_max = 32;
 static bool help_text = false;
-static bool show_atlas = false;
-static bool show_lines = false;
 static bool debug = false;
 static bool use_multithread = true;
 static int width = 1024, height = 768;
@@ -144,7 +142,7 @@ static void rect(draw_list &batch, font_atlas *atlas,
 
 static void update_geometry()
 {
-    const uint32_t black = 0xff000000, light_gray = 0xffcccccc;
+    const uint32_t black = 0xff000000;
 
     text_shaper_hb shaper;
     text_renderer_ft renderer(&manager);
@@ -171,24 +169,6 @@ static void update_geometry()
             (render_text, text_lang, face, sz * 64, x, y, black);
         auto size_shapes = std::make_unique<std::vector<glyph_shape>>();
         auto render_shapes = std::make_unique<std::vector<glyph_shape>>();
-        if (show_lines) {
-            int width = 0;
-            int height = static_cast<font_face_ft*>
-                (face)->get_height(render_segment->font_size) >> 6;
-            std::vector<glyph_shape> shapes;
-            shaper.shape(shapes, *render_segment);
-            for (auto &s : shapes) {
-                width += s.x_advance/64;
-            }
-            float x1 = (float)x, x2 = (float)x + (float)width;
-            float y1 = (float)y - 1.0f, y2 = (float)y1 + 2.0f;
-            float y3 = (float)y - (float)height / 2.0f - 1.0f, y4 = y3 + 2.0f;
-            float y5 = (float)y - (float)height - 1.0f, y6 = y5 + 2.0f;
-            float fwidth = (float)width, fheight = (float)height;
-            rect(batch, atlas, x1, y1, x2, y2, 0, light_gray);
-            rect(batch, atlas, x1, y3, x2, y4, 0, light_gray);
-            rect(batch, atlas, x1, y5, x2, y6, 0, light_gray);
-        }
         items.push_back({std::move(size_segment),std::move(size_shapes)});
         items.push_back({std::move(render_segment),std::move(render_shapes)});
     }
@@ -216,21 +196,6 @@ static void update_geometry()
 
     for (auto &item : items) {
         renderer.render(batch, *item.shapes, *item.segment);
-    }
-
-    if (show_atlas) {
-        draw_list_clear(batch);
-        float u1 = 0.0f, v1 = 1.0f;
-        float u2 = 1.0f, v2 = 0.0f;
-        float x1 = 100, y1 = 100;
-        float x2 = 1124, y2 = 1124;
-        uint32_t o = (uint32_t)batch.vertices.size();
-        uint32_t color = 0xff000000;
-        batch.vertices.push_back({{x1, y1, 0.f}, {u1, v1}, color});
-        batch.vertices.push_back({{x2, y1, 0.f}, {u2, v1}, color});
-        batch.vertices.push_back({{x2, y2, 0.f}, {u2, v2}, color});
-        batch.vertices.push_back({{x1, y2, 0.f}, {u1, v2}, color});
-        batch.indices.insert(batch.indices.end(), {o+0, o+3, o+1, o+1, o+3, o+2});
     }
 }
 
@@ -350,7 +315,6 @@ void print_help(int argc, char **argv)
         "  -s, --frame-size <width>x<height>  window or image size\n"
         "  -t, --text <string>       text to render (default \"%s\")\n"
         "  -a, --show-atlas          show the atlas instead of the text\n"
-        "  -l, --show-lines          show baseline, half-height and height\n"
         "  -m, --disable-msdf        disable MSDF font rendering\n"
         "  -M, --disable-autoload    disable MSDF atlas autoloading\n"
         "  -T, --disable-multithread disable multithreaded atlas generation\n"
@@ -397,12 +361,6 @@ void parse_options(int argc, char **argv)
         } else if (match_opt(argv[i], "-t", "--text")) {
             if (check_param(++i == argc, "--text")) break;
             render_text = argv[i++];
-        } else if (match_opt(argv[i], "-a", "--show-atlas")) {
-            show_atlas = true;
-            i++;
-        } else if (match_opt(argv[i], "-l", "--show-lines")) {
-            show_lines = true;
-            i++;
         } else if (match_opt(argv[i], "-c", "--enable-color")) {
             manager.color_enabled = true;
             manager.msdf_enabled = false;
