@@ -24,6 +24,7 @@
 #include "logger.h"
 #include "file.h"
 #include "utf8.h"
+#include "worker.h"
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -65,6 +66,7 @@ static int font_size = 128;
 static bool help_text = false;
 static bool quiet = false;
 static bool verbose = false;
+static bool multithread = false;
 static bool batch_render = true;
 static bool display_ansi = false;
 static bool clear_ansi = false;
@@ -279,7 +281,8 @@ static void print_help(int argc, char **argv)
         "Options:\n"
         "  -h, --help             display this help text\n"
         "  -q, --quiet            supress all output messages\n"
-        "  -v, --verbose          intclude per glyph output messages\n"
+        "  -v, --verbose          include per glyph output messages\n"
+        "  -m, --multithreaded    process multiple fonts in parallel\n"
         "  -d, --display          display glyphs (ANSI console)\n"
         "  -c, --clear            send clear before glyph (ANSI console)\n"
         "  -r, --range <float>    signed distance range (default %f)\n"
@@ -360,6 +363,10 @@ static void parse_options(int argc, char **argv)
             verbose = true;
             i++;
         }
+        else if (match_opt(argv[i], "-m", "--multithreaded")) {
+            multithread = true;
+            i++;
+        }
         else if (match_opt(argv[i], "-d", "--display")) {
             display_ansi = true;
             i++;
@@ -397,7 +404,7 @@ static std::vector<std::pair<uint,uint>> allCodepointGlyphPairs(FT_Face ftface)
     return l;
 }
 
-uint64_t process_one_file(const char *font_path, const char *output_path)
+uint64_t process_one_file(font_face *face, const char *output_path)
 {
     font_atlas atlas(font_atlas::DEFAULT_WIDTH, font_atlas::DEFAULT_HEIGHT,
         font_atlas::MSDF_DEPTH);
@@ -408,7 +415,6 @@ uint64_t process_one_file(const char *font_path, const char *output_path)
      * load font
      */
 
-    font_face *face = manager.findFontByPath(font_path);
     FT_Face ftface = static_cast<font_face_ft*>(face)->ftface;
 
     /*
@@ -491,28 +497,58 @@ static std::vector<std::string> endsWith(std::vector<std::string> l,
     return list;
 }
 
+struct font_job
+{
+    font_face *face;
+    std::string path;
+};
+
+struct font_worker : pool_worker<font_job>
+{
+    virtual void operator()(font_job &item) {
+        uint64_t d = process_one_file(item.face, item.path.c_str());
+        if (verbose) {
+            printf("processing time  : %5.3f seconds\n---\n", (float)d/ 1e9f);
+        } else if (!quiet) {
+            printf("%-40s (%5.3f seconds)\n", item.path.c_str(), (float)d/ 1e9f);
+        }
+    }
+};
+
 int main(int argc, char **argv)
 {
     parse_options(argc, argv);
 
     /* gather files */
-    std::vector<std::pair<std::string,std::string>> pathList;
+    std::vector<font_job> jobs;
     if (scan_path) {
         for (auto &path : sortList(endsWith(file::list(scan_path), ".ttf"))) {
-            pathList.push_back(std::pair<std::string,std::string>(path, path));
+            font_face *face = manager.findFontByPath(path);
+            jobs.push_back(font_job{face, path});
         }
     } else {
-        pathList.push_back(std::pair<std::string,std::string>(
-            font_path, output_path ? output_path : font_path));
+        font_face *face = manager.findFontByPath(font_path);
+        jobs.push_back(font_job{face, output_path ? output_path : font_path});
     }
 
     /* process them */
-    for (auto &path : pathList) {
-        uint64_t d = process_one_file(path.first.c_str(), path.second.c_str());
-        if (verbose) {
-            printf("processing time  : %5.3f seconds\n---\n", (float)d/ 1e9f);
-        } else if (!quiet) {
-            printf("%-40s (%5.3f seconds)\n", path.first.c_str(), (float)d/ 1e9f);
+    if (multithread) {
+        const size_t num_threads = std::thread::hardware_concurrency();
+        pool_executor<font_job,font_worker> pool(num_threads, jobs.size(), [](){
+            return new font_worker();
+        });
+        for (auto &path : jobs) {
+            pool.enqueue(path);
+        }
+        pool.run();
+    } else {
+        for (auto &path : jobs) {
+            uint64_t d = process_one_file(path.face, path.path.c_str());
+            if (verbose) {
+                printf("processing time  : %5.3f seconds\n---\n", (float)d/ 1e9f);
+            } else if (!quiet) {
+                printf("%-40s (%5.3f seconds)\n", path.face->name.c_str(), (float)d/ 1e9f);
+            }
         }
     }
 }
