@@ -89,7 +89,7 @@ static int window_width = 2560, window_height = 1440;
 static int framebuffer_width, framebuffer_height;
 static double tl, tn, td;
 static bool draw_grid = false, draw_boxes = false, draw_meta = false;
-static bool help_text = false, needs_update = false;
+static bool draw_rect = false, help_text = false, needs_update = false;
 
 /* canvas state */
 
@@ -166,6 +166,8 @@ static const color grid_color         = color(0.70f, 0.70f, 0.90f, 1.00f);
 static const color glyphbox_color     = color(0.30f, 0.30f, 0.70f, 1.00f);
 static const color advancebox_color   = color(0.70f, 0.30f, 0.30f, 1.00f);
 static const color select_color       = color(0.75f, 0.85f, 1.00f, 1.00f);
+static const color selectbox_color    = color(0.95f, 0.95f, 0.95f, 1.00f);
+static const color background_color   = color(0.85f, 0.85f, 0.85f, 1.00f);
 
 static std::vector<glyph_shape> shapes;
 
@@ -292,9 +294,22 @@ static void populate_canvas()
         p += vec2(x_advance,0.0f);
     }
 
+    /* draw rounded rectangle */
+    if (draw_rect) {
+        canvas.set_fill_brush(Brush{BrushSolid, { }, { background_color }});
+        canvas.set_stroke_brush(Brush{BrushSolid, { }, { frame_color }});
+        canvas.set_stroke_width(5.0f);
+        float xs = grid_size.x, ys = grid_size.y;
+        vec2 p1 = grid_pos + vec2(-xs,-ys), p2 = grid_pos + vec2(xs,ys);
+        vec2 size = p2 - p1, halfSize = size * 0.5f;
+        Rectangle *r = canvas.new_rounded_rectangle(vec2(0), halfSize, 20.0f);
+        r->pos = grid_pos;
+    }
+
     /* draw selection rect */
     if (text_selection.first >= 0 && text_selection.second >= 0) {
-        canvas.set_stroke_brush(Brush{BrushNone, { }, { }});
+        canvas.set_stroke_width(5.0f);
+        canvas.set_stroke_brush(Brush{BrushSolid, { }, { selectbox_color }});
         canvas.set_fill_brush(Brush{BrushSolid, { }, { select_color }});
         rect(canvas, tl_ss, br_se);
     }
@@ -776,6 +791,9 @@ void parse_options(int argc, char **argv)
             i++;
         } else if (match_opt(argv[i], "-B", "--boxes")) {
             draw_boxes = true;
+            i++;
+        } else if (match_opt(argv[i], "-R", "--rect")) {
+            draw_rect = true;
             i++;
         } else if (match_opt(argv[i], "-M", "--meta")) {
             draw_meta = true;
