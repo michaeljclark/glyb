@@ -102,36 +102,48 @@ _**Source code**_
 ```
 git clone --recursive https://github.com/michaeljclark/glyb.git
 cd glyb
-mkdir build
-cd build
 ```
 
-_**Windows - Visual Studio 2017 Community**_
-
-To create Visual Studio 2017 project, open _Visual Studio 2017 x64
-Native Tools command prompt_, and run:
-
-```
-cmake -G "Visual Studio 15 2017 Win64" ..
-```
-
-_**Windows - Visual Studio 2019 Community**_
+_**Windows**_
 
 To create Visual Studio 2019 project, open _Visual Studio 2019 x64
 Native Tools command prompt_, and run:
 
 ```
-cmake -G "Visual Studio 16 2019" -A x64 ..
+cmake -G "Visual Studio 16 2019" -A x64 -B build
+cmake --build build --config RelWithDebInfo -j
 ```
 
 _**Linux**_
 
 The Linux cmake build is set up by default to locate FreeType,
-HarfBuzz and GLFW3 system packages. To install these dependencies
-for Ubuntu 18.04, run:
+HarfBuzz and GLFW3 system packages. The following commands will
+install dependencies for Ubuntu 18.04, and build the project:
 
 ```
 sudo apt-get install libfreetype6-dev libharfbuzz-dev libglfw3-dev
+cmake -B build
+cmake --build build --config RelWithDebInfo -j
+```
+
+_**macOS**_
+
+The macOS cmake rules will build the included FreeType, HarfBuzz
+and GLFW3 depdencies. The following commands will build the project:
+
+```
+cmake -G Xcode -B build
+cmake --build build --config RelWithDebInfo
+```
+
+_**Ninja**_
+
+The project can be built using the ninja build tool on Windows, Linux
+and macOS, by specifying the `Ninja` generator to cmake:
+
+```
+cmake -G Ninja -B build
+cmake --build build -- --verbose
 ```
 
 ## Example Code
