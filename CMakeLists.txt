@@ -128,6 +128,7 @@ include_directories(third_party/imgui/examples)
 include_directories(third_party/imgui/examples/libs/gl3w)
 add_definitions(-DIMGUI_IMPL_OPENGL_LOADER_GLAD)
 add_library(imgui STATIC ${IMGUI_SOURCES})
+add_dependencies(imgui glad-generate-files)
 
 add_subdirectory(third_party/msdfgen)
 include_directories(third_party/msdfgen)
@@ -143,6 +144,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 file(GLOB GLYPHIC_SOURCES src/*.cc src/*.h)
 add_library(glyblib STATIC ${GLYPHIC_SOURCES})
+add_dependencies(glyblib glad-generate-files)
 set_target_properties(glyblib PROPERTIES CXX_STANDARD 17)
 
 foreach(prog IN ITEMS bitcode ftkitty ftrender fontdb fontscan genatlas uniscan)
