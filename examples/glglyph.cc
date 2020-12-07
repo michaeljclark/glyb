@@ -79,7 +79,7 @@ static GLFWcursor* beam_cursor;
 
 static const char *stats_font_path = "fonts/Roboto-Regular.ttf";
 static const char *display_font_path = "fonts/Roboto-Regular.ttf";
-static const char *render_text = "qffifflLTA"; // "πάθος λόγος ἦθος";
+static std::string render_text = "qffifflLTA"; // "πάθος λόγος ἦθος";
 static const char* text_lang = "en";
 static const int stats_font_size = 18;
 static int font_size = 256.0f;
@@ -88,6 +88,7 @@ static std::array<float,4> clear_color = { 1.0f, 1.0f, 1.0f, 1.0f };
 static int window_width = 2560, window_height = 1440;
 static int framebuffer_width, framebuffer_height;
 static double tl, tn, td;
+static bool is_animating = false;
 static bool draw_grid = false, draw_boxes = false, draw_meta = false;
 static bool draw_rect = false, help_text = false, needs_update = false;
 
@@ -103,6 +104,7 @@ static AContext ctx;
 static font_face *display_face, *stats_face;
 static draw_list batch;
 static zoom_state state = { 128.0f }, state_save;
+static double tp, tr, tm;
 static bool mouse_left_drag = false;
 static bool mouse_middle_drag = false;
 static bool mouse_right_drag = false;
@@ -138,6 +140,13 @@ static void line(Canvas &canvas, vec2 p1, vec2 p2)
 static void rect(Canvas &canvas, vec2 p1, vec2 p2)
 {
     vec2 size = p2 - p1, halfSize = size * 0.5f;
+    Rectangle *r = canvas.new_rectangle(vec2(0), halfSize);
+    r->pos = p2 - halfSize;
+}
+
+static void rrect(Canvas &canvas, vec2 p1, vec2 p2)
+{
+    vec2 size = p2 - p1, halfSize = size * 0.5f;
     Rectangle *r = canvas.new_rounded_rectangle(vec2(0), halfSize, 20.0f);
     r->pos = p2 - halfSize;
 }
@@ -160,18 +169,24 @@ static vec3 transform(vec2 p)
 static const float Inf = std::numeric_limits<float>::infinity();
 
 static const color meta_color         = color(0.20f, 0.20f, 0.20f, 1.00f);
-static const color text_color         = color(0.50f, 0.50f, 0.50f, 1.00f);
+static const color text_color         = color(0.20f, 0.20f, 0.20f, 1.00f);
 static const color frame_color        = color(0.00f, 0.00f, 0.00f, 1.00f);
 static const color grid_color         = color(0.70f, 0.70f, 0.90f, 1.00f);
+static const color insertionbg_color  = color(1.00f, 1.00f, 1.00f, 1.00f);
+static const color insertionfg_color  = color(0.00f, 0.00f, 0.00f, 1.00f);
 static const color glyphbox_color     = color(0.30f, 0.30f, 0.70f, 1.00f);
 static const color advancebox_color   = color(0.70f, 0.30f, 0.30f, 1.00f);
-static const color select_color       = color(0.75f, 0.85f, 1.00f, 1.00f);
+static const color select_color       = color(0.75f, 0.75f, 0.75f, 1.00f);
+static const color selectpin_color    = color(0.30f, 0.30f, 0.30f, 1.00f);
 static const color selectbox_color    = color(0.95f, 0.95f, 0.95f, 1.00f);
 static const color background_color   = color(0.85f, 0.85f, 0.85f, 1.00f);
 
 static std::vector<glyph_shape> shapes;
 
-static std::pair<int,int> text_selection = { -1, -1 };
+static bool insertion_visible = false;
+static int insertion_point = -1;
+static int selection_start = -1;
+static std::pair<int,int> text_selection = { 1, 2 };
 
 static std::pair<int,int> find_glyph_selection(vec2 s[2])
 {
@@ -214,6 +229,11 @@ static std::pair<int,int> find_glyph_selection(vec2 s[2])
     return {gs, ge};
 }
 
+static void  calc_animation()
+{
+    state.zoom *= 1.02;
+}
+
 static void populate_canvas()
 {
     FT_Library ftlib;
@@ -221,11 +241,22 @@ static void populate_canvas()
     FT_Error fterr;
     FT_GlyphSlot ftglyph;
 
-    if (needs_update) {
+    double tc = fmod(tn-tm, 1.0);
+    bool x = (bool)round(tc);
+    if (x != insertion_visible) {
+        needs_update = true;
+        insertion_visible = x;
+    }
+
+    if (needs_update || is_animating) {
         canvas.clear();
         needs_update = false;
     } else if (canvas.num_drawables() > 0) {
         return;
+    }
+
+    if (is_animating) {
+        calc_animation();
     }
 
     canvas.set_render_mode(Text::render_as_text);
@@ -258,12 +289,14 @@ static void populate_canvas()
     /* we need to set up our font metrics */
     face->get_metrics(segment.font_size);
 
-    float um = 10;    /* margin */
+    float um = 30;    /* margin */
     float lr = 1.25f; /* leading ratio*/
 
     vec2 adv_size = vec2(text_size.x, text_size.y*lr);
     vec2 grid_size = vec2(adv_size.x*0.5f+um, adv_size.y*0.5f+um);
     vec2 grid_pos = vec2(text_pos.x, text_pos.y+text_size.y*(lr*0.5f-0.5f));
+
+    vec2 insertion_p1, insertion_p2;
 
     /* find and store text selection bounds */
     vec2 tl_ss, br_se, p = text_pos + text_offset;
@@ -274,10 +307,10 @@ static void populate_canvas()
 
         size_t idx = shapes[i].cluster;
         size_t end = i < (shapes.size()-1) ? shapes[i+1].cluster
-                                           : strlen(render_text);
+                                           : render_text.size();
         size_t glyph_count = 0;
         while (idx < end) {
-            utf32_code u = utf8_to_utf32_code(render_text + idx);
+            utf32_code u = utf8_to_utf32_code(render_text.data() + idx);
             idx += u.len;
             glyph_count++;
         }
@@ -291,6 +324,16 @@ static void populate_canvas()
         shapes[i].pos[0] = transform(tl);
         shapes[i].pos[1] = transform(br);
 
+        float y1 = grid_pos.y - grid_size.y + um;
+        float y2 = grid_pos.y + grid_size.y - um;
+        if (insertion_point == i) {
+            insertion_p1 = vec2(p.x, y1);
+            insertion_p2 = vec2(p.x, y2);
+        } else if (insertion_point == shapes.size() && i == shapes.size() - 1) {
+            insertion_p1 = vec2(p.x + x_advance, y1);
+            insertion_p2 = vec2(p.x + x_advance, y2);
+        }
+
         p += vec2(x_advance,0.0f);
     }
 
@@ -300,18 +343,9 @@ static void populate_canvas()
         canvas.set_stroke_brush(Brush{BrushSolid, { }, { frame_color }});
         canvas.set_stroke_width(5.0f);
         float xs = grid_size.x, ys = grid_size.y;
-        vec2 p1 = grid_pos + vec2(-xs,-ys), p2 = grid_pos + vec2(xs,ys);
-        vec2 size = p2 - p1, halfSize = size * 0.5f;
-        Rectangle *r = canvas.new_rounded_rectangle(vec2(0), halfSize, 20.0f);
-        r->pos = grid_pos;
-    }
-
-    /* draw selection rect */
-    if (text_selection.first >= 0 && text_selection.second >= 0) {
-        canvas.set_stroke_width(5.0f);
-        canvas.set_stroke_brush(Brush{BrushSolid, { }, { selectbox_color }});
-        canvas.set_fill_brush(Brush{BrushSolid, { }, { select_color }});
-        rect(canvas, tl_ss, br_se);
+        vec2 tl = grid_pos + vec2(-xs,-ys);
+        vec2 br = grid_pos - vec2(-xs,-ys);;
+        rrect(canvas, tl, br);
     }
 
     /* draw grid frame */
@@ -323,6 +357,14 @@ static void populate_canvas()
         vec2 p3 = grid_pos + vec2(-xs,ys),  p4 = grid_pos + vec2(xs,ys);
         line(canvas, p1, p2); line(canvas, p1, p3);
         line(canvas, p3, p4); line(canvas, p2, p4);
+    }
+
+    /* draw selection rect */
+    if (text_selection.first >= 0 && text_selection.second >= 0) {
+        canvas.set_stroke_width(5.0f);
+        canvas.set_stroke_brush(Brush{BrushSolid, { }, { selectbox_color }});
+        canvas.set_fill_brush(Brush{BrushSolid, { }, { select_color }});
+        rect(canvas, tl_ss, br_se);
     }
 
     /* draw grid lines */
@@ -344,6 +386,30 @@ static void populate_canvas()
             float x1 = grid_pos.x-grid_size.x, x2 = grid_pos.x+grid_size.x;
             line(canvas, vec2(x1, y), vec2(x2, y));
         }
+    }
+
+    /* draw selection markers */
+    if (text_selection.first >= 0 && text_selection.second >= 0) {
+        vec2 bl_ss(tl_ss.x,br_se.y);
+        vec2 tr_se(br_se.x,tl_ss.y);
+        canvas.set_stroke_width(10.0f);
+        canvas.set_stroke_brush(Brush{BrushSolid, { }, { selectpin_color }});
+        line(canvas, tl_ss, bl_ss);
+        line(canvas, tr_se, br_se);
+        canvas.set_fill_brush(Brush{BrushSolid, { }, { selectpin_color }});
+        canvas.set_stroke_brush(Brush{BrushSolid, { }, { selectpin_color }});
+        Circle *c1 = canvas.new_circle(tl_ss,25.0f);
+        Circle *c2 = canvas.new_circle(br_se,25.0f);
+    }
+
+    /* draw insertion point */
+    if (insertion_point >= 0 && insertion_visible) {
+        canvas.set_stroke_brush(Brush{BrushSolid, { }, { insertionbg_color }});
+        canvas.set_stroke_width(16.0f);
+        line(canvas, insertion_p1, insertion_p2);
+        canvas.set_stroke_brush(Brush{BrushSolid, { }, { insertionfg_color }});
+        canvas.set_stroke_width(8.0f);
+        line(canvas, insertion_p1, insertion_p2);
     }
 
     /* draw glyph boxes */
@@ -371,10 +437,10 @@ static void populate_canvas()
             char hexbuf[64];
             size_t idx = shape.cluster;
             size_t end = i < (shapes.size()-1) ? shapes[i+1].cluster
-                                               : strlen(render_text);
+                                               : render_text.size();
             size_t s = 0;
             while (idx < end) {
-                utf32_code u = utf8_to_utf32_code(render_text + idx);
+                utf32_code u = utf8_to_utf32_code(render_text.data() + idx);
                 if (s != 0) s += snprintf(hexbuf+s, sizeof(hexbuf)-s, ",");
                 s += snprintf(hexbuf+s, sizeof(hexbuf)-s, "0x%02x", (int)u.code);
                 idx += u.len;
@@ -563,12 +629,199 @@ static void reshape(int framebuffer_width, int framebuffer_height)
 
 /* keyboard callback */
 
+int glfw_keycode_to_char(int key, int mods)
+{
+    // We convert simple Ctrl and Shift modifiers into ASCII
+    if (key >= GLFW_KEY_SPACE && key <= GLFW_KEY_EQUAL) {
+        if (mods == 0) {
+            return key - GLFW_KEY_SPACE + ' ';
+        }
+    }
+    if (key >= GLFW_KEY_A && key <= GLFW_KEY_Z) {
+        // convert Ctrl+<Key> into its ASCII control code
+        if (mods == GLFW_MOD_CONTROL) {
+            return key - GLFW_KEY_A + 1;
+        }
+        // convert Shift <Key> into ASCII
+        if (mods == GLFW_MOD_SHIFT) {
+            return key - GLFW_KEY_A + 'A';
+        }
+        // convert plain <Key> into ASCII
+        if (mods == 0) {
+            return key - GLFW_KEY_A + 'a';
+        }
+    }
+    if (key >= GLFW_KEY_LEFT_BRACKET && key < GLFW_KEY_GRAVE_ACCENT) {
+        // convert plain <Key> into ASCII
+        if (mods == GLFW_MOD_SHIFT) {
+            return key - GLFW_KEY_LEFT_BRACKET + '{';
+        }
+    }
+    // convert Shift <Key> for miscellaneous characters
+    if (mods == GLFW_MOD_SHIFT) {
+        switch (key) {
+        case GLFW_KEY_0:          /* ' */ return ')';
+        case GLFW_KEY_1:          /* ' */ return '!';
+        case GLFW_KEY_2:          /* ' */ return '@';
+        case GLFW_KEY_3:          /* ' */ return '#';
+        case GLFW_KEY_4:          /* ' */ return '$';
+        case GLFW_KEY_5:          /* ' */ return '%';
+        case GLFW_KEY_6:          /* ' */ return '^';
+        case GLFW_KEY_7:          /* ' */ return '&';
+        case GLFW_KEY_8:          /* ' */ return '*';
+        case GLFW_KEY_9:          /* ' */ return '(';
+        case GLFW_KEY_APOSTROPHE: /* ' */ return '"';
+        case GLFW_KEY_COMMA:      /* , */ return '<';
+        case GLFW_KEY_MINUS:      /* - */ return '_';
+        case GLFW_KEY_PERIOD:     /* . */ return '>';
+        case GLFW_KEY_SLASH:      /* / */ return '?';
+        case GLFW_KEY_SEMICOLON:  /* ; */ return ':';
+        case GLFW_KEY_EQUAL:      /* = */ return '+';
+        case GLFW_KEY_GRAVE_ACCENT: /* ` */ return '~';
+        }
+    }
+    return 0;
+}
+
+static bool key_edit(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    //if (insertion_point < 0) return false;
+    if (action != GLFW_PRESS) return false; /* TODO: keyboard repeat */
+    switch(key) {
+        case GLFW_KEY_BACKSPACE: {
+            if (mods == 0) {
+                if (insertion_point > 0 && insertion_point <= shapes.size()) {
+                    /* TODO : ligatures */
+                    render_text.erase(shapes[insertion_point-1].cluster,
+                        utf8_codelen(render_text.data() + shapes[insertion_point-1].cluster));
+                    insertion_point--; tm = fmod(tn + 0.5, 1.0);
+                    return (needs_update = true);
+                }
+                if (text_selection.first >= 0 &&
+                    text_selection.second >= 0 &&
+                    text_selection.second <= shapes.size())
+                {
+                    size_t len = text_selection.second - text_selection.first + 1;
+                    render_text.erase(
+                        shapes[text_selection.first].cluster,
+                        text_selection.second+1 == shapes.size() ?
+                        render_text.size() - shapes[text_selection.first].cluster :
+                        shapes[text_selection.second+1].cluster-shapes[text_selection.first].cluster);
+                    insertion_point = text_selection.first;
+                    text_selection = { -1, -1 };
+                    return (needs_update = true);
+                }
+            }
+            break;
+        }
+        case GLFW_KEY_RIGHT: {
+            bool valid = insertion_point >= 0 && insertion_point < shapes.size();
+            if (mods == 0) {
+                if (valid) {
+                    insertion_point++; tm = fmod(tn + 0.5, 1.0);
+                    return (needs_update = true);
+                } else if (insertion_point == -1 &&
+                           text_selection.first >= 0 &&
+                           text_selection.second >= 0 &&
+                           text_selection.second <= shapes.size())
+                {
+                    insertion_point = text_selection.second+1;
+                    text_selection = { -1, -1 };
+                    return (needs_update = true);
+                }
+            }
+            if (mods == GLFW_MOD_SHIFT) {
+                if (valid) {
+                    text_selection = { insertion_point, insertion_point };
+                    selection_start = insertion_point;
+                    insertion_point = -1;
+                    return (needs_update = true);
+                } else if (insertion_point == -1 &&
+                           text_selection.first >= 0 &&
+                           text_selection.second >= 0 &&
+                           text_selection.second <= shapes.size()-1)
+                {
+                    if (text_selection.first < selection_start) {
+                        text_selection.first++;
+                    } else if (text_selection.second < shapes.size() - 1) {
+                        text_selection.second++;
+                    }
+                    return (needs_update = true);
+                }
+            }
+            break;
+        }
+        case GLFW_KEY_LEFT: {
+            bool valid = insertion_point >= 1 && insertion_point <= render_text.size();
+            if (mods == 0) {
+                if (valid) {
+                    insertion_point--; tm = fmod(tn + 0.5, 1.0);
+                    return (needs_update = true);
+                } else if (insertion_point == -1 &&
+                           text_selection.first >= 0 &&
+                           text_selection.second >= 0)
+                {
+                    insertion_point = text_selection.first;
+                    text_selection = { -1, -1 };
+                    return (needs_update = true);
+                }
+            }
+            if (mods == GLFW_MOD_SHIFT) {
+                if (valid) {
+                    text_selection = { insertion_point-1, insertion_point-1 };
+                    selection_start = insertion_point -1;
+                    insertion_point = -1;
+                    return (needs_update = true);
+                } else if (insertion_point == -1 &&
+                           text_selection.first > 0 &&
+                           text_selection.second >= 0)
+                {
+                    if (text_selection.second > selection_start) {
+                        text_selection.second--;
+                    } else {
+                        text_selection.first--;
+                    }
+                    return (needs_update = true);
+                }
+            }
+        }
+    }
+    int c = glfw_keycode_to_char(key, mods);
+    if (c >= ' ') {
+        if (insertion_point >= 0 && insertion_point <= render_text.size()) {
+            render_text.insert(insertion_point, std::string(1, c));
+            insertion_point++;
+            return (needs_update = true);
+        }
+        if (text_selection.first >= 0 &&
+            text_selection.second >= 0 &&
+            text_selection.second <= shapes.size())
+        {
+            size_t len = text_selection.second - text_selection.first + 1;
+            render_text.erase(text_selection.first, len);
+            insertion_point = text_selection.first;
+            render_text.insert(insertion_point, std::string(1, c));
+            insertion_point++;
+            text_selection = { -1, -1 };
+            return (needs_update = true);
+        }
+        return true;
+    }
+    return false;
+}
+
 static void keyboard(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-    if (action != GLFW_PRESS) return;
     switch(key) {
     case GLFW_KEY_ESCAPE: exit(0); break;
+    case GLFW_KEY_C:
+        if (mods == GLFW_MOD_CONTROL) {
+            is_animating = true;
+            return;
+        }
+        break;
     }
+    bool handled = key_edit(window, key, scancode, action, mods);
 }
 
 /* mouse callbacks */
@@ -594,6 +847,56 @@ static void mouse_text_select(vec2 span[2])
 
     if (range == text_selection) return; /* unchanged */
 
+    /* todo - check debounce and minimum move */
+    if (tn - tp < 0.2) {
+        needs_update = true;
+        return;
+    }
+
+    insertion_point = -1;
+    text_selection = range;
+    if (selection_start == -1) {
+        selection_start = text_selection.second;
+    }
+    needs_update = true;
+}
+
+static void mouse_text_select_begin(vec2 pos)
+{
+    vec2 span[2] = { pos, pos };
+    auto range = find_glyph_selection(span);
+
+    /* find distance from character center for insertion point*/
+    float dx = -1;
+    if (range.first >= 0) {
+        auto &shape = shapes[range.first];
+        auto &p = shape.pos;
+        vec3 sz = p[1] - p[0];
+        vec3 q = p[0] + sz * 0.5f;
+        dx = pos.x - q.x;
+    }
+    insertion_point = range.first + (dx > 0);
+    text_selection = { -1, -1 };
+    selection_start = -1;
+}
+
+static void mouse_text_select_end(vec2 span[2])
+{
+    auto range = find_glyph_selection(span);
+
+    vec2 dist = span[1] - span[0];
+    float len_s = length(dist);
+    float len_t = (float)(tr - tp);
+
+    if (range == text_selection) return; /* unchanged */
+
+    /* todo - check debounce and minimum move */
+    if (tn - tp < 0.2) {
+        needs_update = true;
+        return;
+    }
+
+    insertion_point = -1;
     text_selection = range;
     needs_update = true;
 }
@@ -603,11 +906,16 @@ static void mouse_button(GLFWwindow* window, int button, int action, int mods)
     switch (button) {
     case GLFW_MOUSE_BUTTON_LEFT:
         if (action == GLFW_PRESS) {
+            tp = tn; /* time pressed */
             mouse_middle_drag = ((mods & GLFW_MOD_SHIFT) > 0);
             mouse_left_drag = ((mods & GLFW_MOD_SHIFT) == 0);
+            mouse_text_select_begin(vec2(state.mouse_pos));
         } else {
+            tr = tn; /* time released */
             mouse_middle_drag = false;
             mouse_left_drag = false;
+            vec2 span[2] = { vec2(state_save.mouse_pos), vec2(state.mouse_pos) };
+            mouse_text_select_end(span);
         }
         state_save = state;
         break;
@@ -761,7 +1069,7 @@ void print_help(int argc, char **argv)
         "  -B, --boxes               display glyph boxes\n"
         "  -M, --meta                display glyph metadata\n"
         "  -h, --help                command line help\n",
-        argv[0], display_font_path, font_size, render_text);
+        argv[0], display_font_path, font_size, render_text.c_str());
 }
 
 /* option parsing */
@@ -801,12 +1109,18 @@ void parse_options(int argc, char **argv)
         } else if (match_opt(argv[i], "-f","--font")) {
             if (check_param(++i == argc, "--font")) break;
             display_font_path = argv[i++];
-        } else if (match_opt(argv[i], "-s", "--size")) {
-            if (check_param(++i == argc, "--size")) break;
+        } else if (match_opt(argv[i], "-S", "--frame-size")) {
+            if (check_param(++i == argc, "--frame-size")) break;
+            sscanf(argv[i++], "%dx%d", &window_width, &window_height);
+        } else if (match_opt(argv[i], "-s", "--font-size")) {
+            if (check_param(++i == argc, "--font-size")) break;
             font_size = atoi(argv[i++]);
         } else if (match_opt(argv[i], "-t", "--text")) {
             if (check_param(++i == argc, "--text")) break;
             render_text = argv[i++];
+        } else if (match_opt(argv[i], "-z", "--zoom")) {
+            if (check_param(++i == argc, "--zoom")) break;
+            state.zoom = atof(argv[i++]);
         } else {
             fprintf(stderr, "error: unknown option: %s\n", argv[i]);
             help_text = true;
