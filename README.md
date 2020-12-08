@@ -14,18 +14,26 @@ and rendering library.
 
 ## Introduction
 
-glyb contains high level interfaces for text rendering. glyb
-outputs font atlas bitmaps, vertex arrays and index arrays which can be
-used with OpenGL, Vulkan and DirectX. glyb makes managing multiple
-font atlases with complete Unicode coverage simple as the created draw
-lists contain image switching and update commands, so that any number
-of Unicode faces and glyphs can be used at one time.
+glyb intends to simplify text rendering and vector graphics in C++.
+
+glyb contains high level interfaces for text rendering and vector graphics.
+glyb outputs font atlas bitmaps, vertex arrays and index arrays which can
+be used with OpenGL, Vulkan and DirectX.
+
+#### Online and Offline Font Atlas Management
+
+glyb makes managing multiple font atlases with complete Unicode coverage
+simple as the created draw lists contain image switching and update
+commands, so that any number of Unicode faces and glyphs can be used at
+one time.
 
 glyb has online and offline font atlas glyph renderers using HarfBuzz
 and FreeType. Render time is less than one microsecond per glyph.
 glyb's font atlas uses an online 2D _**MAXRECTS-BSSF**_ derived bin
 packing algorithm, as outlined in _"A Thousand Ways to Pack the Bin - A
 Practical Approach to Two-Dimensional Rectangle Bin Packing, Jukka Jylänki_.
+
+#### Multichannel Signed Distance Field Fonts
 
 glyb includes an MSDF (multi-channel signed distance field) glyph
 renderer that uses the [msdfgen](https://github.com/Chlumsky/msdfgen)
