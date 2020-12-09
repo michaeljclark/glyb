@@ -8,8 +8,11 @@
 #include <climits>
 #include <cstdarg>
 #include <cctype>
+#include <cinttypes>
 
 #include <map>
+#include <set>
+#include <chrono>
 #include <utility>
 #include <vector>
 #include <memory>
@@ -17,11 +20,16 @@
 #include <algorithm>
 #include <unordered_set>
 
+#include "utf8.h"
 #include "bitcode.h"
 #include "format.h"
+#include "hashmap.h"
+
+using namespace std::chrono;
 
 using string = std::string;
 template <typename T> using vector = std::vector<T>;
+template <typename T> using set = std::set<T>;
 template <typename K,typename V> using pair = std::pair<K,V>;
 template <typename K,typename V> using map = std::map<K,V>;
 template <typename T, typename H> using hash_set = std::unordered_set<T,H>;
@@ -29,6 +37,8 @@ typedef unsigned int uint;
 
 static const char* blocks_file = "data/unicode/Blocks.txt";
 static const char* data_file = "data/unicode/UnicodeData.txt";
+static const char* search_data;
+static bool optimized_search = true;
 static bool print_data = false;
 static bool print_blocks = false;
 static bool debug_symbols = false;
@@ -40,7 +50,6 @@ static bool experiment = false;
 static bool compress_data = false;
 static bool help_text = false;
 
-
 static vector<string> split(string str,
     string sep, bool inc_sep, bool inc_empty)
 {
@@ -48,8 +57,8 @@ static vector<string> split(string str,
     vector<string> comps;
     while ((i = str.find_first_of(sep, j)) != string::npos) {
         if (inc_empty || i - j > 0) comps.push_back(str.substr(j, i - j));
-        if (inc_sep) comps.push_back(str.substr(i, 1));
-        j = i + 1; /* assumes separator is 1-byte */
+        if (inc_sep) comps.push_back(str.substr(i, sep.size()));
+        j = i + sep.size();
     }
     if (inc_empty || str.size() - j > 0) {
         comps.push_back(str.substr(j, str.size() - j));
@@ -634,10 +643,6 @@ vector<data> read_data()
     return data;
 }
 
-/*
- * program actions
- */
-
 void do_print_data()
 {
     vector<data> data = read_data();
@@ -645,6 +650,230 @@ void do_print_data()
     for (auto &d : data) {
         printf("%04x\t%s\n", d.Code, d.Name.c_str());
     }
+}
+
+template <typename Size, typename Sym>
+struct hash_fnv1a
+{
+    static const Size I = 0xcbf29ce484222325;
+    static const Size P = 0x100000001b3;
+
+    Size h;
+
+    hash_fnv1a() : h(I) {}
+    inline void add(Sym s) { h ^= s; h *= P; }
+    Size hashval() { return h; }
+};
+
+struct subhash_ent { int idx; int tok; int offset; int len; };
+typedef zedland::hashmap<uint64_t,vector<subhash_ent>> subhash_map;
+typedef pair<uint64_t,vector<subhash_ent>> subhash_pair;
+
+static void index_list(subhash_map &index, vector<vector<string>> &lc_tokens, bool debug = false)
+{
+    for (size_t i = 0; i < lc_tokens.size(); i++) {
+        for (size_t j = 0; j < lc_tokens[i].size(); j++) {
+            for (size_t k = 0; k < lc_tokens[i][j].size(); k++) {
+                hash_fnv1a<uint64_t,char> hf;
+                for (size_t l = k; l < lc_tokens[i][j].size(); l++) {
+                    hf.add(lc_tokens[i][j][l]);
+                    auto ri = index.find(hf.hashval());
+                    if (ri == index.end()) {
+                        ri = index.insert(subhash_pair(hf.hashval(), vector<subhash_ent>()));
+                    }
+                    ri->second.push_back(subhash_ent{(int)i,(int)j,(int)k,(int)l-(int)k+1});
+                }
+            }
+        }
+    }
+    if (!debug) return;
+    printf("idx.size()=%zu\n", index.size());
+    for (auto it = index.begin(); it != index.end(); it++) {
+        uint64_t h = it->first;
+        vector<subhash_ent> &l = it->second;
+        std::set<string> ss;
+        for (size_t j = 0; j < l.size(); j++) {
+            subhash_ent e = l[j];
+            string s = lc_tokens[e.idx][e.tok].substr(e.offset,e.len);
+            ss.insert(s);
+        }
+        if (ss.size() > 1) {
+            printf("collission hval=0x%" PRIx64 "\n", h);
+            for (auto si = ss.begin(); si != ss.end(); si++) {
+                printf("%s\n", si->c_str());
+            }
+        }
+    }
+}
+
+static void do_search_brute_force()
+{
+    /*
+     * load data, tokenize and convert to lower case
+     */
+    const auto t1 = high_resolution_clock::now();
+    vector<data> data = read_data();
+    vector<vector<string>> lc_tokens;
+    size_t byte_count = 0;
+    for (size_t i = 0; i < data.size(); i++) {
+        byte_count += data[i].Name.size();
+        vector<string> tl = split(data[i].Name.data(), " ", false, false);
+        for (auto &name : tl) {
+            std::transform(name.begin(), name.end(), name.begin(),
+                [](unsigned char c){ return std::tolower(c); });
+        }
+        lc_tokens.push_back(tl);
+    }
+    const auto t2 = high_resolution_clock::now();
+
+    /*
+     * convert search terms to lower case
+     */
+    vector<string> lc_terms = split(search_data, " ", false, false);
+    for (auto &term : lc_terms) {
+        std::transform(term.begin(), term.end(), term.begin(),
+            [](unsigned char c){ return std::tolower(c); });
+    }
+
+    /*
+     * brute force search all rows for matches
+     */
+    for (size_t i = 0; i < data.size(); i++) {
+        size_t matches = 0;
+        for (auto &lc_term : lc_terms) {
+            bool match = false;
+            if (lc_term.size() > 1 && lc_term[0] == '\"') {
+                bool has_close_quote = lc_term[lc_term.size()-1] == '\"';
+                for (auto &lc_token : lc_tokens[i]) {
+                    match |= (lc_token == lc_term.substr(1,lc_term.size()-1-has_close_quote));
+                }
+            } else {
+                for (auto &lc_token : lc_tokens[i]) {
+                    auto o = lc_token.find(lc_term);
+                    match |= (o != std::string::npos);
+                }
+            }
+            if (match) matches++;
+        }
+        if (matches == lc_terms.size()) {
+            char buf[5];
+            utf32_to_utf8(buf, sizeof(buf), data[i].Code);
+            printf("%s\tU+%04x\t%s\n", buf, data[i].Code, data[i].Name.c_str());
+        }
+    }
+
+    /*
+     * print timings
+     */
+    const auto t3 = high_resolution_clock::now();
+    uint64_t tl = duration_cast<nanoseconds>(t2 - t1).count();
+    uint64_t ts = duration_cast<nanoseconds>(t3 - t2).count();
+    printf("[Brute-Force] load = %.fμs, search = %.fμs, rows = %zu, bytes = %zu\n",
+        (float)tl / 1e3, (uint64_t)ts / 1e3, data.size(), byte_count);
+}
+
+static void do_search_rabin_karp()
+{
+    /*
+     * load data, tokenize and convert to lower case
+     */
+    const auto t1 = high_resolution_clock::now();
+    vector<data> data = read_data();
+    vector<vector<string>> lc_tokens;
+    size_t byte_count = 0;
+    for (size_t i = 0; i < data.size(); i++) {
+        byte_count += data[i].Name.size();
+        vector<string> tl = split(data[i].Name.data(), " ", false, false);
+        for (auto &name : tl) {
+            std::transform(name.begin(), name.end(), name.begin(),
+                [](unsigned char c){ return std::tolower(c); });
+        }
+        lc_tokens.push_back(tl);
+    }
+
+    /*
+     * create Rabin-Karp substring hash indices
+     */
+    subhash_map lc_index;
+    index_list(lc_index, lc_tokens);
+    const auto t2 = high_resolution_clock::now();
+
+    /*
+     * convert search terms to lower case
+     */
+    vector<string> lc_terms = split(search_data, " ", false, false);
+    for (auto &term : lc_terms) {
+        std::transform(term.begin(), term.end(), term.begin(),
+            [](unsigned char c){ return std::tolower(c); });
+    }
+
+    /*
+     * search the tokenized Rabin-Karp hash table for token matches
+     *
+     * search result map containing: row -> { term, count }
+     */
+    map<int,zedland::hashmap<int,int>> results;
+    for (size_t term = 0; term < lc_terms.size(); term++)
+    {
+        auto &lc_term = lc_terms[term];
+        hash_fnv1a<uint64_t,int> hf;
+        bool needs_exact = false, is_exact = false;;
+        if (lc_term.size() > 1 && lc_term[0] == '\"') {
+            needs_exact = true;
+            bool has_close_quote = lc_term[lc_term.size()-1] == '\"';
+            for (size_t i = 1; i < lc_term.size() - has_close_quote; i++) {
+                hf.add(lc_term[i]);
+            }
+        } else {
+            for (size_t i = 0; i < lc_term.size(); i++) {
+                hf.add(lc_term[i]);
+            }
+        }
+        auto ri = lc_index.find(hf.hashval());
+        if (ri == lc_index.end()) continue;
+
+        for (size_t j = 0; j < ri->second.size(); j++) {
+            subhash_ent e = ri->second[j];
+            string s = lc_tokens[e.idx][e.tok].substr(e.offset,e.len);
+            is_exact = (e.offset == 0 && e.len == lc_tokens[e.idx][e.tok].size());
+            auto si = results.find(e.idx);
+            if (!needs_exact || (needs_exact && is_exact)) {
+                if (si == results.end()) {
+                    si = results.insert(results.end(),
+                        pair<int,zedland::hashmap<int,int>>
+                        (e.idx,zedland::hashmap<int,int>()));
+                }
+                si->second[term]++;
+            }
+        }
+    }
+
+    /*
+     * loop through results which are organised by row matched
+     *
+     * print results for lines where the sum of matches is equal
+     * to the number of terms. this means each term must match at
+     * least once but can match in the same column more than once.
+     * all terms must be covered.
+     */
+    for (auto ri = results.begin(); ri != results.end(); ri++)
+    {
+        int i = ri->first;
+        if (ri->second.size() == lc_terms.size()) {
+            char buf[5];
+            utf32_to_utf8(buf, sizeof(buf), data[i].Code);
+            printf("%s\tU+%04x\t%s\n", buf, data[i].Code, data[i].Name.c_str());
+        }
+    }
+
+    /*
+     * print timings
+     */
+    const auto t3 = high_resolution_clock::now();
+    uint64_t tl = duration_cast<nanoseconds>(t2 - t1).count();
+    uint64_t ts = duration_cast<nanoseconds>(t3 - t2).count();
+    printf("[Rabin-Karp] load = %.fμs, search = %.fμs, rows = %zu, bytes = %zu\n",
+        (float)tl / 1e3, (uint64_t)ts / 1e3, data.size(), byte_count);
 }
 
 /*
@@ -1058,9 +1287,11 @@ void print_help(int argc, char **argv)
         "Usage: %s [options]\n"
         "\n"
         "Options:\n"
-        "  -d, --data-file <name>       unicode data file\n"
+        "  -u, --data-file <name>       unicode data file\n"
         "  -b, --blocks-file <name>     unicode blocks file\n"
-        "  -D, --print-data             print unicode data\n"
+        "  -p, --print-data             print unicode data\n"
+        "  -s, --search <string>        search unicode data\n"
+        "  -x, --brute-force            disable search optimization\n"
         "  -B, --print-blocks           print unicode blocks\n"
         "  -S, --debug-symbols          compress debug symbols\n"
         "  -T, --debug-tree             compress debug tree\n"
@@ -1090,14 +1321,20 @@ void parse_options(int argc, char **argv)
 {
     int i = 1;
     while (i < argc) {
-        if (match_opt(argv[i], "-d", "--data-file")) {
+        if (match_opt(argv[i], "-u", "--data-file")) {
             if (check_param(++i == argc, "--data-file")) break;
             data_file = argv[i++];
         } else if (match_opt(argv[i], "-b", "--blocks-file")) {
             if (check_param(++i == argc, "--blocks-file")) break;
             blocks_file = argv[i++];
-        } else if (match_opt(argv[i], "-D", "--print-data")) {
+        } else if (match_opt(argv[i], "-p", "--print-data")) {
             print_data = true;
+            i++;
+        } else if (match_opt(argv[i], "-s", "--search")) {
+            if (check_param(++i == argc, "--search")) break;
+            search_data = argv[i++];
+        } else if (match_opt(argv[i], "-x", "--brute-force")) {
+            optimized_search = false;
             i++;
         } else if (match_opt(argv[i], "-B", "--print-blocks")) {
             print_blocks = true;
@@ -1148,6 +1385,11 @@ int main(int argc, char **argv)
     parse_options(argc, argv);
 
     if (print_data) do_print_data();
+    if (search_data)
+        if (optimized_search)
+            do_search_rabin_karp();
+        else
+            do_search_brute_force();
     if (print_blocks) do_print_blocks();
     if (compress_stats) do_compress_stats();
     if (compress_data) do_compress_data();
