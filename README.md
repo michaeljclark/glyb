@@ -1,10 +1,10 @@
 # glyb
 
-glyb is a simple high performance graphics API agnostic text layout
-and rendering library.
+glyb is an experimental graphics API agnostic text layout
+and rendering library that builds on FreeType and HarfBuzz.
 
 - simple graphics library agnostic draw lists
-- embeddable font matching and text layout engine
+- embedded font matching and text layout engine
 - offline and online multi-threaded font-atlas generation
 - resolution independent signed distance field font rendering
 - scalable and transparent handling of multiple glyph atlases
@@ -14,18 +14,22 @@ and rendering library.
 
 ## Introduction
 
-glyb intends to simplify text rendering and vector graphics in C++.
+glyb supports simple cross-platform text rendering and vector graphics
+for C++ apps targeting OpenGL or Vulkan.
 
-glyb contains high level interfaces for text rendering and vector graphics.
-glyb outputs font atlas bitmaps, vertex arrays and index arrays which can
-be used with OpenGL, Vulkan and DirectX.
+glyb contains high level interfaces for measuring and rendering text as
+well as rudimentary vector graphics. glyb outputs font atlas bitmaps,
+vertex arrays and index arrays which can be used with OpenGL or Vulkan.
 
-#### Online and Offline Font Atlas Management
+glyb code-base is largely a proof-of-concept for antialiased text zoom,
+and contains experimental quality code that answers questions regarding
+cross platform GPU-based rendering of scalable vector graphics.
+
+#### Font Atlas Management
 
 glyb makes managing multiple font atlases with complete Unicode coverage
-simple as the created draw lists contain image switching and update
-commands, so that any number of Unicode faces and glyphs can be used at
-one time.
+simple by emitting draw lists containing image switch and update commands,
+so that any number of Unicode faces and glyphs can be used at one time.
 
 glyb has online and offline font atlas glyph renderers using HarfBuzz
 and FreeType. Render time is less than one microsecond per glyph.
@@ -33,7 +37,7 @@ glyb's font atlas uses an online 2D _**MAXRECTS-BSSF**_ derived bin
 packing algorithm, as outlined in _"A Thousand Ways to Pack the Bin - A
 Practical Approach to Two-Dimensional Rectangle Bin Packing, Jukka Jylänki_.
 
-#### Multichannel Signed Distance Field Fonts
+#### Signed Distance Field Fonts
 
 glyb includes an MSDF (multi-channel signed distance field) glyph
 renderer that uses the [msdfgen](https://github.com/Chlumsky/msdfgen)
@@ -99,60 +103,6 @@ and the examples link to:
 [GLAD](https://github.com/Dav1dde/glad) [†](https://glad.dav1d.de/),
 [GLFW](https://github.com/glfw/glfw) [†](https://www.glfw.org/).
 [ImGui](https://github.com/ocornut/imgui) [†](https://www.patreon.com/imgui),
-
-## Building
-
-glyb requires cmake to build. The remaining dependencies for
-the library and examples are included as submodules.
-
-_**Source code**_
-
-```
-git clone --recursive https://github.com/michaeljclark/glyb.git
-cd glyb
-```
-
-_**Windows**_
-
-To create Visual Studio 2019 project, open _Visual Studio 2019 x64
-Native Tools command prompt_, and run:
-
-```
-cmake -G "Visual Studio 16 2019" -A x64 -B build
-cmake --build build --config RelWithDebInfo -j
-```
-
-_**Linux**_
-
-The Linux cmake build is set up by default to locate FreeType,
-HarfBuzz and GLFW3 system packages. The following commands will
-install dependencies for Ubuntu 18.04, and build the project:
-
-```
-sudo apt-get install libfreetype6-dev libharfbuzz-dev libglfw3-dev
-cmake -B build
-cmake --build build --config RelWithDebInfo -j
-```
-
-_**macOS**_
-
-The macOS cmake rules will build the included FreeType, HarfBuzz
-and GLFW3 depdencies. The following commands will build the project:
-
-```
-cmake -G Xcode -B build
-cmake --build build --config RelWithDebInfo
-```
-
-_**Ninja**_
-
-The project can be built using the ninja build tool on Windows, Linux
-and macOS, by specifying the `Ninja` generator to cmake:
-
-```
-cmake -G Ninja -B build
-cmake --build build -- --verbose
-```
 
 ## Example Code
 
@@ -317,3 +267,57 @@ shows usage of the GPU accelerated canvas.
 shows color emoji glyph rendering.
 
 ![glemoji](/images/glemoji.png)
+
+## Building
+
+glyb requires cmake to build. The remaining dependencies for
+the library and examples are included as submodules.
+
+_**Source code**_
+
+```
+git clone --recursive https://github.com/michaeljclark/glyb.git
+cd glyb
+```
+
+_**Windows**_
+
+To create Visual Studio 2019 project, open _Visual Studio 2019 x64
+Native Tools command prompt_, and run:
+
+```
+cmake -G "Visual Studio 16 2019" -A x64 -B build
+cmake --build build --config RelWithDebInfo -j
+```
+
+_**Linux**_
+
+The Linux cmake build is set up by default to locate FreeType,
+HarfBuzz and GLFW3 system packages. The following commands will
+install dependencies for Ubuntu 18.04, and build the project:
+
+```
+sudo apt-get install libfreetype6-dev libharfbuzz-dev libglfw3-dev
+cmake -B build
+cmake --build build --config RelWithDebInfo -j
+```
+
+_**macOS**_
+
+The macOS cmake rules will build the included FreeType, HarfBuzz
+and GLFW3 depdencies. The following commands will build the project:
+
+```
+cmake -G Xcode -B build
+cmake --build build --config RelWithDebInfo
+```
+
+_**Ninja**_
+
+The project can be built using the ninja build tool on Windows, Linux
+and macOS, by specifying the `Ninja` generator to cmake:
+
+```
+cmake -G Ninja -B build
+cmake --build build -- --verbose
+```
