@@ -205,7 +205,7 @@ static atlas_entry generateMSDF(font_face *face, font_atlas *atlas,
         memset(&ae, 0, sizeof(ae));
         return ae;
     }
-    error = FT_Load_Glyph(ftface, glyph, 0);
+    error = FT_Load_Glyph(ftface, glyph, FT_LOAD_NO_HINTING);
     if (error) {
         memset(&ae, 0, sizeof(ae));
         return ae;
@@ -231,7 +231,7 @@ static atlas_entry generateMSDF(font_face *face, font_atlas *atlas,
         ftglyph->metrics.height) / 64.0f) - 1;
     int w = (int)ceilf(ftglyph->metrics.width / 64.0f) + 2;
     int h = (int)ceilf(ftglyph->metrics.height / 64.0f) + 2;
-    w = rupeven(w), h = rupeven(h); /* render_block needs even rows and cols */
+    //w = rupeven(w), h = rupeven(h); /* render_block needs even rows and cols */
     translate.x = -ox;
     translate.y = -oy;
 

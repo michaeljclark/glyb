@@ -448,7 +448,7 @@ void text_shaper_ft::shape(std::vector<glyph_shape> &shapes,
             });
         } else {
             if ((fterr = FT_Load_Glyph(ftface, glyph,
-                FT_LOAD_NO_BITMAP | FT_LOAD_COMPUTE_METRICS))) {
+                FT_LOAD_NO_BITMAP | FT_LOAD_COMPUTE_METRICS | FT_LOAD_NO_HINTING))) {
                 Error("error: FT_Load_Glyph failed: glyph=%d fterr=%d\n",
                     glyph, fterr);
                 return;
@@ -552,7 +552,7 @@ atlas_entry glyph_renderer_outline_ft::render(font_atlas *atlas, font_face_ft *f
     face->get_metrics(font_size);
 
     /* load glyph */
-    if ((fterr = FT_Load_Glyph(ftface, glyph, FT_LOAD_NO_BITMAP))) {
+    if ((fterr = FT_Load_Glyph(ftface, glyph, FT_LOAD_NO_BITMAP | FT_LOAD_NO_HINTING))) {
         Error("error: FT_Load_Glyph failed: glyph=%d fterr=%d\n",
             glyph, fterr);
         return atlas_entry(-1);
@@ -646,7 +646,7 @@ atlas_entry glyph_renderer_color_ft::render(font_atlas *atlas, font_face_ft *fac
     /* get glyph bitmap size */
     float bitmap_size = 0;
     if (ftface->num_fixed_sizes > 0) {
-        if ((fterr = FT_Load_Glyph(ftface, glyph, FT_LOAD_COLOR | FT_LOAD_NO_SCALE))) {
+        if ((fterr = FT_Load_Glyph(ftface, glyph, FT_LOAD_COLOR | FT_LOAD_NO_SCALE | FT_LOAD_NO_HINTING))) {
             Error("error: FT_Load_Glyph failed: glyph=%d fterr=%d\n",
                 glyph, fterr);
             return atlas_entry(-1);
@@ -772,7 +772,7 @@ void text_renderer_ft::render(draw_list &batch,
             draw_list_image_delta(batch, ge->atlas->get_image(), ge->atlas->get_delta(),
                 st_clamp | atlas_image_filter(ge->atlas));
         }
-        /* advance */
+        /* TODO - 1/4th pixel glyph caching and sub-pixel advance precision */
         dx += shape.x_advance/64.0f * scale + tracking;
         dy += shape.y_advance/64.0f * scale;
 

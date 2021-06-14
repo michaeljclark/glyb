@@ -126,7 +126,7 @@ atlas_entry glyph_renderer_msdf::render(font_atlas *atlas, font_face_ft *face,
     if (error) {
         return atlas_entry(-1);
     }
-    error = FT_Load_Glyph(face->ftface, glyph, 0);
+    error = FT_Load_Glyph(face->ftface, glyph, FT_LOAD_NO_HINTING);
     if (error) {
         return atlas_entry(-1);
     }
