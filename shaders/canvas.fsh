@@ -332,7 +332,7 @@ float sdRoundedRectangle(vec2 p[4], out float dir, vec2 origin, out float param)
 }
 
 /*
- * Shape and Edge data structure serialization from texture buffers.
+ * Shape, Edge and Brush structure serialization from texture buffers.
  */
 
 void getShape(out Shape shape, int shape_num)
