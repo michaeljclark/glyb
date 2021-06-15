@@ -262,6 +262,12 @@ shows usage of the GPU accelerated canvas.
 ![glcanvas-1](/images/glcanvas-1.png)
 ![glcanvas-2](/images/glcanvas-2.png)
 
+### glglyph
+
+shows text selection and line editing.
+
+![glglyph](/images/glglyph.png)
+
 ### glemoji
 
 shows color emoji glyph rendering.
