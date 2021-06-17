@@ -27,14 +27,15 @@ cross platform GPU-based rendering of scalable vector graphics.
 
 #### Font Atlas Management
 
-glyb makes managing multiple font atlases with complete Unicode coverage
-simple by emitting draw lists containing image switch and update commands,
-so that any number of Unicode faces and glyphs can be used at one time.
+glyb manages multiple font atlases with complete Unicode coverage using
+a combination of pre-generated and runtime generated atlases, performing
+glyph lookups and rendering missing glyphs on-demand, with the emitted
+draw lists containing image switch and update commands, allowing for any
+number of Unicode faces and glyphs can be used at one time.
 
-glyb has online and offline font atlas glyph renderers using HarfBuzz
-and FreeType. Render time is less than one microsecond per glyph.
-glyb's font atlas uses an online 2D _**MAXRECTS-BSSF**_ derived bin
-packing algorithm, as outlined in _"A Thousand Ways to Pack the Bin - A
+glyb has online and offline font atlas glyph renderers using HarfBuzz and
+FreeType. glyb's font atlas uses an online 2D _**MAXRECTS-BSSF**_ derived
+bin packing algorithm, as outlined in _"A Thousand Ways to Pack the Bin - A
 Practical Approach to Two-Dimensional Rectangle Bin Packing, Jukka Jylänki_.
 
 #### Signed Distance Field Fonts
