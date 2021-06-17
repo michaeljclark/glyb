@@ -89,7 +89,7 @@ The project also contains several OpenGL examples using the library.
 
 ### Dependencies
 
-glyb links to: 
+glyb:
 [FreeType](https://github.com/aseprite/freetype2)
 [†](https://www.freetype.org/),
 [HarfBuzz](https://github.com/harfbuzz/harfbuzz)
@@ -99,10 +99,10 @@ glyb links to:
 [zlib](https://github.com/madler/zlib.git)
 [†](http://zlib.net/),
 [libpng](https://github.com/glennrp/libpng)
-[†](http://www.libpng.org/pub/png/libpng.html),
-and the examples link to:
+[†](http://www.libpng.org/pub/png/libpng.html).
+glyb examples:
 [GLAD](https://github.com/Dav1dde/glad) [†](https://glad.dav1d.de/),
-[GLFW](https://github.com/glfw/glfw) [†](https://www.glfw.org/).
+[GLFW](https://github.com/glfw/glfw) [†](https://www.glfw.org/),
 [ImGui](https://github.com/ocornut/imgui) [†](https://www.patreon.com/imgui),
 
 ## Example Code
