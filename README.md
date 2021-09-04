@@ -185,11 +185,11 @@ void main() {
 The render interface is abstracted using a graphics API agnostic draw list.
 The draw list includes information to create all necessary textures. A single
 batch can use several fonts, access multiple font atlas bitmaps and include
-other 2D geometry such as line and rectangles. The batch draw commands
-add vertices and indicies to a pair of vertex array and index array. Client
-code can accumulate into one large draw batch or alternatively create many
-if they are invalidated at different frequencies. The following diagram shows
-the draw list model relationships.
+other 2D geometry such as lines, rectangles, circles, and ellipses. The batch
+draw commands add vertices and indicies to a pair of vertex array and index
+array. Client code can accumulate into one large draw batch or alternatively
+create many if they are invalidated at different frequencies. The following
+diagram shows the draw list model relationships.
 
 ![model](/images/model.png)
 _**Figure 1: Draw List Model Diagram**_
