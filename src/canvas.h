@@ -425,7 +425,7 @@ struct Canvas
         drawable_rectangle
     };
 
-    /* drawables are the high-evel canvas objects */
+    /* drawables are the high-level canvas objects */
     size_t num_drawables();
     Drawable* get_drawable(size_t offset);
     void clear();
