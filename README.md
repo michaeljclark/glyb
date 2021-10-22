@@ -31,7 +31,7 @@ glyb manages multiple font atlases with complete Unicode coverage using
 a combination of pre-generated and runtime generated atlases, performing
 glyph lookups and rendering missing glyphs on-demand, with the emitted
 draw lists containing image switch and update commands, allowing for any
-number of Unicode faces and glyphs can be used at one time.
+number of Unicode faces and glyphs to be used at one time.
 
 glyb has online and offline font atlas glyph renderers using HarfBuzz and
 FreeType. glyb's font atlas uses an online 2D _**MAXRECTS-BSSF**_ derived
@@ -51,8 +51,11 @@ been generated, text renderering becomes extremely fast.
 glyb includes an online multi-threaded MSDF renderer. This allows
 online MSDF atlas generation with any truetype font. Rendering signed
 distance field font atlases from truetype contours online is typically
-prohibitive due to CPU requirements, however, when spread over 8 to 16
-cores, the latency becomes acceptable for real-time use.
+prohibitive due to CPU usage, however, multi-threading reduces latency
+to acceptable for real-time use. Note: _msdfgen_ currently employs a
+simple n² algorithm for scanning contours which could be improved by
+spatial indexing and caching polynomial roots, so it will likely be
+possible to generate MSDF contours in real-time in the future.
 
 The project also contains several OpenGL examples using the library.
 
