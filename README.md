@@ -1,7 +1,7 @@
 # glyb
 
-glyb is an experimental graphics API agnostic text layout
-and rendering library that builds on FreeType and HarfBuzz.
+glyb is an experimental API agnostic text rendering and canvas
+library building on FreeType and HarfBuzz.
 
 - simple graphics library agnostic draw lists
 - embedded font matching and text layout engine
