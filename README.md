@@ -1,14 +1,14 @@
 # glyb
 
 glyb is an experimental API agnostic text rendering and canvas
-library building on FreeType and HarfBuzz.
+library built on FreeType and HarfBuzz.
 
+- embedded font matching and text layout
 - simple graphics library agnostic draw lists
-- embedded font matching and text layout engine
-- offline and online multi-threaded font-atlas generation
-- resolution independent signed distance field font rendering
-- scalable and transparent handling of multiple glyph atlases
-- gpu-accelerated distance field based 2D canvas
+- offline and online multi-threaded font-atlas
+- transparent handling of multiple atlases
+- experimental gpu-accelerated 2D canvas
+- resolution independent signed distance fields
 
 ![glyb](/images/glyb.png)
 
