@@ -235,6 +235,10 @@ static void step(step_type st)
     }
 
     if (debug) {
+        printf("step: %u\n", step_count);
+    }
+
+    if (debug) {
         bp.dump();
         bp.verify();
     }
@@ -292,6 +296,9 @@ static void keyboard(GLFWwindow* window, int key, int scancode, int action, int 
     }
     if (key == GLFW_KEY_S && action == GLFW_PRESS) {
         stats();
+    }
+    if (key == GLFW_KEY_SLASH && mods == GLFW_MOD_SHIFT && action == GLFW_PRESS) {
+        printf("?=help, s=stats, d=debug, e=erase, f=fill, r=randomize, ->=forwards, <-backwards\n");
     }
 }
 
