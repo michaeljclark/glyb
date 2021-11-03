@@ -17,7 +17,7 @@
 #include <Windows.h>
 #endif
 
-bool logger::debug = true;
+bool logger::debug = false;
 
 void logger::log(const char* fmt, va_list args1)
 {

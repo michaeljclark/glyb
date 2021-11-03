@@ -167,9 +167,7 @@ inline void Properties::load_properties(file_ptr rsrc)
         if (eqoffset != std::string::npos) {
             std::string key = trim(line.substr(0, eqoffset));
             std::string val = trim(line.substr(eqoffset+1));
-            if (debug) {
-                Debug("%s \"%s\"=\"%s\"\n", __func__, key.c_str(), val.c_str());
-            }
+            Debug("%s \"%s\"=\"%s\"\n", __func__, key.c_str(), val.c_str());
             map.insert(std::make_pair(key, val));
         } else {
             Error("%s parse error: %s\n", __func__, buf);
@@ -785,12 +783,8 @@ struct Frame : Container
                  std::max(pref.y, get_default_size().y),
                  std::max(pref.z, get_default_size().z))
         };
-        if (debug) {
-            Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n",
-                __func__,
-                s.minimum.x, s.minimum.y,
-                s.preferred.x, s.preferred.y);
-        }
+        Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n", "Frame",
+            s.minimum.x, s.minimum.y, s.preferred.x, s.preferred.y);
         return (last_sizing = s);
     }
 
@@ -1160,12 +1154,8 @@ struct Grid : Container
                  std::max(pref.y, get_default_size().y),
                  std::max(pref.z, get_default_size().z))
         };
-        if (debug) {
-            Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n",
-                __func__,
-                s.minimum.x, s.minimum.y,
-                s.preferred.x, s.preferred.y);
-        }
+        Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n", "Grid",
+            s.minimum.x, s.minimum.y, s.preferred.x, s.preferred.y);
         return (last_sizing = s);
     }
 
@@ -1366,12 +1356,8 @@ struct Label : Visible
                  std::max(sz.y, get_default_size().y),
                  std::max(sz.z, get_default_size().z))
         };
-        if (debug) {
-            Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n",
-                __func__,
-                s.minimum.x, s.minimum.y,
-                s.preferred.x, s.preferred.y);
-        }
+        Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n", "Label",
+            s.minimum.x, s.minimum.y, s.preferred.x, s.preferred.y);
         return (last_sizing = s);
     }
 
@@ -1458,12 +1444,8 @@ struct Button : Visible
                  std::max(sz.y, get_default_size().y),
                  std::max(sz.z, get_default_size().z))
         };
-        if (debug) {
-            Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n",
-                __func__,
-                s.minimum.x, s.minimum.y,
-                s.preferred.x, s.preferred.y);
-        }
+        Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n", "Button",
+            s.minimum.x, s.minimum.y, s.preferred.x, s.preferred.y);
         return (last_sizing = s);
     }
 
@@ -1582,12 +1564,8 @@ struct Slider : Visible
                                std::max(preferred_size.y,min_size.y),
                                std::max(preferred_size.z,min_size.z) );
         Sizing s = { min_size, pref_size };
-        if (debug) {
-            Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n",
-                __func__,
-                s.minimum.x, s.minimum.y,
-                s.preferred.x, s.preferred.y);
-        }
+        Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n", "Slider",
+            s.minimum.x, s.minimum.y, s.preferred.x, s.preferred.y);
         return (last_sizing = s);
     }
 
@@ -1758,12 +1736,8 @@ struct Switch : Visible
                                std::max(preferred_size.y,min_size.y),
                                std::max(preferred_size.z,min_size.z) );
         Sizing s = { min_size, pref_size };
-        if (debug) {
-            Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n",
-                __func__,
-                s.minimum.x, s.minimum.y,
-                s.preferred.x, s.preferred.y);
-        }
+        Debug("%s minimum=(%f,%f), preferred=(%f,%f)\n", "Switch",
+            s.minimum.x, s.minimum.y, s.preferred.x, s.preferred.y);
         return (last_sizing = s);
     }
 
