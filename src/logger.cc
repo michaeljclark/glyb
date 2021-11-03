@@ -6,8 +6,10 @@
 #include <cstdarg>
 #include <cstdlib>
 #include <cstddef>
+#include <cassert>
 
 #include <string>
+#include <vector>
 
 #include "logger.h"
 
@@ -17,14 +19,24 @@
 
 bool logger::debug = true;
 
-void logger::log(const char* fmt, va_list ap)
+void logger::log(const char* fmt, va_list args1)
 {
-    char msgbuf[2048];
-    vsnprintf(msgbuf, sizeof(msgbuf), fmt, ap);
+    std::vector<char> buf;
+    va_list args2;
+    int len, ret;
+
+    va_copy(args2, args1);
+
+    len = vsnprintf(NULL, 0, fmt, args1);
+    assert(len >= 0);
+    buf.resize(len + 1); // space for zero
+    ret = vsnprintf(buf.data(), buf.capacity(), fmt, args2);
+    assert(len == ret);
+
 #if defined (_WIN32) && !defined (_CONSOLE)
-    OutputDebugStringA(msgbuf);
+    OutputDebugStringA(buf.data());
 #else
-    printf("%s", msgbuf);
+    printf("%s", buf.data());
 #endif
 }
 
