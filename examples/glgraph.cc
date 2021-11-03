@@ -80,7 +80,7 @@ static const int stats_font_size = 12;
 static const float min_zoom = 16.0f, max_zoom = 32768.0f;
 static std::array<float,4> clear_color = { 1.0f, 1.0f, 1.0f, 1.0f };
 static float xscale, yscale;
-static int window_width = 800, window_height = 600;
+static int window_width = 2560, window_height = 1440;
 static int framebuffer_width, framebuffer_height;
 static double tl, tn, td;
 static bool help_text = false;
@@ -97,7 +97,7 @@ struct zoom_state {
 static AContext ctx;
 static font_face *sans_norm, *mono_norm, *mono_bold;
 static draw_list batch;
-static zoom_state state = { 64.0f }, state_save;
+static zoom_state state = { 192.0f }, state_save;
 static bool mouse_left_drag = false, mouse_right_drag = false;
 static int current_example;
 static ui9::Root root(&manager);
