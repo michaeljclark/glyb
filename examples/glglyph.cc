@@ -398,8 +398,8 @@ static void populate_canvas()
         line(canvas, tr_se, br_se);
         canvas.set_fill_brush(Brush{BrushSolid, { }, { selectpin_color }});
         canvas.set_stroke_brush(Brush{BrushSolid, { }, { selectpin_color }});
-        Circle *c1 = canvas.new_circle(tl_ss,25.0f);
-        Circle *c2 = canvas.new_circle(br_se,25.0f);
+        Rectangle *r1 = canvas.new_rectangle(tl_ss,vec2(25.0f,5.0f));
+        Rectangle *r2 = canvas.new_rectangle(br_se,vec2(25.0f,5.0f));
     }
 
     /* draw insertion point */
@@ -452,7 +452,7 @@ static void populate_canvas()
             t->set_valign(text_valign_top);
             t->set_text(hexbuf);
             t->set_lang("en");
-            t->set_position(vec2(2,2)+pos);
+            t->set_position(vec2(7,7)+pos);
             t->set_size(12.0f);
         }
 
