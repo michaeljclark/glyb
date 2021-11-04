@@ -17,21 +17,26 @@
 #include <Windows.h>
 #endif
 
-bool logger::debug = false;
+logger::L logger::level = logger::L::Linfo;
 
-void logger::log(const char* fmt, va_list args1)
+const char* logger::level_names[6] = { "trace", "debug", "info", "warn", "error", "panic" };
+
+void logger::output(const char *prefix, const char* fmt, va_list args1)
 {
     std::vector<char> buf;
     va_list args2;
-    int len, ret;
+    int plen, pout, len, ret;
 
     va_copy(args2, args1);
 
+    plen = strlen(prefix);
     len = vsnprintf(NULL, 0, fmt, args1);
     assert(len >= 0);
-    buf.resize(len + 1); // space for zero
-    ret = vsnprintf(buf.data(), buf.capacity(), fmt, args2);
+    buf.resize(plen + len + 4); // prefix + ": " + message + CR + zero-terminator
+    pout = snprintf(buf.data(), buf.capacity(), "%s: ", prefix);
+    ret = vsnprintf(buf.data() + pout, buf.capacity(), fmt, args2);
     assert(len == ret);
+    if (buf[buf.size()-3] != '\n') buf[buf.size()-2] = '\n';
 
 #if defined (_WIN32) && !defined (_CONSOLE)
     OutputDebugStringA(buf.data());
@@ -40,27 +45,17 @@ void logger::log(const char* fmt, va_list args1)
 #endif
 }
 
-void logger::logDebug(const char* fmt, ...)
+void logger::log(L level, const char* fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
-    log(fmt, ap);
+    if (level >= logger::level) {
+        output(logger::level_names[level], fmt, ap);
+    }
     va_end(ap);
 }
 
-void logger::logError(const char* fmt, ...)
+void logger::set_level(L level)
 {
-    va_list ap;
-    va_start(ap, fmt);
-    log(fmt, ap);
-    va_end(ap);
-}
-
-void logger::logPanic(const char* fmt, ...)
-{
-    va_list ap;
-    va_start(ap, fmt);
-    log(fmt, ap);
-    va_end(ap);
-    exit(9);
+    logger::level = level;
 }

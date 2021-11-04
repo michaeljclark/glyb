@@ -46,7 +46,6 @@ const std::string font_style_any = "*";
 /* font manager */
 
 int font_manager::dpi = 72;
-bool font_manager::debug = false;
 
 const int font_manager::weightTable[] = {
     -1,     // font_weight_any,
@@ -320,9 +319,7 @@ void font_manager::indexFace(font_face *face)
     }
     (*ffi).second.push_back(face->font_id);
     allFonts.push_back(face);
-    if (debug) {
-        Debug("font[%d] -> %s\n", face->font_id, face->fontData.toString().c_str());
-    }
+    Debug("font[%d] -> %s", face->font_id, face->fontData.toString().c_str());
 }
 
 font_face* font_manager::findFontByPath(std::string path)

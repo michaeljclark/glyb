@@ -255,7 +255,6 @@ inline glyph_entry::glyph_entry(font_atlas *atlas, int bin_id, int font_size,
 
 struct font_manager
 {
-    static bool debug;
     static int dpi;
 
     static const int weightTable[];

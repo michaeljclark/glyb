@@ -309,7 +309,7 @@ static void glfont(int argc, char **argv)
 
 /* help text */
 
-void print_help(int argc, char **argv)
+static void print_help(int argc, char **argv)
 {
     fprintf(stderr,
         "Usage: %s [options]\n"
@@ -330,7 +330,7 @@ void print_help(int argc, char **argv)
 
 /* option parsing */
 
-bool check_param(bool cond, const char *param)
+static bool check_param(bool cond, const char *param)
 {
     if (cond) {
         printf("error: %s requires parameter\n", param);
@@ -338,18 +338,18 @@ bool check_param(bool cond, const char *param)
     return (help_text = cond);
 }
 
-bool match_opt(const char *arg, const char *opt, const char *longopt)
+static bool match_opt(const char *arg, const char *opt, const char *longopt)
 {
     return strcmp(arg, opt) == 0 || strcmp(arg, longopt) == 0;
 }
 
-void parse_options(int argc, char **argv)
+static void parse_options(int argc, char **argv)
 {
     int i = 1;
     while (i < argc) {
         if (match_opt(argv[i], "-d","--debug")) {
             debug = true;
-            font_manager::debug = true;
+            logger::set_level(logger::L::Ldebug);
             i++;
         } else if (match_opt(argv[i], "-f","--font")) {
             if (check_param(++i == argc, "--font")) break;
