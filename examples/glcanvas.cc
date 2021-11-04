@@ -188,11 +188,11 @@ static void do_example_circle1()
     if (canvas.num_drawables() > 0) return;
 
     color colors[] = {
-        color("#251F39"),
-        color("#51413A"),
-        color("#9D6F7D"),
-        color("#ECB188"),
-        color("#CE552F")
+        color("#06AED5"),
+        color("#086788"),
+        color("#F0C808"),
+        color("#FFF1D0"),
+        color("#DD1C1A")
     };
 
     float l = 200.0f, r = 90.0f;
