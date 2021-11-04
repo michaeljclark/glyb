@@ -76,7 +76,7 @@ static GLFWwindow* window;
 static const char *sans_norm_font_path = "fonts/DejaVuSans.ttf";
 static const char *mono_norm_font_path = "fonts/RobotoMono-Regular.ttf";
 static const char *mono_bold_font_path = "fonts/RobotoMono-Bold.ttf";
-static const char *render_text = "πάθος λόγος ἦθος";
+static const char *render_text = "the quick brown fox jumps over the lazy dog";
 static const char* text_lang = "en";
 static const int stats_font_size = 18;
 
