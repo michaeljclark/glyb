@@ -51,8 +51,10 @@ static std::map<int,GLuint> tex_map;
 static mat4 mvp;
 static GLFWwindow* window;
 
-static int width = 1024, height = 768;
+static int window_width = 2560, window_height = 1440;
+static int framebuffer_width, framebuffer_height;
 static font_manager_ft manager;
+static bool help_text = false;
 
 
 /* display  */
@@ -94,11 +96,18 @@ static void display()
     glfwSwapBuffers(window);
 }
 
-static void reshape(int width, int height)
+static void reshape(int framebuffer_width, int framebuffer_height)
 {
-    mvp = glm::ortho(0.0f, (float)width,(float)height, 0.0f, 0.0f, 100.0f);
+    glfwGetWindowSize(window, &window_width, &window_height);
+    glfwGetFramebufferSize(window, &framebuffer_width, &framebuffer_height);
 
-    glViewport(0, 0, width, height);
+    mvp = glm::ortho(0.0f, (float)window_width, (float)window_height,
+        0.0f, 0.0f, 100.0f);
+
+    glViewport(0, 0, framebuffer_width, framebuffer_height);
+
+    glUseProgram(msdf.pid);
+    update_uniforms(&msdf);
 
     glUseProgram(simple.pid);
     update_uniforms(&simple);
@@ -117,11 +126,11 @@ static void update_geometry()
     text_container c;
 
     c.append(text_part("Γειά ",
-        {{ "tracking", "2" }, { "baseline-shift", "9" }, { "color", "#800000" }}));
+        {{ "font-family", "roboto" }, { "font-style", "regular" }, { "font-size", "18" }, { "tracking", "2" }, { "baseline-shift", "9" }, { "color", "#800000" }}));
     c.append(text_part("σου ",
-        {{ "tracking", "2" }, { "baseline-shift", "6" }, { "color", "#008000" }}));
+        {{ "font-family", "roboto" }, { "font-style", "regular" }, { "font-size", "18" }, { "tracking", "2" }, { "baseline-shift", "6" }, { "color", "#008000" }}));
     c.append(text_part("Κόσμε ",
-        {{ "tracking", "2" }, { "baseline-shift", "3" }, { "color", "#000080" }}));
+        {{ "font-family", "roboto" }, { "font-style", "regular" }, { "font-size", "18" }, { "tracking", "2" }, { "baseline-shift", "3" }, { "color", "#000080" }}));
     c.append(text_part(
         "    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
         "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud "
@@ -129,7 +138,7 @@ static void update_geometry()
         "dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. "
         "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt "
         "mollit anim id est laborum.    ",
-        {{ "font-size", "18" }, { "font-style", "regular" }, { "color", "#000040" }}));
+        {{ "font-size", "36" }, { "font-style", "regular" }, { "color", "#000040" }}));
     c.append(text_part(
         "    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
         "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud "
@@ -137,10 +146,10 @@ static void update_geometry()
         "dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. "
         "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt "
         "mollit anim id est laborum.    ",
-        {{ "font-size", "36" }, { "font-style", "bold" }, { "color", "#7f7f9f" }}));
+        {{ "font-size", "72" }, { "font-style", "bold" }, { "color", "#7f7f9f" }}));
 
     draw_list_clear(batch);
-    layout.layout(segments, c, 50, 50, 900, 700);
+    layout.layout(segments, c, 50, 50, 2400, 700);
     for (auto &segment : segments) {
         shapes.clear();
         shaper.shape(shapes, segment);
@@ -202,9 +211,9 @@ static void initialize()
 
 /* GLFW GUI entry point */
 
-static void resize(GLFWwindow* window, int width, int height)
+static void resize(GLFWwindow* window, int framebuffer_width, int framebuffer_height)
 {
-    reshape(width, height);
+    reshape(framebuffer_width, framebuffer_height);
 }
 
 static void glfont(int argc, char **argv)
@@ -213,15 +222,16 @@ static void glfont(int argc, char **argv)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, CTX_OPENGL_MAJOR);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, CTX_OPENGL_MINOR);
 
-    window = glfwCreateWindow(width, height, argv[0], NULL, NULL);
+    window = glfwCreateWindow(window_width, window_height, argv[0], NULL, NULL);
     glfwMakeContextCurrent(window);
     gladLoadGL();
     glfwSwapInterval(1);
     glfwSetFramebufferSizeCallback(window, resize);
-    glfwGetFramebufferSize(window, &width, &height);
+    glfwGetWindowSize(window, &window_width, &window_height);
+    glfwGetFramebufferSize(window, &framebuffer_width, &framebuffer_height);
 
     initialize();
-    reshape(width, height);
+    reshape(framebuffer_width, framebuffer_height);
     while (!glfwWindowShouldClose(window)) {
         display();
         glfwPollEvents();
@@ -231,10 +241,69 @@ static void glfont(int argc, char **argv)
     glfwTerminate();
 }
 
+/* help text */
+
+static void print_help(int argc, char **argv)
+{
+    fprintf(stderr,
+        "Usage: %s [options]\n"
+        "  -h, --help                command line help\n"
+        "  -y, --overlay-stats       show statistics overlay\n"
+        "  -m, --enable-msdf         enable MSDF font rendering\n"
+        "  -M, --disable-autoload    disable MSDF atlas autoloading\n",
+        argv[0]);
+}
+
+/* option parsing */
+
+static bool check_param(bool cond, const char *param)
+{
+    if (cond) {
+        printf("error: %s requires parameter\n", param);
+    }
+    return (help_text = cond);
+}
+
+static bool match_opt(const char *arg, const char *opt, const char *longopt)
+{
+    return strcmp(arg, opt) == 0 || strcmp(arg, longopt) == 0;
+}
+
+static void parse_options(int argc, char **argv)
+{
+    int i = 1;
+    while (i < argc) {
+        if (match_opt(argv[i], "-h", "--help")) {
+            help_text = true;
+            i++;
+        } else if (match_opt(argv[i], "-d", "--debug")) {
+            logger::set_level(logger::L::Ldebug);
+            i++;
+        } else if (match_opt(argv[i], "-m", "--enable-msdf")) {
+            manager.msdf_enabled = true;
+            i++;
+        } else if (match_opt(argv[i], "-M", "--disable-autoload")) {
+            manager.msdf_autoload = false;
+            i++;
+        } else {
+            fprintf(stderr, "error: unknown option: %s\n", argv[i]);
+            help_text = true;
+            break;
+        }
+    }
+
+    if (help_text) {
+        print_help(argc, argv);
+        exit(1);
+    }
+
+}
+
 /* entry point */
 
 int main(int argc, char **argv)
 {
+    parse_options(argc, argv);
     glfont(argc, argv);
     return 0;
 }
