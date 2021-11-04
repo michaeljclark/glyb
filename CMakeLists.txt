@@ -152,7 +152,7 @@ foreach(prog IN ITEMS bitcode ftkitty ftrender fontdb fontscan genatlas uniscan)
   target_link_libraries(${prog} glyblib ${LIBS} ${CMAKE_DL_LIBS})
 endforeach(prog)
 
-foreach(prog IN ITEMS glbinpack gledit glemoji glgraph glglyph glfont gllayout glsimple glyb)
+foreach(prog IN ITEMS glbinpack gledit glemoji glgraph glglyph glfont gllayout glsimple gldemo)
   add_executable(${prog} examples/${prog}.cc)
   target_link_libraries(${prog} glyblib ${LIBS} glad ${CMAKE_DL_LIBS})
 endforeach(prog)

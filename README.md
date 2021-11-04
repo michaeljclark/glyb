@@ -79,7 +79,7 @@ The project also contains several OpenGL examples using the library.
   - `glfont` - _example that displays sample text at multiple sizes_
   - `gllayout` - _example showing text layout with line breaks_
   - `glsimple` - _simplest possible example for OpenGL_
-  - `glyb` - _scalability test for regular and MSDF font atlases_
+  - `gldemo` - _animated scalability test for font atlases_
 - `third_party`
   - `freetype` - _font rendering engine_
   - `glad` - _OpenGL extension loader used by examples_
@@ -245,7 +245,7 @@ glyb contains several examples programs showing how to use its API:
 - `glgraph` - _example showing the UI9 graphical vector toolkit_
 - `gllayout` - _example showing text layout with line breaks_
 - `glsimple` - _simplest possible example for OpenGL_
-- `glyb` - _scalability test for regular and MSDF font atlases_
+- `gldemo` - _animated scalability test for font atlases_
 
 ### glfont
 

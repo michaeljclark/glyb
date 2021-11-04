@@ -63,10 +63,12 @@ static const char *render_text = "glyb";
 static const char* text_lang = "en";
 static const int stats_font_fize = 18;
 
-static float load_factor = 1.0;
+static float font_scale = 2.0f;
+static float load_factor = 5.0;
 static bool help_text = false;
 static bool overlay_stats = false;
-static int width = 1024, height = 384;
+static int window_width = 2560, window_height = 1440;
+static int framebuffer_width, framebuffer_height;
 static double tl, tn, td, tb;
 
 static GLuint render_fbo = 0;
@@ -209,35 +211,31 @@ static void draw(double tn, double td, bool skip = false)
     uint32_t color1 = 0xff808080;
     uint32_t color2 = 0xff000000;
     size_t wisdom_count = (size_t)((float)9 * load_factor);
-    float scale = sqrtf((float)width*(float)height)/sqrtf(1024.0f*768.0f);
+    float scale = 1.0f;
     float tw;
 
     draw_list_clear(batch);
 
-    glfwGetFramebufferSize(window, &width, &height);
-
     /* render wisdom */
+    if (wise.size() == 0) {
+        wise.resize(wisdom_count);
+    }
     for (size_t j = 0; j < wisdom_count; j++) {
-        if (wise.size() == 0) {
-            wise.resize(wisdom_count);
-        }
 
-        if (wise[j].x + wise[j].w <= 0) {
-            wise[j].x = (float)width + (float)r(0,width);
-            wise[j].y = (float)(j + 1) * (80 / load_factor);
-            wise[j].s = (float)r(100, 100);
-            wise[j].font_size = 12 + r(0, 5) * 4;
+        if (wise[j].w == 0 || wise[j].x + wise[j].w < -window_width) {
+            wise[j].x = (float)r(window_width, window_width);
+            wise[j].y = (float)(j + 1) * (160 / load_factor);
+            wise[j].s = (float)r(100, 200);
+            wise[j].font_size = 12 + r(1, 5) * 3;
 
             wise[j].s = wise[j].s * scale;
             wise[j].y = wise[j].y * scale;
-            wise[j].font_size = (int)((float)wise[j].font_size * scale);
+            wise[j].font_size = (int)((float)wise[j].font_size * font_scale);
 
             int c = r(64,127);
             wise[j].color = 0xff000000 | c << 16 | c << 8 | c;
             do {
-                wise[j].book_wisdom = book.size() > 0 ?
-                book[r(32,(int)book.size()-33)] :
-                "wisdom wisdom wisdom wisdom wisdom wisdom wisdom wisdom wisdom";
+                wise[j].book_wisdom = book[r(32,(int)book.size()-33)];
             } while (wise[j].book_wisdom.size() < 20);
         }
 
@@ -247,18 +245,16 @@ static void draw(double tn, double td, bool skip = false)
         wise[j].w = text_width(shapes, wisdom_segment);
         wisdom_segment.x = wise[j].x;
         wisdom_segment.y = wise[j].y;
-        wise[j].x -= wise[j].s * (float)td;
+        wise[j].x -= wise[j].s * (float)td * 2.0;
 
-        if (!skip) {
-            shapes.clear();
-            shaper.shape(shapes, wisdom_segment);
-            renderer.render(batch, shapes, wisdom_segment);
-        }
+        shapes.clear();
+        shaper.shape(shapes, wisdom_segment);
+        renderer.render(batch, shapes, wisdom_segment);
     }
 
     if (skip) return;
 
-    /* render pulsating glyb text */
+    /* render glyb text */
     float s = sinf(fmodf((float)tn, 1.f) * 4.0f * (float)M_PI);
     float font_size = 300.0f + floorf(s * 25);
     text_segment glyb_segment(render_text, text_lang, face,
@@ -268,12 +264,12 @@ static void draw(double tn, double td, bool skip = false)
     shapes.clear();
     shaper.shape(shapes, glyb_segment);
     tw = text_width(shapes, glyb_segment);
-    glyb_segment.x = (float)(width - (int)tw) / 2.0f - 10.0f;
-    glyb_segment.y =  (float)height/2.0f + (float)font_size*0.225f;
+    glyb_segment.x = (float)(window_width - (int)tw) / 2.0f - 10.0f;
+    glyb_segment.y =  (float)window_height/2.0f + (float)font_size * scale * 0.225f;
     renderer.render(batch, shapes, glyb_segment);
 
     /* render stats text */
-    float x = 10.0f, y = height - 10.0f;
+    float x = 10.0f, y = window_height - 10.0f;
     std::vector<std::string> stats = get_stats(face, (float)td);
     const uint32_t bg_color = 0xbfffffff;
     for (size_t i = 0; i < stats.size(); i++) {
@@ -335,11 +331,15 @@ static void update_uniforms(program *prog)
     uniform_1i(prog, "u_tex0", 0);
 }
 
-static void reshape(int width, int height)
+static void reshape(int framebuffer_width, int framebuffer_height)
 {
-    mvp = glm::ortho(0.0f, (float)width,(float)height, 0.0f, 0.0f, 100.0f);
+    glfwGetWindowSize(window, &window_width, &window_height);
+    glfwGetFramebufferSize(window, &framebuffer_width, &framebuffer_height);
 
-    glViewport(0, 0, width, height);
+    mvp = glm::ortho(0.0f, (float)window_width, (float)window_height,
+        0.0f, 0.0f, 100.0f);
+
+    glViewport(0, 0, framebuffer_width, framebuffer_height);
 
     glUseProgram(msdf.pid);
     update_uniforms(&msdf);
@@ -401,9 +401,9 @@ static void initialize()
     glLineWidth(1.0);
 }
 
-static void resize(GLFWwindow* window, int width, int height)
+static void resize(GLFWwindow* window, int framebuffer_width, int framebuffer_height)
 {
-    reshape(width, height);
+    reshape(framebuffer_width, framebuffer_height);
 }
 
 static void keyboard(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -427,7 +427,7 @@ static void fbo_initialize()
 
     glGenTextures(1, &render_tex);
     glBindTexture(GL_TEXTURE_2D, render_tex);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, window_width, window_height, 0, GL_RGBA,
         GL_UNSIGNED_BYTE, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -435,7 +435,7 @@ static void fbo_initialize()
 
     glGenRenderbuffers(1, &depth_fbo);
     glBindRenderbuffer(GL_RENDERBUFFER, depth_fbo);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, window_width, window_height);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
         GL_RENDERBUFFER, depth_fbo);
     printf("depth_fbo = %d\n", depth_fbo);
@@ -457,16 +457,17 @@ static void glyb_gui(int argc, char **argv)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, CTX_OPENGL_MAJOR);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, CTX_OPENGL_MINOR);
 
-    window = glfwCreateWindow(width, height, argv[0], NULL, NULL);
+    window = glfwCreateWindow(window_width, window_height, argv[0], NULL, NULL);
     glfwMakeContextCurrent(window);
     gladLoadGL();
     glfwSwapInterval(1);
     glfwSetKeyCallback(window, keyboard);
     glfwSetFramebufferSizeCallback(window, resize);
-    glfwGetFramebufferSize(window, &width, &height);
+    glfwGetWindowSize(window, &window_width, &window_height);
+    glfwGetFramebufferSize(window, &framebuffer_width, &framebuffer_height);
 
     initialize();
-    reshape(width, height);
+    reshape(framebuffer_width, framebuffer_height);
     while (!glfwWindowShouldClose(window)) {
         display();
         glfwPollEvents();
@@ -509,7 +510,7 @@ static void write_ppm(const char *filename, const uint8_t *buffer, int width, in
 
 static void glyb_offline(int argc, char **argv)
 {
-    GLubyte *buffer = new GLubyte[width * height * 4 * sizeof(GLubyte)];
+    GLubyte *buffer = new GLubyte[window_width * window_height * 4 * sizeof(GLubyte)];
     if (!buffer) {
         fprintf(stderr, "error: memory allocation failed\n");
         exit(1);
@@ -521,13 +522,13 @@ static void glyb_offline(int argc, char **argv)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, CTX_OPENGL_MINOR);
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 
-    window = glfwCreateWindow(width, height, argv[0], NULL, NULL);
+    window = glfwCreateWindow(window_width, window_height, argv[0], NULL, NULL);
     glfwMakeContextCurrent(window);
     gladLoadGL();
 
     fbo_initialize();
     initialize();
-    reshape(width, height);
+    reshape(window_width, window_height);
 
     size_t frame_num = 0;
     for (size_t i = 1; i <= frame_skip; i++) {
@@ -545,9 +546,9 @@ static void glyb_offline(int argc, char **argv)
     }
     for (size_t i = 1; i <= frame_count; i++) {
         draw(frame_num/(float)frame_rate, 1/(float)frame_rate);
-        glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
-        std::string filename = format(filename_template, i++);
-        write_ppm(filename.c_str(), buffer, width, height);
+        glReadPixels(0, 0, window_width, window_height, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
+        std::string filename = format(filename_template, i);
+        write_ppm(filename.c_str(), buffer, window_width, window_height);
         printf("frame-%09zu : wrote output to %s\n", frame_num, filename.c_str());
         frame_num++;
     }
@@ -568,20 +569,21 @@ void print_help(int argc, char **argv)
         "  -o, --offline                      start in offline batch mode\n"
         "  -t, --template <name-%%05d.ppm>     offline output template\n"
         "  -s, --frame-size <width>x<height>  window or image size\n"
-        "  -r, --frame-rate <integer>         output frame rate\n"
+        "  -j, --frame-rate <integer>         output frame rate\n"
         "  -k, --frame-skip <integer>         output frame count start\n"
         "  -c, --frame-count <integer>        output frame count limit\n"
         "  -d, --dump-atlases <name-%%d.png>   dump atlas textures to png files\n"
         "\n"
         "Common options:\n"
         "  -f, --font <ttf-file>              font file (default %s)\n"
+        "  -x, --font-scale <float>           font-scale (default %f)\n"
         "  -l, --load-factor <float>          text load (default %f)\n"
         "  -r, --render-text <string>         render text (default \"%s\")\n"
         "  -y, --overlay-stats                show statistics overlay\n"
         "  -m, --enable-msdf                  enable MSDF font rendering\n"
         "  -q, --quadruple                    quadruple the object count\n"
         "  -h, --help                         command line help\n",
-        argv[0], font_path, load_factor, render_text);
+        argv[0], font_path, font_scale, load_factor, render_text);
 }
 
 /* option parsing */
@@ -620,6 +622,9 @@ void parse_options(int argc, char **argv)
             manager.msdf_enabled = true;
             manager.msdf_autoload = true;
             i++;
+        } else if (match_opt(argv[i], "-x", "--font-scale")) {
+            if (check_param(++i == argc, "--font-scaler")) break;
+            font_scale = atof(argv[i++]);
         } else if (match_opt(argv[i], "-l", "--load-factor")) {
             if (check_param(++i == argc, "--load-factor")) break;
             load_factor = atof(argv[i++]);
@@ -631,8 +636,8 @@ void parse_options(int argc, char **argv)
             i++;
         } else if (match_opt(argv[i], "-s", "--frame-size")) {
             if (check_param(++i == argc, "--frame-size")) break;
-            sscanf(argv[i++], "%dx%d", &width, &height);
-        } else if (match_opt(argv[i], "-r", "--frame-rate")) {
+            sscanf(argv[i++], "%dx%d", &window_width, &window_height);
+        } else if (match_opt(argv[i], "-j", "--frame-rate")) {
             if (check_param(++i == argc, "--frame-rate")) break;
             frame_rate = atoi(argv[i++]);
         } else if (match_opt(argv[i], "-k", "--frame-skip")) {
