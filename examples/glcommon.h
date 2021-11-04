@@ -253,7 +253,7 @@ static void buffer_texture_create(texture_buffer &buf, std::vector<T> vec,
     glBindBuffer(GL_TEXTURE_BUFFER, 0);
 
     if (created) {
-        printf("buffer texture unit = %zu tbo = %u, tex = %u, size = %zu\n",
+        Debug("buffer texture unit = %zu tbo = %u, tex = %u, size = %zu\n",
             (size_t)(texture - GL_TEXTURE0), buf.tbo, buf.tex, length);
     }
 }
