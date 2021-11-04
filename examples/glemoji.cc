@@ -50,8 +50,9 @@ static std::map<int,GLuint> tex_map;
 static mat4 mvp;
 static GLFWwindow* window;
 
-static int font_size = 109;
-static int width = 1024, height = 768;
+static int font_size = 270;
+static int window_width = 2560, window_height = 1440;
+static int framebuffer_width, framebuffer_height;
 static font_manager_ft manager;
 
 
@@ -81,11 +82,17 @@ static void display()
     glfwSwapBuffers(window);
 }
 
-static void reshape(int width, int height)
+static void reshape(int framebuffer_width, int framebuffer_height)
 {
-    mvp = glm::ortho(0.0f, (float)width,(float)height, 0.0f, 0.0f, 100.0f);
+    glfwGetWindowSize(window, &window_width, &window_height);
+    glfwGetFramebufferSize(window, &framebuffer_width, &framebuffer_height);
+
+    mvp = glm::ortho(0.0f, (float)window_width, (float)window_height,
+        0.0f, 0.0f, 100.0f);
+
+    glViewport(0, 0, framebuffer_width, framebuffer_height);
+
     uniform_matrix_4fv(&simple, "u_mvp", (const GLfloat *)&mvp[0][0]);
-    glViewport(0, 0, width, height);
 }
 
 /* geometry */
@@ -94,7 +101,7 @@ static void update_geometry()
 {
     auto face = manager.findFontByPath("fonts/NotoColorEmoji.ttf");
 
-    const float x = 170.0f, y = 440.0f;
+    const float x = 425.0f, y = 860.0f;
     const uint32_t color = 0xffffffff;
 
     std::vector<glyph_shape> shapes;
@@ -160,9 +167,9 @@ static void initialize()
 
 /* GLFW GUI entry point */
 
-static void resize(GLFWwindow* window, int width, int height)
+static void resize(GLFWwindow* window, int framebuffer_width, int framebuffer_height)
 {
-    reshape(width, height);
+    reshape(framebuffer_width, framebuffer_height);
 }
 
 static void glfont(int argc, char **argv)
@@ -171,15 +178,16 @@ static void glfont(int argc, char **argv)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, CTX_OPENGL_MAJOR);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, CTX_OPENGL_MINOR);
 
-    window = glfwCreateWindow(width, height, argv[0], NULL, NULL);
+    window = glfwCreateWindow(window_width, window_height, argv[0], NULL, NULL);
     glfwMakeContextCurrent(window);
     gladLoadGL();
     glfwSwapInterval(1);
     glfwSetFramebufferSizeCallback(window, resize);
-    glfwGetFramebufferSize(window, &width, &height);
+    glfwGetWindowSize(window, &window_width, &window_height);
+    glfwGetFramebufferSize(window, &framebuffer_width, &framebuffer_height);
 
     initialize();
-    reshape(width, height);
+    reshape(framebuffer_width, framebuffer_height);
     while (!glfwWindowShouldClose(window)) {
         display();
         glfwPollEvents();

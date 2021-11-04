@@ -82,7 +82,8 @@ static const int stats_font_size = 18;
 
 static const float min_zoom = 16.0f, max_zoom = 32768.0f;
 static std::array<float,4> clear_color = { 1.0f, 1.0f, 1.0f, 1.0f };
-static int width = 1024, height = 768;
+static int window_width = 2560, window_height = 1440;
+static int framebuffer_width, framebuffer_height;
 static double tl, tn, td;
 static bool help_text = false;
 
@@ -97,7 +98,7 @@ struct zoom_state {
 static AContext ctx;
 static font_face *sans_norm, *mono_norm, *mono_bold;
 static draw_list batch;
-static zoom_state state = { 64.0f }, state_save;
+static zoom_state state = { 128.0f }, state_save;
 static bool mouse_left_drag = false, mouse_right_drag = false;
 static int current_example = 4;
 
@@ -490,7 +491,7 @@ static void render_text_segment(draw_list &batch, font_manager_ft &manager,
 
 static void render_stats_text(draw_list &batch, font_manager_ft &manager)
 {
-    float x = 10.0f, y = height - 10.0f;
+    float x = 10.0f, y = window_height - 10.0f;
     std::vector<std::string> stats = get_stats(sans_norm, td);
     uint32_t c = clear_color[0] == 1.0 ? 0xff404040 : 0xffc0c0c0;
     for (size_t i = 0; i < stats.size(); i++) {
@@ -520,13 +521,16 @@ static void update()
     populate_canvas();
 
     /* set up scale/translate matrix */
-    glfwGetFramebufferSize(window, &width, &height);
+    glfwGetWindowSize(window, &window_width, &window_height);
+    glfwGetFramebufferSize(window, &framebuffer_width, &framebuffer_height);
     float s = state.zoom / 64.0f;
-    float tx = state.origin.x + width/2.0f;
-    float ty = state.origin.y + height/2.0f;
+    float tx = state.origin.x + window_width/2.0f;
+    float ty = state.origin.y + window_height/2.0f;
     canvas.set_transform(mat3(s,  0,  tx,
                               0,  s,  ty,
                               0,  0,  1));
+    canvas.set_scale(sqrtf((framebuffer_width * framebuffer_height) /
+        (float)(window_width * window_height)));
 
     /* emit canvas draw list */
     canvas.emit(batch);
@@ -594,11 +598,15 @@ static void update_uniforms(program *prog)
     uniform_1i(prog, "tb_brush", 2);
 }
 
-static void reshape(int width, int height)
+static void reshape(int framebuffer_width, int framebuffer_height)
 {
-    mvp = glm::ortho(0.0f, (float)width,(float)height, 0.0f, 0.0f, 100.0f);
+    glfwGetWindowSize(window, &window_width, &window_height);
+    glfwGetFramebufferSize(window, &framebuffer_width, &framebuffer_height);
 
-    glViewport(0, 0, width, height);
+    mvp = glm::ortho(0.0f, (float)window_width, (float)window_height,
+        0.0f, 0.0f, 100.0f);
+
+    glViewport(0, 0, framebuffer_width, framebuffer_height);
 
     glUseProgram(prog_canvas.pid);
     update_uniforms(&prog_canvas);
@@ -734,9 +742,9 @@ static void initialize()
 
 /* GLFW GUI entry point */
 
-static void resize(GLFWwindow* window, int width, int height)
+static void resize(GLFWwindow* window, int framebuffer_width, int framebuffer_height)
 {
-    reshape(width, height);
+    reshape(framebuffer_width, framebuffer_height);
 }
 
 static void glcanvas(int argc, char **argv)
@@ -745,7 +753,7 @@ static void glcanvas(int argc, char **argv)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, CTX_OPENGL_MAJOR);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, CTX_OPENGL_MINOR);
 
-    window = glfwCreateWindow(width, height, argv[0], NULL, NULL);
+    window = glfwCreateWindow(window_width, window_height, argv[0], NULL, NULL);
     glfwMakeContextCurrent(window);
     gladLoadGL();
     glfwSwapInterval(1);
@@ -754,7 +762,8 @@ static void glcanvas(int argc, char **argv)
     glfwSetMouseButtonCallback(window, mouse_button);
     glfwSetCursorPosCallback(window, cursor_position);
     glfwSetFramebufferSizeCallback(window, resize);
-    glfwGetFramebufferSize(window, &width, &height);
+    glfwGetWindowSize(window, &window_width, &window_height);
+    glfwGetFramebufferSize(window, &framebuffer_width, &framebuffer_height);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -764,7 +773,7 @@ static void glcanvas(int argc, char **argv)
     ImGui_ImplOpenGL3_Init("#version 130");
 
     initialize();
-    reshape(width, height);
+    reshape(framebuffer_width, framebuffer_height);
     while (!glfwWindowShouldClose(window)) {
         update();
         display();

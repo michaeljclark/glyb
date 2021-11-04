@@ -58,11 +58,12 @@ static const char *font_path = "fonts/RobotoMono-Regular.ttf";
 static const char *render_text = "the quick brown fox jumps over the lazy dog";
 static const char* text_lang = "en";
 static int font_size_min = 9;
-static int font_size_max = 32;
+static int font_size_max = 48;
 static bool help_text = false;
 static bool debug = false;
 static bool use_multithread = false;
-static int width = 1024, height = 768;
+static int window_width = 2560, window_height = 1440;
+static int framebuffer_width, framebuffer_height;
 static font_manager_ft manager;
 
 
@@ -105,11 +106,15 @@ static void display()
     glfwSwapBuffers(window);
 }
 
-static void reshape(int width, int height)
+static void reshape(int framebuffer_width, int framebuffer_height)
 {
-    mvp = glm::ortho(0.0f, (float)width,(float)height, 0.0f, 0.0f, 100.0f);
+    glfwGetWindowSize(window, &window_width, &window_height);
+    glfwGetFramebufferSize(window, &framebuffer_width, &framebuffer_height);
 
-    glViewport(0, 0, width, height);
+    mvp = glm::ortho(0.0f, (float)window_width, (float)window_height,
+        0.0f, 0.0f, 100.0f);
+
+    glViewport(0, 0, framebuffer_width, framebuffer_height);
 
     glUseProgram(msdf.pid);
     update_uniforms(&msdf);
@@ -149,7 +154,7 @@ static void update_geometry()
     font_face *face = manager.findFontByPath(font_path);
     font_atlas *atlas = manager.getCurrentAtlas(face);
 
-    float x = 100, y = 100;
+    float x = 200, y = 80;
 
     draw_list_clear(batch);
 
@@ -161,10 +166,10 @@ static void update_geometry()
 
     for (int sz = font_size_min; sz <= font_size_max; sz++)
     {
-        y += sz;
+        y += std::max(sz, 12) + 2;
         std::string size_text = std::to_string(sz);
         auto size_segment = std::make_unique<text_segment>
-            (size_text, text_lang, face, 12 * 64, x - 50.0f, y, black);
+            (size_text, text_lang, face, 14 * 64, x - 50.0f, y, black);
         auto render_segment = std::make_unique<text_segment>
             (render_text, text_lang, face, sz * 64, x, y, black);
         auto size_shapes = std::make_unique<std::vector<glyph_shape>>();
@@ -271,9 +276,9 @@ static void initialize()
 
 /* GLFW GUI entry point */
 
-static void resize(GLFWwindow* window, int width, int height)
+static void resize(GLFWwindow* window, int framebuffer_width, int framebuffer_height)
 {
-    reshape(width, height);
+    reshape(framebuffer_width, framebuffer_height);
 }
 
 static void glfont(int argc, char **argv)
@@ -282,16 +287,17 @@ static void glfont(int argc, char **argv)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, CTX_OPENGL_MAJOR);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, CTX_OPENGL_MINOR);
 
-    window = glfwCreateWindow(width, height, argv[0], NULL, NULL);
+    window = glfwCreateWindow(window_width, window_height, argv[0], NULL, NULL);
     glfwMakeContextCurrent(window);
     gladLoadGL();
     glfwSwapInterval(1);
     glfwSetFramebufferSizeCallback(window, resize);
     glfwSetKeyCallback(window, keyboard);
-    glfwGetFramebufferSize(window, &width, &height);
+    glfwGetWindowSize(window, &window_width, &window_height);
+    glfwGetFramebufferSize(window, &framebuffer_width, &framebuffer_height);
 
     initialize();
-    reshape(width, height);
+    reshape(framebuffer_width, framebuffer_height);
     while (!glfwWindowShouldClose(window)) {
         display();
         glfwPollEvents();
@@ -350,7 +356,7 @@ void parse_options(int argc, char **argv)
             font_path = argv[i++];
         } else if (match_opt(argv[i], "-s", "--frame-size")) {
             if (check_param(++i == argc, "--frame-size")) break;
-            sscanf(argv[i++], "%dx%d", &width, &height);
+            sscanf(argv[i++], "%dx%d", &window_width, &window_height);
         } else if (match_opt(argv[i], "-min", "--min-size")) {
             if (check_param(++i == argc, "--min-size")) break;
             font_size_min  = atoi(argv[i++]);
