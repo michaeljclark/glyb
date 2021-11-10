@@ -71,12 +71,22 @@ if(USE_BUNDLED_LIBS)
   add_subdirectory(third_party/zlib)
   include_directories(third_party/zlib)
 
+  install(TARGETS zlib zlibstatic EXPORT zlib-targets
+        RUNTIME DESTINATION "${INSTALL_BIN_DIR}"
+        ARCHIVE DESTINATION "${INSTALL_LIB_DIR}"
+        LIBRARY DESTINATION "${INSTALL_LIB_DIR}" )
+  install(FILES ${ZLIB_PUBLIC_HDRS} EXPORT zlib-targets DESTINATION "${INSTALL_INC_DIR}")
+  install(FILES zlib.3 EXPORT zlib-targets DESTINATION "${INSTALL_MAN_DIR}/man3")
+  install(FILES ${ZLIB_PC} EXPORT zlib-targets DESTINATION "${INSTALL_PKGCONFIG_DIR}")
+  install(EXPORT zlib-targets DESTINATION lib)
+
   # fixme: PNG_BUILD_ZLIB appears to not work so we copy headers
   set(PNG_BUILD_ZLIB third_party/zlib CACHE PATH "Enable custom Zlib" FORCE)
   set(PNG_TESTS OFF CACHE BOOL "Build libpng tests")
 
   set(ZLIB_LIBRARY zlibstatic)
   set(ZLIB_INCLUDE_DIR third_party/zlib)
+
   add_subdirectory(third_party/libpng)
   include_directories(third_party/libpng)
   target_include_directories(png PRIVATE third_party/zlib)
