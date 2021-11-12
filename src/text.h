@@ -29,15 +29,15 @@ typedef std::initializer_list<tag_pair_t> tags_initializer_t;
  * Text Part
  */
 
-struct text_part
+struct text_span
 {
     std::string text;
     tag_map_t tags;
 
-    text_part() = default;
-    text_part(std::string s);
-    text_part(std::string s, tag_map_t t);
-    text_part(std::string s, tags_initializer_t l);
+    text_span() = default;
+    text_span(std::string s);
+    text_span(std::string s, tag_map_t t);
+    text_span(std::string s, tags_initializer_t l);
 
     std::string to_string();
 };
@@ -48,19 +48,19 @@ struct text_part
 
 struct text_container
 {
-    std::vector<text_part> parts;
+    std::vector<text_span> parts;
 
     text_container() = default;
     text_container(std::string s);
     text_container(std::string s, tag_map_t t);
     text_container(std::string s, tags_initializer_t l);
-    text_container(text_part c);
+    text_container(text_span c);
 
     void erase(size_t offset, size_t count);
     void insert(size_t offset, std::string s);
-    void insert(size_t offset, text_part c);
+    void insert(size_t offset, text_span c);
     void append(std::string s);
-    void append(text_part c);
+    void append(text_span c);
     void mark(size_t offset, size_t count, std::string attr, std::string val);
     void unmark(size_t offset, size_t count, std::string attr);
     void coalesce();
@@ -87,7 +87,7 @@ struct text_layout
     text_layout(font_manager_ft* manager,
         text_shaper* shaper, text_renderer_ft* renderer);
 
-    void style(text_segment &segment, text_part &part);
+    void style(text_segment &segment, text_span &part);
     void layout(std::vector<text_segment> &segments,
         text_container &container, int x, int y, int width, int height);
 };

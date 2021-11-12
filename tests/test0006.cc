@@ -95,9 +95,9 @@ void t2()
     text_layout layout(&manager, &shaper, &renderer);
 
     text_container c;
-    c.append(text_part("regular ", {{ "font-style", "Regular" }}));
-    c.append(text_part("italic ", {{ "font-style", "Italic" }} ));
-    c.append(text_part("bold ", {{ "font-weight", "bold" }} ));
+    c.append(text_span("regular ", {{ "font-style", "Regular" }}));
+    c.append(text_span("italic ", {{ "font-style", "Italic" }} ));
+    c.append(text_span("bold ", {{ "font-weight", "bold" }} ));
 
     layout.layout(segments, c, 10, 10, 300, 500);
 

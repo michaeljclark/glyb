@@ -175,16 +175,16 @@ static void reshape(int width, int height)
 static void create_text(text_container &c)
 {
 #if 0
-    c.append(text_part("Γειά ",
+    c.append(text_span("Γειά ",
         {{ "tracking", "2" }, { "baseline-shift", "9" }, { "color", "#800000" }}));
-    c.append(text_part("σου ",
+    c.append(text_span("σου ",
         {{ "tracking", "2" }, { "baseline-shift", "6" }, { "color", "#008000" }}));
-    c.append(text_part("Κόσμε ",
+    c.append(text_span("Κόσμε ",
         {{ "tracking", "2" }, { "baseline-shift", "3" }, { "color", "#000080" }}));
-    c.append(text_part("Ελευθερία, Ισότητα, Αδελφότητα",
+    c.append(text_span("Ελευθερία, Ισότητα, Αδελφότητα",
         {{ "font-size", "24" }, { "font-style", "bold" }, { "color", "#000000" }}));
 #endif
-    c.append(text_part(
+    c.append(text_span(
         "    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
         "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud "
         "exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure "
@@ -193,9 +193,9 @@ static void create_text(text_container &c)
         "mollit anim id est laborum.",
         {{ "font-size", "18" }, { "font-style", "bold" }, { "color", "#000000" }}));
 #if 0
-    c.append(text_part("  Liberty, Equality, Fraternity",
+    c.append(text_span("  Liberty, Equality, Fraternity",
         {{ "font-size", "24" }, { "font-style", "bold" }, { "color", "#000000" }}));
-    c.append(text_part(
+    c.append(text_span(
         "    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
         "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud "
         "exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure "

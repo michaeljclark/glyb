@@ -31,18 +31,18 @@
  * Text Part
  */
 
-text_part::text_part(std::string s) : text(s) {}
+text_span::text_span(std::string s) : text(s) {}
 
-text_part::text_part(std::string s, tag_map_t t) : text(s), tags(t) {}
+text_span::text_span(std::string s, tag_map_t t) : text(s), tags(t) {}
 
-text_part::text_part(std::string s, tags_initializer_t l) : text(s)
+text_span::text_span(std::string s, tags_initializer_t l) : text(s)
 {
     for (auto li = l.begin(); li != l.end(); li++) {
         tags.insert(tags.end(), *li);
     }
 }
 
-std::string text_part::to_string()
+std::string text_span::to_string()
 {
     std::string s;
     for (auto i = tags.begin(); i != tags.end(); i++) {
@@ -65,15 +65,15 @@ std::string text_part::to_string()
  * Text Container
  */
 
-text_container::text_container(std::string s) : parts({ text_part(s) }) {}
+text_container::text_container(std::string s) : parts({ text_span(s) }) {}
 
 text_container::text_container(std::string s,
-    tag_map_t t) : parts({ text_part(s, t) }) {}
+    tag_map_t t) : parts({ text_span(s, t) }) {}
 
 text_container::text_container(std::string s,
-    tags_initializer_t l) : parts({ text_part(s, l) }) {}
+    tags_initializer_t l) : parts({ text_span(s, l) }) {}
 
-text_container::text_container(text_part c) : parts({ c }) {}
+text_container::text_container(text_span c) : parts({ c }) {}
 
 void text_container::erase(size_t offset, size_t count)
 {
@@ -118,7 +118,7 @@ void text_container::insert(size_t offset, std::string s)
     coalesce();
 }
 
-void text_container::insert(size_t offset, text_part c)
+void text_container::insert(size_t offset, text_span c)
 {
     if (parts.size() == 0) {
         parts.insert(parts.end(),std::string());
@@ -138,7 +138,7 @@ void text_container::insert(size_t offset, text_part c)
                         std::string s2 = i->text.substr(pbeg, plen - pbeg);
                         i->text = s1;
                         parts.insert(std::next(parts.insert(std::next(i), c)),
-                            text_part(s2, i->tags));
+                            text_span(s2, i->tags));
                     } else {
                         parts.insert(i, c);
                     }
@@ -159,7 +159,7 @@ void text_container::append(std::string s)
     coalesce();
 }
 
-void text_container::append(text_part c)
+void text_container::append(text_span c)
 {
     parts.insert(parts.end(), c);
     coalesce();
@@ -191,8 +191,8 @@ void text_container::mark(size_t offset, size_t count, std::string attr,
                 auto savetags2 = i->tags;
                 i->text = s1;
                 savetags1[attr] = val;
-                i = parts.insert(std::next(i), text_part(s2, savetags1));
-                i = parts.insert(std::next(i), text_part(s3, savetags2));
+                i = parts.insert(std::next(i), text_span(s2, savetags1));
+                i = parts.insert(std::next(i), text_span(s3, savetags2));
             } else {
                 // 2-way split (begin <S1> pbeg <S2> pbeg+pcnt/end)
                 std::string s1 = i->text.substr(0, pbeg);
@@ -200,7 +200,7 @@ void text_container::mark(size_t offset, size_t count, std::string attr,
                 auto savetags = i->tags;
                 i->text = s1;
                 savetags[attr] = val;
-                i = parts.insert(std::next(i), text_part(s2, savetags));
+                i = parts.insert(std::next(i), text_span(s2, savetags));
             }
         } else {
             if (pcnt < plen) {
@@ -210,7 +210,7 @@ void text_container::mark(size_t offset, size_t count, std::string attr,
                 auto savetags = i->tags;
                 i->text = s1;
                 i->tags[attr] = val;
-                i = parts.insert(std::next(i), text_part(s2, savetags));
+                i = parts.insert(std::next(i), text_span(s2, savetags));
             } else {
                 // whole string
                 i->tags[attr] = val;
@@ -246,8 +246,8 @@ void text_container::unmark(size_t offset, size_t count, std::string attr)
                 auto savetags2 = i->tags;
                 i->text = s1;
                 savetags1.erase(attr);
-                i = parts.insert(std::next(i), text_part(s2, savetags1));
-                i = parts.insert(std::next(i), text_part(s3, savetags2));
+                i = parts.insert(std::next(i), text_span(s2, savetags1));
+                i = parts.insert(std::next(i), text_span(s3, savetags2));
             } else {
                 // 2-way split (begin <S1> pbeg <S2> pbeg+pcnt/end)
                 std::string s1 = i->text.substr(0, pbeg);
@@ -255,7 +255,7 @@ void text_container::unmark(size_t offset, size_t count, std::string attr)
                 auto savetags = i->tags;
                 i->text = s1;
                 savetags.erase(attr);
-                i = parts.insert(std::next(i), text_part(s2, savetags));
+                i = parts.insert(std::next(i), text_span(s2, savetags));
             }
         } else {
             if (pcnt < plen) {
@@ -265,7 +265,7 @@ void text_container::unmark(size_t offset, size_t count, std::string attr)
                 auto savetags = i->tags;
                 i->text = s1;
                 i->tags.erase(attr);
-                i = parts.insert(std::next(i), text_part(s2, savetags));
+                i = parts.insert(std::next(i), text_span(s2, savetags));
             } else {
                 // whole string
                 i->tags.erase(attr);
@@ -364,7 +364,7 @@ inline int lookupEnumFloat(tag_map_t &map, std::string key,
     return val;
 }
 
-void text_layout::style(text_segment &segment, text_part &part)
+void text_layout::style(text_segment &segment, text_span &part)
 {
     /* converts text part attributes into a font face and size */
 
@@ -431,7 +431,7 @@ void text_layout::layout(std::vector<text_segment> &segments,
     int dx = x, dy = y;
     for (size_t i = 0; i < container.parts.size(); i++)
     {
-        text_part &part = container.parts[i];
+        text_span &part = container.parts[i];
 
         /* make a text segment */
         text_segment segment(part.text, language_default);

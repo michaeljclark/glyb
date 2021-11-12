@@ -127,7 +127,7 @@ The following code snippet shows glyb's high level text layout interface:
     text_layout layout(&manager, &shaper, &renderer);
     text_container c;
 
-    c.append(text_part(
+    c.append(text_span(
         "    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed "
         "do eiusmod tempor incididunt ut labore et dolore magna aliqua. "
         "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris "
@@ -135,8 +135,9 @@ The following code snippet shows glyb's high level text layout interface:
         "reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla "
         "pariatur. Excepteur sint occaecat cupidatat non proident, sunt in "
         "culpa qui officia deserunt mollit anim id est laborum.    ",
-        {{ "font-size", "36" },
+        {{ "font-family", "Roboto" },
          { "font-style", "bold" },
+         { "font-size", "36" },
          { "color", "#7f7f9f" },
          { "line-spacing", "48" }}));
 

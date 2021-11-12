@@ -125,13 +125,13 @@ static void update_geometry()
     text_layout layout(&manager, &shaper, &renderer);
     text_container c;
 
-    c.append(text_part("Γειά ",
+    c.append(text_span("Γειά ",
         {{ "font-family", "roboto" }, { "font-style", "regular" }, { "font-size", "24" }, { "tracking", "2" }, { "baseline-shift", "9" }, { "color", "#800000" }}));
-    c.append(text_part("σου ",
+    c.append(text_span("σου ",
         {{ "font-family", "roboto" }, { "font-style", "regular" }, { "font-size", "24" }, { "tracking", "2" }, { "baseline-shift", "6" }, { "color", "#008000" }}));
-    c.append(text_part("Κόσμε ",
+    c.append(text_span("Κόσμε ",
         {{ "font-family", "roboto" }, { "font-style", "regular" }, { "font-size", "24" }, { "tracking", "2" }, { "baseline-shift", "3" }, { "color", "#000080" }}));
-    c.append(text_part(
+    c.append(text_span(
         "    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
         "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud "
         "exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure "
@@ -139,7 +139,7 @@ static void update_geometry()
         "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt "
         "mollit anim id est laborum.    ",
         {{ "font-family", "roboto mono" }, { "font-style", "regular" }, { "font-size", "36" }, { "color", "#000040" }}));
-    c.append(text_part(
+    c.append(text_span(
         "    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
         "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud "
         "exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure "
@@ -147,7 +147,7 @@ static void update_geometry()
         "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt "
         "mollit anim id est laborum.    ",
         {{ "font-family", "roboto" }, { "font-style", "light italic" }, { "font-size", "72" }, { "color", "#7f7f9f" }}));
-    c.append(text_part(
+    c.append(text_span(
         "    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
         "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud "
         "exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure "

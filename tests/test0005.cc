@@ -41,9 +41,9 @@ void tr(text_container t, size_t offset, size_t count)
 void t1()
 {
 	text_container t;
-	t.append(text_part("0124"));
-	t.append(text_part("5678"));
-	t.append(text_part("9abc"));
+	t.append(text_span("0124"));
+	t.append(text_span("5678"));
+	t.append(text_span("9abc"));
 	tr(t, 0, 12);
 	tr(t, 2, 2);
 	tr(t, 2, 4);
@@ -71,8 +71,8 @@ void ti(text_container t, size_t offset, std::string s)
 void t2()
 {
 	text_container t;
-	t.append(text_part("01"));
-	t.append(text_part("23"));
+	t.append(text_span("01"));
+	t.append(text_span("23"));
 	ti(t, 0, "_");
 	ti(t, 1, "_");
 	ti(t, 2, "_");
@@ -80,7 +80,7 @@ void t2()
 	ti(t, 4, "_");
 }
 
-void ti(text_container t, size_t offset, text_part s)
+void ti(text_container t, size_t offset, text_span s)
 {
 	static int test_count = 0;
 
@@ -96,25 +96,25 @@ void ti(text_container t, size_t offset, text_part s)
 void t3()
 {
 	text_container t;
-	t.append(text_part("01"));
-	t.append(text_part("23"));
-	ti(t, 0, text_part("_"));
-	ti(t, 1, text_part("_"));
-	ti(t, 2, text_part("_"));
-	ti(t, 3, text_part("_"));
-	ti(t, 4, text_part("_"));
+	t.append(text_span("01"));
+	t.append(text_span("23"));
+	ti(t, 0, text_span("_"));
+	ti(t, 1, text_span("_"));
+	ti(t, 2, text_span("_"));
+	ti(t, 3, text_span("_"));
+	ti(t, 4, text_span("_"));
 }
 
 void t4()
 {
 	text_container t;
-	t.append(text_part("01", {{ "0", "0" }} ));
-	t.append(text_part("23", {{ "1", "1" }} ));
-	ti(t, 0, text_part("_"));
-	ti(t, 1, text_part("_"));
-	ti(t, 2, text_part("_"));
-	ti(t, 3, text_part("_"));
-	ti(t, 4, text_part("_"));
+	t.append(text_span("01", {{ "0", "0" }} ));
+	t.append(text_span("23", {{ "1", "1" }} ));
+	ti(t, 0, text_span("_"));
+	ti(t, 1, text_span("_"));
+	ti(t, 2, text_span("_"));
+	ti(t, 3, text_span("_"));
+	ti(t, 4, text_span("_"));
 }
 
 void tm(text_container t, size_t offset, size_t count, std::string attr, std::string value)
@@ -136,8 +136,8 @@ void tm(text_container t, size_t offset, size_t count, std::string attr, std::st
 void t5()
 {
 	text_container t;
-	t.append(text_part("01"));
-	t.append(text_part("23", {{ "1", "1" }} ));
+	t.append(text_span("01"));
+	t.append(text_span("23", {{ "1", "1" }} ));
 	tm(t, 0, 1, "3", "3");
 	tm(t, 0, 2, "3", "3");
 	tm(t, 0, 3, "3", "3");
@@ -167,8 +167,8 @@ void tu(text_container t, size_t offset, size_t count, std::string attr)
 void t6()
 {
 	text_container t;
-	t.append(text_part("01", {{ "1", "1" }} ));
-	t.append(text_part("23", {{ "1", "1" }} ));
+	t.append(text_span("01", {{ "1", "1" }} ));
+	t.append(text_span("23", {{ "1", "1" }} ));
 	tu(t, 0, 1, "1");
 	tu(t, 0, 2, "1");
 	tu(t, 0, 3, "1");
