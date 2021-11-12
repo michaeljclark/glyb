@@ -17,7 +17,11 @@
 #include <climits>
 
 #include <vector>
-#include <unistd.h>
+
+#ifdef _WIN32
+#define strncasecmp _strnicmp
+#define strcasecmp _stricmp
+#endif
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -165,20 +169,12 @@ static int base64_encode(size_t in_len, const unsigned char *in,
  * outputs base64 encoding of image data in a span_vector
  */
 
-union urgba {
-    uint32_t rgba;
-    struct { uint8_t r, g, b, a; } comp;
-};
-
 static uint32_t shade_color(uint32_t c, uint32_t col)
 {
-    union urgba s = { .rgba = col };
-    union urgba t = { .comp = {
-        .r = (uint8_t)(s.comp.r * c >> 8),
-        .g = (uint8_t)(s.comp.g * c >> 8),
-        .b = (uint8_t)(s.comp.b * c >> 8),
-        .a = 0xff } };
-    return t.rgba;
+    return ((((col >> 0)  & 0xff) * c >> 8) << 0 ) |
+           ((((col >> 8)  & 0xff) * c >> 8) << 8 ) |
+           ((((col >> 16) & 0xff) * c >> 8) << 16) |
+           0xff << 24;
 }
 
 static void render_kitty(span_vector *s, uint32_t rgba_col)
