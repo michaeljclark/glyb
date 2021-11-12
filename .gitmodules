@@ -25,3 +25,6 @@
 [submodule "third_party/imgui"]
 	path = third_party/imgui
 	url = https://github.com/ocornut/imgui.git
+[submodule "third_party/bzip2"]
+	path = third_party/bzip2
+	url = https://github.com/libarchive/bzip2.git

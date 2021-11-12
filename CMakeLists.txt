@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.10)
 
 project(glyb)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/modules)
+
 include(CheckCXXCompilerFlag)
 
 macro(add_compiler_flags)
@@ -19,113 +23,79 @@ if (has_no_omit_fp)
   add_compiler_flags(-fno-omit-frame-pointer)
 endif()
 
+## linux opengl
 if(UNIX AND NOT APPLE)
-  set(LINUX true)
-endif()
-
-if(LINUX)
   find_package(PkgConfig)
   find_library(OPENGL_LIBRARY GL)
-  list(APPEND LIBS ${OPENGL_LIBRARY})
+  list(APPEND GLYB_LIBS ${OPENGL_LIBRARY})
 endif()
 
+## macos opengl
 if(APPLE)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -std=c99")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++11")
-  find_library(SYSTEM_CONFIGURATION_LIBRARY SystemConfiguration)
   find_library(COREFOUNDATION_LIBRARY CoreFoundation)
   find_library(COCOA_LIBRARY Cocoa)
-  find_library(GLUT_LIBRARY GLUT)
-  find_library(AGL_LIBRARY AGL)
   find_library(OPENGL_LIBRARY OpenGL)
-  list(APPEND LIBS ${SYSTEM_CONFIGURATION_LIBRARY} ${COREFOUNDATION_LIBRARY} ${COCOA_LIBRARY} ${OPENGL_LIBRARY})
-  set(USE_BUNDLED_LIBS true)
+  list(APPEND GLYB_LIBS ${COREFOUNDATION_LIBRARY} ${COCOA_LIBRARY} ${OPENGL_LIBRARY})
 endif()
 
+## windows opengl
 if(WIN32)
   add_definitions("/MP")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_INIT} /D _SECURE_SCL=0 /D _WINDOWS /D _CRT_SECURE_NO_WARNINGS")
   find_library(OPENGL_LIBRARY OpenGL32)
-  list(APPEND LIBS ${OPENGL_LIBRARY})
-  set(USE_BUNDLED_LIBS true)
+  list(APPEND GLYB_LIBS ${OPENGL_LIBRARY})
 endif()
 
+## threads
 find_package(Threads REQUIRED)
-list(APPEND LIBS Threads::Threads)
+list(APPEND GLYB_LIBS Threads::Threads)
 
-include_directories(third_party/include)
-
+## glad
 add_subdirectory(third_party/glad)
-include_directories(${PROJECT_BINARY_DIR}/third_party/glad/include)
+include_directories(${CMAKE_BINARY_DIR}/third_party/glad/include)
 
-if(USE_BUNDLED_LIBS)
-  add_subdirectory(third_party/glfw)
-  include_directories(third_party/glfw/include)
+## glfw
+add_subdirectory(third_party/glfw)
+include_directories(third_party/glfw/include)
 
-  add_subdirectory(third_party/freetype2)
-  add_definitions( -DFT_CONFIG_CONFIG_H=\"ftconfig.h\" )
-  add_definitions( -DFT_CONFIG_MODULES_H=\"ftmodule.h\" )
-  include_directories(third_party/freetype2/include)
-  include_directories(third_party/freetype2/include/freetype/config)
+## bzip2
+set(ENABLE_LIB_ONLY ON CACHE BOOL "")
+set(ENABLE_SHARED_LIB OFF CACHE BOOL "")
+set(ENABLE_STATIC_LIB ON CACHE BOOL "")
+add_subdirectory(third_party/bzip2)
+include_directories(third_party/bzip2)
 
-  add_subdirectory(third_party/zlib)
-  include_directories(third_party/zlib)
+## zlib
+add_subdirectory(third_party/zlib)
+include_directories(third_party/zlib)
+include_directories(${CMAKE_BINARY_DIR}/third_party/zlib)
+install(TARGETS zlib zlibstatic EXPORT zlib-targets DESTINATION "${INSTALL_BIN_DIR}")
+install(FILES ${ZLIB_PUBLIC_HDRS} EXPORT zlib-targets DESTINATION "${INSTALL_INC_DIR}")
+install(FILES zlib.3 EXPORT zlib-targets DESTINATION "${INSTALL_MAN_DIR}/man3")
+install(FILES ${ZLIB_PC} EXPORT zlib-targets DESTINATION "${INSTALL_PKGCONFIG_DIR}")
+install(EXPORT zlib-targets DESTINATION lib)
 
-  install(TARGETS zlib zlibstatic EXPORT zlib-targets
-        RUNTIME DESTINATION "${INSTALL_BIN_DIR}"
-        ARCHIVE DESTINATION "${INSTALL_LIB_DIR}"
-        LIBRARY DESTINATION "${INSTALL_LIB_DIR}" )
-  install(FILES ${ZLIB_PUBLIC_HDRS} EXPORT zlib-targets DESTINATION "${INSTALL_INC_DIR}")
-  install(FILES zlib.3 EXPORT zlib-targets DESTINATION "${INSTALL_MAN_DIR}/man3")
-  install(FILES ${ZLIB_PC} EXPORT zlib-targets DESTINATION "${INSTALL_PKGCONFIG_DIR}")
-  install(EXPORT zlib-targets DESTINATION lib)
+## png
+add_subdirectory(third_party/libpng)
+include_directories(third_party/libpng)
+include_directories(${CMAKE_BINARY_DIR}/third_party/libpng)
 
-  # fixme: PNG_BUILD_ZLIB appears to not work so we copy headers
-  set(PNG_BUILD_ZLIB third_party/zlib CACHE PATH "Enable custom Zlib" FORCE)
-  set(PNG_TESTS OFF CACHE BOOL "Build libpng tests")
+## freetype2
+add_subdirectory(third_party/freetype2)
+add_definitions( -DFT_CONFIG_CONFIG_H=\"ftconfig.h\" )
+add_definitions( -DFT_CONFIG_MODULES_H=\"ftmodule.h\" )
+include_directories(third_party/freetype2/include)
+include_directories(third_party/freetype2/include/freetype/config)
 
-  set(ZLIB_LIBRARY zlibstatic)
-  set(ZLIB_INCLUDE_DIR third_party/zlib)
+## harfbuzz
+set(HB_HAVE_FREETYPE ON CACHE BOOL "Enable FreeType Integration" FORCE)
+set(HAVE_FT_GET_VAR_BLEND_COORDINATES ON CACHE BOOL "Have function FT_Get_Var_Blend_Coordinates" FORCE)
+set(HAVE_FT_SET_VAR_BLEND_COORDINATES ON CACHE BOOL "Have function FT_Set_Var_Blend_Coordinates" FORCE)
+set(HAVE_FT_DONE_MM_VAR OFF CACHE BOOL "Have function FT_Done_MM_Var" FORCE)
+add_subdirectory(third_party/harfbuzz)
+include_directories(third_party/harfbuzz/src)
 
-  add_subdirectory(third_party/libpng)
-  include_directories(third_party/libpng)
-  target_include_directories(png PRIVATE third_party/zlib)
-
-  # this glorius hack is required so that libpng finds the included zlib
-  # problem is due to generated files not seeing include_directories()
-  add_custom_target(png_zconf_h
-    COMMAND ${CMAKE_COMMAND} -E copy
-    ${PROJECT_BINARY_DIR}/third_party/zlib/zconf.h
-    ${PROJECT_BINARY_DIR}/third_party/libpng/.)
-  add_custom_target(png_zlib_h
-    COMMAND ${CMAKE_COMMAND} -E copy
-    ${CMAKE_SOURCE_DIR}/third_party/zlib/zlib.h
-    ${PROJECT_BINARY_DIR}/third_party/libpng/.)
-  add_dependencies(genfiles png_zlib_h png_zconf_h)
-
-  set(HB_HAVE_FREETYPE ON CACHE BOOL "Enable FreeType Integration" FORCE)
-  set(FREETYPE_INCLUDE_DIRS third_party/freetype2/include)
-  set(FREETYPE_LIBRARY freetype)
-  add_subdirectory(third_party/harfbuzz)
-  include_directories(third_party/harfbuzz/src)
-  list(APPEND LIBS png_static zlibstatic harfbuzz freetype glfw)
-else()
-  add_subdirectory(third_party/glfw)
-  include_directories(third_party/glfw/include)
-  list(APPEND LIBS glfw)
-
-  #pkg_check_modules(GLFW3 REQUIRED glfw3)
-  pkg_check_modules(HARFBUZZ REQUIRED harfbuzz)
-  pkg_check_modules(FREETYPE2 REQUIRED freetype2)
-  pkg_check_modules(PNG REQUIRED libpng)
-
-  add_definitions(${GLFW3_CFLAGS})
-  add_definitions(${HARFBUZZ_CFLAGS})
-  add_definitions(${FREETYPE2_CFLAGS})
-  add_definitions(${PNG_CFLAGS})
-  list(APPEND LIBS ${HARFBUZZ_LDFLAGS} ${FREETYPE2_LDFLAGS} ${PNG_LDFLAGS})
-endif()
-
+## imgui
 set(IMGUI_SOURCES
   third_party/imgui/examples/imgui_impl_glfw.cpp
   third_party/imgui/examples/imgui_impl_opengl3.cpp
@@ -140,39 +110,49 @@ add_definitions(-DIMGUI_IMPL_OPENGL_LOADER_GLAD)
 add_library(imgui STATIC ${IMGUI_SOURCES})
 add_dependencies(imgui glad-generate-files)
 
+## msdfgen
 add_subdirectory(third_party/msdfgen)
 include_directories(third_party/msdfgen)
-list(APPEND LIBS lib_msdfgen)
 
+## glm
 include_directories(third_party/glm)
 
+## glyb
 include_directories(src)
 include_directories(examples)
+file(GLOB GLYB_SOURCES src/*.cc src/*.h)
+add_library(glyb STATIC ${GLYB_SOURCES})
+add_dependencies(glyb glad-generate-files)
+set_target_properties(glyb PROPERTIES CXX_STANDARD 17)
+list(APPEND GLYB_LIBS
+  ${PNG_LIBRARY}
+  ${BZIP_LIBRARY}
+  ${ZLIB_LIBRARY}
+  ${HARFBUZZ_LIBRARY}
+  ${FREETYPE_LIBRARY}
+  glyb
+  lib_msdfgen)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-file(GLOB GLYPHIC_SOURCES src/*.cc src/*.h)
-add_library(glyblib STATIC ${GLYPHIC_SOURCES})
-add_dependencies(glyblib glad-generate-files)
-set_target_properties(glyblib PROPERTIES CXX_STANDARD 17)
-
+## CLI examples
 foreach(prog IN ITEMS bitcode ftkitty ftrender fontdb fontscan genatlas uniscan)
   add_executable(${prog} examples/${prog}.cc)
-  target_link_libraries(${prog} glyblib ${LIBS} ${CMAKE_DL_LIBS})
+  target_link_libraries(${prog} ${GLYB_LIBS} ${CMAKE_DL_LIBS})
 endforeach(prog)
 
+## OpenGL examples
 foreach(prog IN ITEMS glbinpack gledit glemoji glgraph glglyph glfont gllayout glsimple gldemo)
   add_executable(${prog} examples/${prog}.cc)
-  target_link_libraries(${prog} glyblib ${LIBS} glad ${CMAKE_DL_LIBS})
+  target_link_libraries(${prog} ${GLYB_LIBS} ${CMAKE_DL_LIBS} glad glfw)
 endforeach(prog)
 
+# ImGUI examples
 add_executable(glcanvas examples/glcanvas.cc)
-target_link_libraries(glcanvas glyblib ${LIBS} glad ${CMAKE_DL_LIBS} imgui)
+target_link_libraries(glcanvas ${GLYB_LIBS} ${CMAKE_DL_LIBS} glad glfw imgui)
 
+# glyb tests
 file(GLOB BINPACK_TESTS tests/*.cc)
 foreach(src ${BINPACK_TESTS})
   get_filename_component(name ${src} NAME_WE)
   add_executable(${name} ${src})
-  target_link_libraries(${name} glyblib ${LIBS})
+  target_link_libraries(${name} ${GLYB_LIBS})
 endforeach(src)
