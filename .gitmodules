@@ -28,3 +28,6 @@
 [submodule "third_party/bzip2"]
 	path = third_party/bzip2
 	url = https://github.com/libarchive/bzip2.git
+[submodule "third_party/brotli"]
+	path = third_party/brotli
+	url = https://github.com/google/brotli.git

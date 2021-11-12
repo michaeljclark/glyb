@@ -58,6 +58,15 @@ include_directories(${CMAKE_BINARY_DIR}/third_party/glad/include)
 add_subdirectory(third_party/glfw)
 include_directories(third_party/glfw/include)
 
+# brotli
+set(BROTLI_BUNDLED_MODE OFF CACHE BOOL "")
+add_subdirectory(third_party/brotli)
+include_directories(third_party/brotli/c/include)
+set_property(TARGET brotlidec-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES)
+set_property(TARGET brotlicommon-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES)
+install(TARGETS brotlidec-static brotlicommon-static EXPORT brotli-targets DESTINATION "${INSTALL_BIN_DIR}")
+install(EXPORT brotli-targets DESTINATION lib)
+
 ## bzip2
 set(ENABLE_LIB_ONLY ON CACHE BOOL "")
 set(ENABLE_SHARED_LIB OFF CACHE BOOL "")
@@ -123,6 +132,7 @@ add_dependencies(glyb glad-generate-files)
 set_target_properties(glyb PROPERTIES CXX_STANDARD 17)
 list(APPEND GLYB_LIBS
   ${PNG_LIBRARY}
+  ${BROTLIDEC_LIBRARY}
   ${BZIP_LIBRARY}
   ${ZLIB_LIBRARY}
   ${HARFBUZZ_LIBRARY}

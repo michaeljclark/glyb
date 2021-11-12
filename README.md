@@ -101,6 +101,7 @@ glyb:
 [†](https://github.com/Chlumsky/msdfgen/files/3050967/thesis.pdf),
 [zlib](https://github.com/madler/zlib.git)
 [†](http://zlib.net/),
+[brotli](https://github.com/google/brotli.git),
 [bzip2](https://gitlab.com/federicomenaquintero/bzip2.git)
 [†](https://www.sourceware.org/bzip2/),
 [libpng](https://github.com/glennrp/libpng)
