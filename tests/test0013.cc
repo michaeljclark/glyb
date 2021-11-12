@@ -8,6 +8,21 @@
 
 #include "worker.h"
 
+#if defined _WIN32
+static bool _msleep(int millis)
+{
+    Sleep(millis);
+    return true;
+}
+#else
+static bool _msleep(int millis)
+{
+    struct timespec ta = { millis / 1000, (millis % 1000) * 1000000 };
+    int ret = nanosleep(&ta, NULL);
+    return ret == 0;
+}
+#endif
+
 /*
  * C++ threaded worker pool that executes work-items from a queue, featuring:
  *
@@ -33,7 +48,7 @@ struct mule_worker : pool_worker<mule_item>
     }
 
     virtual void operator()(mule_item &item) {
-        sleep(1); printf("mule-%zu item %zu\n", mule_id, item.id);
+        _msleep(1000); printf("mule-%zu item %zu\n", mule_id, item.id);
     }
 };
 
