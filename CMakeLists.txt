@@ -79,9 +79,6 @@ add_subdirectory(third_party/zlib)
 include_directories(third_party/zlib)
 include_directories(${CMAKE_BINARY_DIR}/third_party/zlib)
 install(TARGETS zlib zlibstatic EXPORT zlib-targets DESTINATION "${INSTALL_BIN_DIR}")
-install(FILES ${ZLIB_PUBLIC_HDRS} EXPORT zlib-targets DESTINATION "${INSTALL_INC_DIR}")
-install(FILES zlib.3 EXPORT zlib-targets DESTINATION "${INSTALL_MAN_DIR}/man3")
-install(FILES ${ZLIB_PC} EXPORT zlib-targets DESTINATION "${INSTALL_PKGCONFIG_DIR}")
 install(EXPORT zlib-targets DESTINATION lib)
 
 ## png
