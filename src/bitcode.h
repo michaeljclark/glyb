@@ -9,6 +9,12 @@
 #include <numeric>
 #include <functional>
 
+#include "stdbits.h"
+#include "stdendian.h"
+
+#ifdef _WIN32
+typedef long long ssize_t;
+#endif
 
 /*
  * ~~~===~~~
@@ -54,7 +60,7 @@ struct div_u32_mult_inv
 
 static div_u32_mult_inv find_div_u32_mult_inv(uint32_t d)
 {
-    uint32_t floor_log_2_d = __builtin_clz(d) ^ 31;
+    uint32_t floor_log_2_d = clz(d) ^ 31;
 
     if ((d & (d - 1)) == 0) {
         return div_u32_mult_inv{ 0, (uint8_t)(floor_log_2_d - 1) };
@@ -83,109 +89,6 @@ static uint32_t div_u32(uint32_t n, div_u32_mult_inv x)
     uint32_t t = ((n - q) >> 1) + q;
     return t >> x.more;
 }
-
-/*
- * ~~~===~~~
- *
- *  Bit manipluation
- *
- * ~~~===~~~
- */
-
-#if defined (_MSC_VER)
-#include <intrin.h>
-typedef long long ssize_t;
-#endif
-
-/* endian helpers using type punning */
-
-typedef union { uint8_t a[8]; uint64_t b; } __bitcast_u64;
-
-static inline uint64_t le64(uint64_t x)
-{
-    __bitcast_u64 y = {
-        (uint8_t)(x), (uint8_t)(x >> 8),
-        (uint8_t)(x >> 16), (uint8_t)(x >> 24),
-        (uint8_t)(x >> 32), (uint8_t)(x >> 40),
-        (uint8_t)(x >> 48), (uint8_t)(x >> 56)
-    };
-    return y.b;
-}
-
-/*! clz */
-template <typename T>
-inline int clz(T val)
-{
-    const int bits = sizeof(T) << 3;
-    unsigned count = 0, found = 0;
-    for (int i = bits - 1; i >= 0; --i) {
-        count += !(found |= val & T(1)<<i ? 1 : 0);
-    }
-    return count;
-}
-
-/*! ctz */
-template <typename T>
-inline int ctz(T val)
-{
-    const int bits = sizeof(T) << 3;
-    unsigned count = 0, found = 0;
-    for (int i = 0; i < bits; ++i) {
-        count += !(found |= val & T(1)<<i ? 1 : 0);
-    }
-    return count;
-}
-
-/* ctz specializations */
-#if defined (__GNUC__)
-template<> inline int clz(unsigned val) { return __builtin_clz(val); }
-template<> inline int clz(unsigned long val) { return __builtin_clzll(val); }
-template<> inline int clz(unsigned long long val) { return __builtin_clzll(val); }
-template<> inline int ctz(unsigned val) { return __builtin_ctz(val); }
-template<> inline int ctz(unsigned long val) { return __builtin_ctzll(val); }
-template<> inline int ctz(unsigned long long val) { return __builtin_ctzll(val); }
-#endif
-#if defined (_MSC_VER)
-#if defined (_M_X64)
-template<> inline int clz(unsigned val)
-{
-    return (int)_lzcnt_u32(val);
-}
-template<> inline int clz(unsigned long long val)
-{
-    return (int)_lzcnt_u64(val);
-}
-template<> inline int ctz(unsigned val)
-{
-    return (int)_tzcnt_u32(val);
-}
-template<> inline int ctz(unsigned long long val)
-{
-    return (int)_tzcnt_u64(val);
-}
-#else
-template<> inline int clz(unsigned val)
-{
-    unsigned long count;
-    return _BitScanReverse(&count, val) ^ 31;
-}
-template<> inline int clz(unsigned long long val)
-{
-    unsigned long count;
-    return _BitScanReverse64(&count, val) ^ 63;
-}
-template<> inline int ctz(unsigned val)
-{
-    unsigned long count;
-    return _BitScanForward(&count, val);
-}
-template<> inline int ctz(unsigned long long val)
-{
-    unsigned long count;
-    return _BitScanForward64(&count, val);
-}
-#endif
-#endif
 
 /*
  * ~~~===~~~
