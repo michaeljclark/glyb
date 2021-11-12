@@ -274,6 +274,12 @@ shows text selection and line editing.
 
 ![glglyph](/images/glglyph.png)
 
+### gllayout
+
+shows rudimentary text layout support.
+
+![gllayout](/images/gllayout.png)
+
 ### glemoji
 
 shows color emoji glyph rendering.
