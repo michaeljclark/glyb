@@ -812,7 +812,7 @@ void Canvas::emit(draw_list &batch)
             AShape &llshape = ctx->shapes[shape->ll_shape_num];
             vec2 pos = shape->get_position() + llshape.offset;
             vec2 halfSize = llshape.size / 2.0f;
-            float padding = llshape.stroke_width * 0.5;
+            float padding = llshape.stroke_width * 0.5f;
             Brush fill_brush = get_brush((int)llshape.fill_brush);
             uint32_t c = 0xffffffff;
             rect(batch, tbo_iid,
@@ -846,7 +846,7 @@ void Canvas::emit(draw_list &batch)
             AShape &llshape = ctx->shapes[shape->ll_shape_num];
             vec2 pos = shape->get_position() + llshape.offset;
             vec2 halfSize = llshape.size / 2.0f;
-            float padding = llshape.stroke_width * 0.5;
+            float padding = llshape.stroke_width * 0.5f;
             Brush fill_brush = get_brush((int)llshape.fill_brush);
             uint32_t c = 0xffffffff;
             rect(batch, tbo_iid,
@@ -893,7 +893,7 @@ void Canvas::emit(draw_list &batch)
             AShape &llshape = ctx->shapes[shape->ll_shape_num];
             vec2 pos = shape->get_position();
             float radius = shape->get_radius();
-            float padding = llshape.stroke_width * 0.5;
+            float padding = llshape.stroke_width * 0.5f;
             Brush fill_brush = get_brush((int)llshape.fill_brush);
             uint32_t c = 0xffffffff;
             rect(batch, tbo_iid,
@@ -915,7 +915,7 @@ void Canvas::emit(draw_list &batch)
             AShape &llshape = ctx->shapes[shape->ll_shape_num];
             vec2 pos = shape->get_position();
             vec2 halfSize = shape->get_halfsize();
-            float padding = llshape.stroke_width * 0.5;
+            float padding = llshape.stroke_width * 0.5f;
             Brush fill_brush = get_brush((int)llshape.fill_brush);
             uint32_t c = 0xffffffff;
             rect(batch, tbo_iid,
@@ -939,7 +939,7 @@ void Canvas::emit(draw_list &batch)
             AShape &llshape = ctx->shapes[shape->ll_shape_num];
             vec2 pos = shape->get_position();
             vec2 halfSize = shape->get_halfsize();
-            float padding = llshape.stroke_width * 0.5;
+            float padding = llshape.stroke_width * 0.5f;
             Brush fill_brush = get_brush((int)llshape.fill_brush);
             uint32_t c = 0xffffffff;
             rect(batch, tbo_iid,

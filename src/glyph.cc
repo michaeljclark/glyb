@@ -233,8 +233,8 @@ atlas_entry font_atlas::create(font_face *face, int font_size, int glyph,
 
 void font_atlas::create_uvs(float uv[4], bin_rect r)
 {
-    float x1 = r.a.x,       y1 = r.a.y;
-    float x2 = r.b.x - 1.0, y2 = r.b.y - 1.0;
+    float x1 = (float)r.a.x,        y1 = (float)r.a.y;
+    float x2 = (float)r.b.x - 1.0f, y2 = (float)r.b.y - 1.0f;
 
     uv[0] = x1/width;
     uv[1] = y2/width;
@@ -627,7 +627,6 @@ atlas_entry glyph_renderer_color_ft::render(font_atlas *atlas, font_face_ft *fac
     FT_Face ftface;
     FT_Error fterr;
     FT_GlyphSlot ftglyph;
-    FT_Raster_Params rp;
     FT_Bitmap *bitmap;
     int ox, oy, w, h;
     atlas_entry ae;
@@ -653,7 +652,7 @@ atlas_entry glyph_renderer_color_ft::render(font_atlas *atlas, font_face_ft *fac
         }
         FT_Bitmap_Size *bsize = &ftface->available_sizes[ftface->num_fixed_sizes-1];
         FT_Set_Pixel_Sizes(ftface, bsize->x_ppem/64, bsize->y_ppem/64);
-        bitmap_size = bsize->x_ppem;
+        bitmap_size = (float)bsize->x_ppem;
     }
 
     /* load glyph */
@@ -679,7 +678,7 @@ atlas_entry glyph_renderer_color_ft::render(font_atlas *atlas, font_face_ft *fac
 
     /* create atlas entry for glyph using dimensions from bitmap */
     if (bitmap_size > 0) {
-        ae = atlas->create(face, 0, glyph, bitmap_size, ox, oy-h, w, h);
+        ae = atlas->create(face, 0, glyph, (int)bitmap_size, ox, oy-h, w, h);
     } else {
         ae = atlas->create(face, font_size, glyph, font_size, ox, oy-h, w, h);
     }
