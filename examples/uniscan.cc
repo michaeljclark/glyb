@@ -18,6 +18,7 @@
 #include <memory>
 #include <string>
 #include <algorithm>
+#include <iterator>
 #include <unordered_set>
 
 #include "utf8.h"
