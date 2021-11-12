@@ -93,10 +93,10 @@ The project also contains several OpenGL examples using the library.
 ### Dependencies
 
 glyb:
-[FreeType](https://github.com/aseprite/freetype2)
+[FreeType](https://github.com/freetype/freetype.git)
 [†](https://www.freetype.org/),
 [HarfBuzz](https://github.com/harfbuzz/harfbuzz)
-[†](https://www.freedesktop.org/wiki/Software/HarfBuzz/),
+[†](https://harfbuzz.github.io/),
 [msdfgen](https://github.com/Chlumsky/msdfgen)
 [†](https://github.com/Chlumsky/msdfgen/files/3050967/thesis.pdf),
 [zlib](https://github.com/madler/zlib.git)

@@ -89,23 +89,20 @@ include_directories(third_party/freetype2/include/freetype/config)
 
 ## harfbuzz
 set(HB_HAVE_FREETYPE ON CACHE BOOL "Enable FreeType Integration" FORCE)
-set(HAVE_FT_GET_VAR_BLEND_COORDINATES ON CACHE BOOL "Have function FT_Get_Var_Blend_Coordinates" FORCE)
-set(HAVE_FT_SET_VAR_BLEND_COORDINATES ON CACHE BOOL "Have function FT_Set_Var_Blend_Coordinates" FORCE)
-set(HAVE_FT_DONE_MM_VAR OFF CACHE BOOL "Have function FT_Done_MM_Var" FORCE)
 add_subdirectory(third_party/harfbuzz)
 include_directories(third_party/harfbuzz/src)
 
 ## imgui
 set(IMGUI_SOURCES
-  third_party/imgui/examples/imgui_impl_glfw.cpp
-  third_party/imgui/examples/imgui_impl_opengl3.cpp
+  third_party/imgui/backends/imgui_impl_glfw.cpp
+  third_party/imgui/backends/imgui_impl_opengl3.cpp
   third_party/imgui/imgui.cpp
   third_party/imgui/imgui_demo.cpp
   third_party/imgui/imgui_draw.cpp
+  third_party/imgui/imgui_tables.cpp
   third_party/imgui/imgui_widgets.cpp)
 include_directories(third_party/imgui)
-include_directories(third_party/imgui/examples)
-include_directories(third_party/imgui/examples/libs/gl3w)
+include_directories(third_party/imgui/backends)
 add_definitions(-DIMGUI_IMPL_OPENGL_LOADER_GLAD)
 add_library(imgui STATIC ${IMGUI_SOURCES})
 add_dependencies(imgui glad-generate-files)
