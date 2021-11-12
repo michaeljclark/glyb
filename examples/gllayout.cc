@@ -126,11 +126,11 @@ static void update_geometry()
     text_container c;
 
     c.append(text_part("Γειά ",
-        {{ "font-family", "roboto" }, { "font-style", "regular" }, { "font-size", "18" }, { "tracking", "2" }, { "baseline-shift", "9" }, { "color", "#800000" }}));
+        {{ "font-family", "roboto" }, { "font-style", "regular" }, { "font-size", "24" }, { "tracking", "2" }, { "baseline-shift", "9" }, { "color", "#800000" }}));
     c.append(text_part("σου ",
-        {{ "font-family", "roboto" }, { "font-style", "regular" }, { "font-size", "18" }, { "tracking", "2" }, { "baseline-shift", "6" }, { "color", "#008000" }}));
+        {{ "font-family", "roboto" }, { "font-style", "regular" }, { "font-size", "24" }, { "tracking", "2" }, { "baseline-shift", "6" }, { "color", "#008000" }}));
     c.append(text_part("Κόσμε ",
-        {{ "font-family", "roboto" }, { "font-style", "regular" }, { "font-size", "18" }, { "tracking", "2" }, { "baseline-shift", "3" }, { "color", "#000080" }}));
+        {{ "font-family", "roboto" }, { "font-style", "regular" }, { "font-size", "24" }, { "tracking", "2" }, { "baseline-shift", "3" }, { "color", "#000080" }}));
     c.append(text_part(
         "    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
         "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud "
@@ -138,7 +138,7 @@ static void update_geometry()
         "dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. "
         "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt "
         "mollit anim id est laborum.    ",
-        {{ "font-size", "36" }, { "font-style", "regular" }, { "color", "#000040" }}));
+        {{ "font-family", "roboto mono" }, { "font-style", "regular" }, { "font-size", "36" }, { "color", "#000040" }}));
     c.append(text_part(
         "    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
         "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud "
@@ -146,7 +146,15 @@ static void update_geometry()
         "dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. "
         "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt "
         "mollit anim id est laborum.    ",
-        {{ "font-size", "72" }, { "font-style", "bold" }, { "color", "#7f7f9f" }}));
+        {{ "font-family", "roboto" }, { "font-style", "light italic" }, { "font-size", "72" }, { "color", "#7f7f9f" }}));
+    c.append(text_part(
+        "    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
+        "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud "
+        "exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure "
+        "dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. "
+        "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt "
+        "mollit anim id est laborum.    ",
+        {{ "font-family", "roboto" }, { "font-style", "bold" }, { "font-size", "72" }, { "color", "#7f7f9f" }}));
 
     draw_list_clear(batch);
     layout.layout(segments, c, 50, 50, 2400, 700);
