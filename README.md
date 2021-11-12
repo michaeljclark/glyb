@@ -119,11 +119,11 @@ The following code snippet shows glyb's high level text layout interface:
 {
     std::vector<text_segment> segments;
     std::vector<glyph_shape> shapes;
-    std::vector<draw_vertex> vertices;
-    std::vector<uint32_t> indices;
+    draw_list batch;
 
-    text_shaper shaper;
-    text_renderer renderer(&manager);
+    font_manager_ft manager;
+    text_shaper_hb shaper;
+    text_renderer_ft renderer(&manager);
     text_layout layout(&manager, &shaper, &renderer);
     text_container c;
 
@@ -144,8 +144,8 @@ The following code snippet shows glyb's high level text layout interface:
     layout.layout(segments, &c, 50, 50, 900, 700);
     for (auto &segment : segments) {
         shapes.clear();
-        shaper.shape(shapes, &segment);
-        renderer.render(vertices, indices, shapes, &segment);
+        shaper.shape(shapes, segment);
+        renderer.render(batch, shapes, segment);
     }
 }
 ```
