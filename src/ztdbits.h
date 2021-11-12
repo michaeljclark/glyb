@@ -1,7 +1,7 @@
 #pragma once
 
 /*
- * stdbits.h
+ * ztdbits.h
  *
  * This header defines the following functions:
  *

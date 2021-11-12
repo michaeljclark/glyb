@@ -9,8 +9,8 @@
 #include <numeric>
 #include <functional>
 
-#include "stdbits.h"
-#include "stdendian.h"
+#include "ztdbits.h"
+#include "ztdendian.h"
 
 #ifdef _WIN32
 typedef long long ssize_t;

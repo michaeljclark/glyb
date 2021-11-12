@@ -1,7 +1,7 @@
 #pragma once
 
 /*
- * stdendian.h
+ * ztdendian.h
  *
  * This header defines the following endian macros as defined here:
  *
