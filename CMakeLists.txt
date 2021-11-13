@@ -144,7 +144,7 @@ foreach(prog IN ITEMS bitcode ftkitty ftrender fontdb fontscan genatlas uniscan)
 endforeach(prog)
 
 ## OpenGL examples
-foreach(prog IN ITEMS glbinpack gledit glemoji glgraph glglyph glfont gllayout glsimple gldemo)
+foreach(prog IN ITEMS glbinpack glemoji glgraph glglyph glfont gllayout glsimple gldemo)
   add_executable(${prog} examples/${prog}.cc)
   target_link_libraries(${prog} ${GLYB_LIBS} ${CMAKE_DL_LIBS} glad glfw)
 endforeach(prog)
