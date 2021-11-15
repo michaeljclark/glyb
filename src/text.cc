@@ -400,10 +400,10 @@ void text_layout::style(text_segment &segment, text_span &part)
         baseline_shift_default);
     segment.tracking = lookupFloat(part.tags, "tracking",
         tracking_default);
-    segment.line_spacing = lookupFloat(part.tags, "line-spacing");
+    segment.line_height = lookupFloat(part.tags, "line-height");
 
-    if (segment.line_spacing == 0) {
-        segment.line_spacing = roundf((float)static_cast<font_face_ft*>
+    if (segment.line_height == 0) {
+        segment.line_height = roundf((float)static_cast<font_face_ft*>
             (segment.face)->get_height(segment.font_size) / 64.0f);
     }
 
@@ -441,7 +441,7 @@ void text_layout::layout(std::vector<text_segment> &segments,
 
         /* set segment position */
         segment.x = (float)dx;
-        segment.y = (float)dy + segment.line_spacing;
+        segment.y = (float)dy + segment.line_height;
 
         /* measure text, splitting over multiple lines */
         float segment_width = 0;
@@ -482,12 +482,12 @@ void text_layout::layout(std::vector<text_segment> &segments,
 
             /* advance to next line */
             dx = x;
-            dy += (int)segment.line_spacing;
+            dy += (int)segment.line_height;
 
             /* loop with remaining text */
             segment.text = s2;
             segment.x = (float)dx;
-            segment.y = (float)dy + segment.line_spacing;
+            segment.y = (float)dy + segment.line_height;
         }
 
         /* add segment to the list */
@@ -497,7 +497,7 @@ void text_layout::layout(std::vector<text_segment> &segments,
         dx += (int)ceilf(segment_width);
         if (dx > width) {
             dx = x;
-            dy += (int)segment.line_spacing;
+            dy += (int)segment.line_height;
         }
         if (dy > y + height) {
             break;

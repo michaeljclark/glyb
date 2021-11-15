@@ -178,7 +178,7 @@ struct text_segment
     int font_size;
     float x, y;
     float baseline_shift;
-    float line_spacing;
+    float line_height;
     float tracking;
     uint32_t color;
 
@@ -190,12 +190,12 @@ struct text_segment
 
 inline text_segment::text_segment(std::string text, std::string language) :
     text(text), language(language), face(nullptr), font_size(0),
-    x(0), y(0), baseline_shift(0), line_spacing(0), tracking(0), color(0) {}
+    x(0), y(0), baseline_shift(0), line_height(0), tracking(0), color(0) {}
 
 inline text_segment::text_segment(std::string text, std::string language,
     font_face *face, int font_size, float x, float y, uint32_t color) :
     text(text), language(language), face(face), font_size(font_size),
-    x(x), y(y), baseline_shift(0), line_spacing(0), tracking(0), color(color) {}
+    x(x), y(y), baseline_shift(0), line_height(0), tracking(0), color(color) {}
 
 
 /*

@@ -139,7 +139,7 @@ The following code snippet shows glyb's high level text layout interface:
          { "font-style", "bold" },
          { "font-size", "36" },
          { "color", "#7f7f9f" },
-         { "line-spacing", "48" }}));
+         { "line-height", "48" }}));
 
     layout.layout(segments, &c, 50, 50, 900, 700);
     for (auto &segment : segments) {

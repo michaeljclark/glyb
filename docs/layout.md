@@ -52,7 +52,7 @@ The following attributes are supported by `text_layout`.
   - integer pixels, y-shift, positive value raises
 - `tracking`
   - integer pixels, y-spacing, added to character advance
-- `line-spacing`
+- `line-height`
   - integer pixels, y-height, added for new lines
 - `color`
   - HTML RGBA little-endian e.g. #ff000000 is black
