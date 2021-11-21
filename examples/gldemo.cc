@@ -310,8 +310,6 @@ static void draw(double tn, double td, bool skip = false)
         glDrawElements(cmd_mode_gl(cmd.mode), cmd.count, GL_UNSIGNED_INT,
             (void*)(cmd.offset * sizeof(uint)));
     }
-
-    glfwSwapBuffers(window);
 }
 
 static void display()
@@ -331,7 +329,7 @@ static void update_uniforms(program *prog)
     uniform_1i(prog, "u_tex0", 0);
 }
 
-static void reshape(int framebuffer_width, int framebuffer_height)
+static void reshape()
 {
     glfwGetWindowSize(window, &window_width, &window_height);
     glfwGetFramebufferSize(window, &framebuffer_width, &framebuffer_height);
@@ -401,9 +399,17 @@ static void initialize()
     glLineWidth(1.0);
 }
 
-static void resize(GLFWwindow* window, int framebuffer_width, int framebuffer_height)
+static void refresh(GLFWwindow* window)
 {
-    reshape(framebuffer_width, framebuffer_height);
+    display();
+    glfwSwapBuffers(window);
+}
+
+static void resize(GLFWwindow* window, int, int)
+{
+    reshape();
+    display();
+    glfwSwapBuffers(window);
 }
 
 static void keyboard(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -463,13 +469,15 @@ static void glyb_gui(int argc, char **argv)
     glfwSwapInterval(1);
     glfwSetKeyCallback(window, keyboard);
     glfwSetFramebufferSizeCallback(window, resize);
+    glfwSetWindowRefreshCallback(window, refresh);
     glfwGetWindowSize(window, &window_width, &window_height);
     glfwGetFramebufferSize(window, &framebuffer_width, &framebuffer_height);
 
     initialize();
-    reshape(framebuffer_width, framebuffer_height);
+    reshape();
     while (!glfwWindowShouldClose(window)) {
         display();
+        glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
@@ -528,7 +536,7 @@ static void glyb_offline(int argc, char **argv)
 
     fbo_initialize();
     initialize();
-    reshape(window_width, window_height);
+    reshape();
 
     size_t frame_num = 0;
     for (size_t i = 1; i <= frame_skip; i++) {
@@ -668,7 +676,9 @@ void parse_options(int argc, char **argv)
 
 /* entry point */
 
-int main(int argc, char **argv)
+#include "app.h"
+
+static int app_main(int argc, char **argv)
 {
     parse_options(argc, argv);
 
@@ -680,3 +690,5 @@ int main(int argc, char **argv)
 
     return 0;
 }
+
+declare_main(app_main)

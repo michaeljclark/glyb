@@ -93,6 +93,8 @@ static void display()
         auto ti = tex_map.find(img.iid);
         if (ti == tex_map.end()) {
             tex_map[img.iid] = image_create_texture(img);
+        } else {
+            image_update_texture(tex_map[img.iid], img);
         }
     }
     glBindVertexArray(vao);
@@ -102,11 +104,9 @@ static void display()
         glDrawElements(cmd_mode_gl(cmd.mode), cmd.count, GL_UNSIGNED_INT,
             (void*)(cmd.offset * sizeof(uint)));
     }
-
-    glfwSwapBuffers(window);
 }
 
-static void reshape(int framebuffer_width, int framebuffer_height)
+static void reshape()
 {
     glfwGetWindowSize(window, &window_width, &window_height);
     glfwGetFramebufferSize(window, &framebuffer_width, &framebuffer_height);
@@ -276,9 +276,17 @@ static void initialize()
 
 /* GLFW GUI entry point */
 
-static void resize(GLFWwindow* window, int framebuffer_width, int framebuffer_height)
+static void refresh(GLFWwindow* window)
 {
-    reshape(framebuffer_width, framebuffer_height);
+    display();
+    glfwSwapBuffers(window);
+}
+
+static void resize(GLFWwindow* window, int, int)
+{
+    reshape();
+    display();
+    glfwSwapBuffers(window);
 }
 
 static void glfont(int argc, char **argv)
@@ -292,14 +300,16 @@ static void glfont(int argc, char **argv)
     gladLoadGL();
     glfwSwapInterval(1);
     glfwSetFramebufferSizeCallback(window, resize);
+    glfwSetWindowRefreshCallback(window, refresh);
     glfwSetKeyCallback(window, keyboard);
     glfwGetWindowSize(window, &window_width, &window_height);
     glfwGetFramebufferSize(window, &framebuffer_width, &framebuffer_height);
 
     initialize();
-    reshape(framebuffer_width, framebuffer_height);
+    reshape();
     while (!glfwWindowShouldClose(window)) {
         display();
+        glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
@@ -394,9 +404,13 @@ static void parse_options(int argc, char **argv)
 
 /* entry point */
 
-int main(int argc, char **argv)
+#include "app.h"
+
+static int app_main(int argc, char **argv)
 {
     parse_options(argc, argv);
     glfont(argc, argv);
     return 0;
 }
+
+declare_main(app_main)

@@ -148,11 +148,17 @@ endforeach(prog)
 foreach(prog IN ITEMS glbinpack glemoji glgraph glglyph glfont gllayout glsimple gldemo)
   add_executable(${prog} examples/${prog}.cc)
   target_link_libraries(${prog} ${GLYB_LIBS} ${CMAKE_DL_LIBS} glad glfw)
+  if(WIN32)
+    set_property(TARGET ${prog} PROPERTY WIN32_EXECUTABLE TRUE)
+  endif()
 endforeach(prog)
 
 # ImGUI examples
 add_executable(glcanvas examples/glcanvas.cc)
 target_link_libraries(glcanvas ${GLYB_LIBS} ${CMAKE_DL_LIBS} glad glfw imgui)
+if(WIN32)
+  set_property(TARGET glcanvas PROPERTY WIN32_EXECUTABLE TRUE)
+endif()
 
 # glyb tests
 file(GLOB BINPACK_TESTS tests/*.cc)

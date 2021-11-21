@@ -93,7 +93,6 @@ static void display()
         }
         glDrawElements(mode, cmd.count, GL_UNSIGNED_INT, (void*)(cmd.offset * sizeof(uint)));
     }
-    glfwSwapBuffers(window);
 }
 
 static void reshape(int width, int height)
@@ -346,9 +345,17 @@ static void initialize()
 
 /* GLFW GUI entry point */
 
+static void refresh(GLFWwindow* window)
+{
+    display();
+    glfwSwapBuffers(window);
+}
+
 static void resize(GLFWwindow* window, int width, int height)
 {
     reshape(width, height);
+    display();
+    glfwSwapBuffers(window);
 }
 
 static void binpack_gui(int argc, char **argv)
@@ -362,6 +369,7 @@ static void binpack_gui(int argc, char **argv)
     gladLoadGL();
     glfwSwapInterval(1);
     glfwSetFramebufferSizeCallback(window, resize);
+    glfwSetWindowRefreshCallback(window, refresh);
     glfwSetKeyCallback(window, keyboard);
     glfwGetFramebufferSize(window, &width, &height);
 
@@ -369,6 +377,7 @@ static void binpack_gui(int argc, char **argv)
     reshape(width, height);
     while (!glfwWindowShouldClose(window)) {
         display();
+        glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
@@ -574,7 +583,9 @@ void parse_options(int argc, char **argv)
 
 /* entry point */
 
-int main(int argc, char **argv)
+#include "app.h"
+
+static int app_main(int argc, char **argv)
 {
     parse_options(argc, argv);
 
@@ -586,3 +597,5 @@ int main(int argc, char **argv)
 
     return 0;
 }
+
+declare_main(app_main)

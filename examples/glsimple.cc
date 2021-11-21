@@ -78,8 +78,6 @@ static void display()
         glDrawElements(cmd_mode_gl(cmd.mode), cmd.count, GL_UNSIGNED_INT,
             (void*)(cmd.offset * sizeof(uint)));
     }
-
-    glfwSwapBuffers(window);
 }
 
 static void reshape(int width, int height)
@@ -160,9 +158,17 @@ static void initialize()
 
 /* GLFW GUI entry point */
 
+static void refresh(GLFWwindow* window)
+{
+    display();
+    glfwSwapBuffers(window);
+}
+
 static void resize(GLFWwindow* window, int width, int height)
 {
     reshape(width, height);
+    display();
+    glfwSwapBuffers(window);
 }
 
 static void glfont(int argc, char **argv)
@@ -170,18 +176,21 @@ static void glfont(int argc, char **argv)
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, CTX_OPENGL_MAJOR);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, CTX_OPENGL_MINOR);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
     window = glfwCreateWindow(width, height, argv[0], NULL, NULL);
     glfwMakeContextCurrent(window);
     gladLoadGL();
     glfwSwapInterval(1);
     glfwSetFramebufferSizeCallback(window, resize);
+    glfwSetWindowRefreshCallback(window, refresh);
     glfwGetFramebufferSize(window, &width, &height);
 
     initialize();
     reshape(width, height);
     while (!glfwWindowShouldClose(window)) {
         display();
+        glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
@@ -191,8 +200,12 @@ static void glfont(int argc, char **argv)
 
 /* entry point */
 
-int main(int argc, char **argv)
+#include "app.h"
+
+static int app_main(int argc, char **argv)
 {
     glfont(argc, argv);
     return 0;
 }
+
+declare_main(app_main)

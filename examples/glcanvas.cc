@@ -598,7 +598,7 @@ static void update_uniforms(program *prog)
     uniform_1i(prog, "tb_brush", 2);
 }
 
-static void reshape(int framebuffer_width, int framebuffer_height)
+static void reshape()
 {
     glfwGetWindowSize(window, &window_width, &window_height);
     glfwGetFramebufferSize(window, &framebuffer_width, &framebuffer_height);
@@ -742,9 +742,18 @@ static void initialize()
 
 /* GLFW GUI entry point */
 
-static void resize(GLFWwindow* window, int framebuffer_width, int framebuffer_height)
+static void refresh(GLFWwindow* window)
 {
-    reshape(framebuffer_width, framebuffer_height);
+    display();
+    glfwSwapBuffers(window);
+}
+
+static void resize(GLFWwindow* window, int, int)
+{
+    reshape();
+    update();
+    display();
+    glfwSwapBuffers(window);
 }
 
 static void glcanvas(int argc, char **argv)
@@ -762,6 +771,7 @@ static void glcanvas(int argc, char **argv)
     glfwSetMouseButtonCallback(window, mouse_button);
     glfwSetCursorPosCallback(window, cursor_position);
     glfwSetFramebufferSizeCallback(window, resize);
+    glfwSetWindowRefreshCallback(window, refresh);
     glfwGetWindowSize(window, &window_width, &window_height);
     glfwGetFramebufferSize(window, &framebuffer_width, &framebuffer_height);
 
@@ -773,7 +783,7 @@ static void glcanvas(int argc, char **argv)
     ImGui_ImplOpenGL3_Init("#version 130");
 
     initialize();
-    reshape(framebuffer_width, framebuffer_height);
+    reshape();
     while (!glfwWindowShouldClose(window)) {
         update();
         display();
@@ -835,9 +845,13 @@ void parse_options(int argc, char **argv)
 
 /* entry point */
 
-int main(int argc, char **argv)
+#include "app.h"
+
+static int app_main(int argc, char **argv)
 {
     parse_options(argc, argv);
     glcanvas(argc, argv);
     return 0;
 }
+
+declare_main(app_main)
