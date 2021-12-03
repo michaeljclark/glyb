@@ -68,7 +68,7 @@ static program prog_simple, prog_msdf, prog_canvas;
 static GLuint vao, vbo, ibo;
 static std::map<int,GLuint> tex_map;
 static font_manager_ft manager;
-static Canvas canvas(&manager);
+static MVGCanvas canvas(&manager);
 
 static mat4 mvp;
 static GLFWwindow* window;
@@ -150,8 +150,8 @@ static void do_example_text1()
 
     if (canvas.num_drawables() > 0) return;
 
-    canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0,0,0,1) }});
-    Text *t = canvas.new_text();
+    canvas.set_fill_brush(MVGBrush{MVGBrushSolid, { }, { color(0,0,0,1) }});
+    MVGText *t = canvas.new_text();
     t->set_face(face);
     t->set_halign(text_halign_center);
     t->set_valign(text_valign_center);
@@ -164,11 +164,11 @@ static void do_example_text1()
     vec2 text_size = t->get_text_size();
 
     /* create rounded rectangle with a gradient fill */
-    canvas.set_fill_brush(Brush{
-        BrushAxial, { vec2(0,0), vec2(0, text_size.y*2.0f) },
+    canvas.set_fill_brush(MVGBrush{
+        MVGBrushAxial, { vec2(0,0), vec2(0, text_size.y*2.0f) },
         { color(0.80f,0.80f,0.80f,1.0f), color(0.50f,0.50f,0.50f,1.0f) }
     });
-    Rectangle *r = canvas.new_rounded_rectangle(vec2(0),
+    MVGRect *r = canvas.new_rounded_rectangle(vec2(0),
         vec2(text_size.x/1.85f,text_size.y), text_size.y/2.0f);
 
     /* trick to move the rounded rectangle behind the text */
@@ -197,15 +197,15 @@ static void do_example_circle1()
 
     float l = 200.0f, r = 90.0f;
 
-    canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0.5f,0.5f,0.5f,1.0f) }});
-    canvas.set_stroke_brush(Brush{BrushSolid, { }, { color(0.3f,0.3f,0.3f,1.0f) }});
+    canvas.set_fill_brush(MVGBrush{MVGBrushSolid, { }, { color(0.5f,0.5f,0.5f,1.0f) }});
+    canvas.set_stroke_brush(MVGBrush{MVGBrushSolid, { }, { color(0.3f,0.3f,0.3f,1.0f) }});
     canvas.set_stroke_width(5.0f);
     canvas.new_circle(vec2(0), r);
 
     for (size_t i = 0; i < 5; i++) {
         float phi = (float)i * (float)M_PI * (2.0f/5.0f) - rot * (float)M_PI / 180.0f;
-        canvas.set_fill_brush(Brush{BrushSolid, { }, { colors[i] }});
-        canvas.set_stroke_brush(Brush{BrushSolid, { }, { colors[i].brighten(0.5) }});
+        canvas.set_fill_brush(MVGBrush{MVGBrushSolid, { }, { colors[i] }});
+        canvas.set_stroke_brush(MVGBrush{MVGBrushSolid, { }, { colors[i].brighten(0.5) }});
         canvas.new_circle(vec2(sinf(phi) * l, cosf(phi) * l), r);
     }
 }
@@ -216,20 +216,20 @@ static void do_example_curve1()
 
     if (canvas.num_drawables() > 0) return;
 
-    canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0.0f,0.0f,0.0f,0.0f) }});
-    canvas.set_stroke_brush(Brush{BrushSolid, { }, { color(0.3f,0.3f,0.3f,1.0f) }});
+    canvas.set_fill_brush(MVGBrush{MVGBrushSolid, { }, { color(0.0f,0.0f,0.0f,0.0f) }});
+    canvas.set_stroke_brush(MVGBrush{MVGBrushSolid, { }, { color(0.3f,0.3f,0.3f,1.0f) }});
     canvas.set_stroke_width(5.0f);
 
     for (size_t x = 0; x < 4; x++)
     {
         for (size_t y = 0; y < 3; y++)
         {
-            Path *p1 = canvas.new_path({0.0f,0.0f},{100.0f,100.0f});
+            MVGPath *p1 = canvas.new_path({0.0f,0.0f},{100.0f,100.0f});
             p1->pos = { -380.0f + x * 220.0f, -270.0f + y * 220.0f };
             p1->new_quadratic_curve({0.0f,0.0f}, {0.0f,50.0f}, {50.0f,50.0f});
             p1->new_quadratic_curve({50.0f,50.0f}, {100.0f,50.0f}, {100.0f,100.0f});
 
-            Path *p2 = canvas.new_path({0.0f,0.0f},{100.0f,100.0f});
+            MVGPath *p2 = canvas.new_path({0.0f,0.0f},{100.0f,100.0f});
             p2->pos = { -270.0f + x * 220.0f, -160.0f + y * 220.0f };
             p2->new_quadratic_curve({0.0f,0.0f}, {50.0f,0.0f}, {50.0f,50.0f});
             p2->new_quadratic_curve({50.0f,50.0f}, {50.0f,100.0f}, {100.0f,100.0f});
@@ -248,28 +248,28 @@ static void do_example_node1()
         mono_bold = manager.findFontByPath(mono_bold_font_path);
     }
 
-    TextStyle text_style_default{
+    MVGTextStyle text_style_default{
         12.0f,
         mono_norm,
         text_halign_left,
         text_valign_center,
         "en",
-        Brush{BrushSolid, { }, { color(1.0f,1.0f,1.0f,1.0f) }},
-        Brush{BrushNone, { }, { }}
+        MVGBrush{MVGBrushSolid, { }, { color(1.0f,1.0f,1.0f,1.0f) }},
+        MVGBrush{MVGBrushNone, { }, { }}
     };
 
-    canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0.15f,0.15f,0.15f,1.0f) }});
-    canvas.set_stroke_brush(Brush{BrushSolid, { }, { color(0.7f,0.7f,0.7f,1.0f) }});
+    canvas.set_fill_brush(MVGBrush{MVGBrushSolid, { }, { color(0.15f,0.15f,0.15f,1.0f) }});
+    canvas.set_stroke_brush(MVGBrush{MVGBrushSolid, { }, { color(0.7f,0.7f,0.7f,1.0f) }});
     canvas.set_stroke_width(1.0f);
 
     float x = -300.0f, y = 20.0f;
     size_t num_reg = 32;
     float cellh = 18.0f, regx = 70.0f, regw = 140.0f;
     float w = 250.0f, h = cellh * num_reg + 50.0f;
-    Rectangle *r1 = canvas.new_rounded_rectangle(vec2(0), vec2(w/2,h/2), 5.0f);
+    MVGRect *r1 = canvas.new_rounded_rectangle(vec2(0), vec2(w/2,h/2), 5.0f);
     r1->pos = { x, y };
 
-    Text *th1 = canvas.new_text(text_style_default);
+    MVGText *th1 = canvas.new_text(text_style_default);
     th1->pos = { x - w/2 + 10.0f, y - h/2 + 20.0f };
     th1->set_face(mono_bold);
     th1->set_text("Register File");
@@ -282,33 +282,33 @@ static void do_example_node1()
 
         std::string regname = std::string("x") + std::to_string(i);
 
-        Text *t1 = canvas.new_text(text_style_default);
+        MVGText *t1 = canvas.new_text(text_style_default);
         t1->pos = { x - w/2 + 10.0f, yo };
         t1->set_text(regname);
 
-        canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0.3f,0.3f,0.3f,1.0f) }});
+        canvas.set_fill_brush(MVGBrush{MVGBrushSolid, { }, { color(0.3f,0.3f,0.3f,1.0f) }});
 
-        Rectangle *r2 = canvas.new_rectangle(vec2(0), vec2(regw/2,7.0f));
+        MVGRect *r2 = canvas.new_rectangle(vec2(0), vec2(regw/2,7.0f));
         r2->pos = { x - w/2 + regx + regw/2, yo + 1 };
 
-        Text *t2 = canvas.new_text(text_style_default);
+        MVGText *t2 = canvas.new_text(text_style_default);
         t2->pos = { x - w/2 + regx + 5.0f, yo };
         t2->set_text("0xffffffffffffffff");
 
-        canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0.15f,0.15f,0.15f,1.0f) }});
+        canvas.set_fill_brush(MVGBrush{MVGBrushSolid, { }, { color(0.15f,0.15f,0.15f,1.0f) }});
 
         out_c[i] = { x + w/2 - 20.0f, yo };
-        Circle *c1 = canvas.new_circle(vec2(0), 5.0f);
+        MVGCircle *c1 = canvas.new_circle(vec2(0), 5.0f);
         c1->pos = out_c[i];
     }
 
     x = 20.0f, y = -100.0f;
     w = 300.0f, h = 75.0f;
     regx = 150.0f;
-    Rectangle *r2 = canvas.new_rounded_rectangle(vec2(0), vec2(w/2,h/2), 5.0f);
+    MVGRect *r2 = canvas.new_rounded_rectangle(vec2(0), vec2(w/2,h/2), 5.0f);
     r2->pos = { x, y };
 
-    Text *th2 = canvas.new_text(text_style_default);
+    MVGText *th2 = canvas.new_text(text_style_default);
     th2->pos = { x - w/2 + 10.0f, y - h/2 + 20.0f };
     th2->set_face(mono_bold);
     th2->set_text("Register Monitor");
@@ -318,32 +318,32 @@ static void do_example_node1()
         float yo = y + 10.0f;
 
         in_c[0] = { x - w/2 + 20.0f, yo };
-        Circle *c1 = canvas.new_circle(vec2(0), 5.0f);
+        MVGCircle *c1 = canvas.new_circle(vec2(0), 5.0f);
         c1->pos = in_c[0];
 
-        Text *t1 = canvas.new_text(text_style_default);
+        MVGText *t1 = canvas.new_text(text_style_default);
         t1->pos = { x - w/2 + 40.0f, yo };
         t1->set_text("Match Value");
 
-        canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0.3f,0.3f,0.3f,1.0f) }});
+        canvas.set_fill_brush(MVGBrush{MVGBrushSolid, { }, { color(0.3f,0.3f,0.3f,1.0f) }});
 
-        Rectangle *r2 = canvas.new_rectangle(vec2(0), vec2(regw/2,7.0f));
+        MVGRect *r2 = canvas.new_rectangle(vec2(0), vec2(regw/2,7.0f));
         r2->pos = { x - w/2 + regx + regw/2, yo + 1 };
 
-        Text *t2 = canvas.new_text(text_style_default);
+        MVGText *t2 = canvas.new_text(text_style_default);
         t2->pos = { x - w/2 + regx + 5.0f, yo };
         t2->set_text("0xdeadbeaffeedbeef");
 
-        canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0.15f,0.15f,0.15f,1.0f) }});
+        canvas.set_fill_brush(MVGBrush{MVGBrushSolid, { }, { color(0.15f,0.15f,0.15f,1.0f) }});
     }
 
-    canvas.set_stroke_brush(Brush{BrushSolid, { }, { color(0.7f,0.7f,0.7f,1.0f) }});
+    canvas.set_stroke_brush(MVGBrush{MVGBrushSolid, { }, { color(0.7f,0.7f,0.7f,1.0f) }});
     canvas.set_stroke_width(3.0f);
 
     vec2 delta_c = in_c[0] - out_c[0];
     float pw = delta_c.x, ph = delta_c.y;
     pw += 20; ph += 20;
-    Path *p1 = canvas.new_path({0.0f,0.0f},{pw,ph});
+    MVGPath *p1 = canvas.new_path({0.0f,0.0f},{pw,ph});
     p1->new_quadratic_curve({10,10}, {pw/2,10}, {pw/2,ph/2});
     p1->new_quadratic_curve({pw/2,ph/2}, {pw/2,ph-10}, {pw-10,ph-10});
     p1->pos = out_c[0] + delta_c/2.0f;
@@ -359,7 +359,7 @@ std::string to_binary(uint64_t v, size_t n)
     return s;
 }
 
-static void make_path(Canvas &canvas, vec2 from, vec2 to,
+static void make_path(MVGCanvas &canvas, vec2 from, vec2 to,
     float nr = 0.4f, float sr = 0.6f, float cr = 0.9f)
 {
     vec2 delta_c = to - from;
@@ -368,21 +368,21 @@ static void make_path(Canvas &canvas, vec2 from, vec2 to,
     if (ph < 0) {
         float a = (-ph+2*p), b = (pw+2*p), c = a/2.0f, d = b * nr;
         float e = c - (ph/2.0f*cr), f = c + (ph/2.0f*cr);
-        Path *p1 = canvas.new_path({0.0f,0.0f}, {b,a});
+        MVGPath *p1 = canvas.new_path({0.0f,0.0f}, {b,a});
         p1->new_quadratic_curve({p,a-p}, {d,e}, {d,c});
         p1->new_quadratic_curve({d,c}, {d,f}, {b-p,p});
         p1->pos = from + delta_c/2.0f;
     } else {
         float a = (ph+2*p), b = (pw+2*p), c = a/2.0f, d = b * sr;
         float e = c - (ph/2.0f*cr), f = c + (ph/2.0f*cr);
-        Path *p1 = canvas.new_path({0.0f,0.0f}, {b,a});
+        MVGPath *p1 = canvas.new_path({0.0f,0.0f}, {b,a});
         p1->new_quadratic_curve({p,p}, {d,e}, {d,c});
         p1->new_quadratic_curve({d,c}, {d,f}, {b-p,a-p});
         p1->pos = from + delta_c/2.0f;
     }
 }
 
-static void wire_bits(Canvas &canvas,
+static void wire_bits(MVGCanvas &canvas,
     float x, float y, int xi, int yi, int tyi,
     float w, float h, float xs, float ys, int ss, int ds,
     float sw = 3.0f, float cr = 5.0f, float cs = 1.0f, float l = 10.0f)
@@ -390,8 +390,8 @@ static void wire_bits(Canvas &canvas,
     vec2 from = { x + xs*(xi-1) + w/2 - l, y + ys*yi     + ss * h/4 };
     vec2 to   = { x + xs*xi     - w/2 + l, y + ys*tyi    + ds * h/4 };
     canvas.set_stroke_width(cs);
-    Circle *c1 = canvas.new_circle(vec2(0), cr);
-    Circle *c2 = canvas.new_circle(vec2(0), cr);
+    MVGCircle *c1 = canvas.new_circle(vec2(0), cr);
+    MVGCircle *c2 = canvas.new_circle(vec2(0), cr);
     c1->pos = from; c2->pos = to;
     canvas.set_stroke_width(sw);
     make_path(canvas, from, to);
@@ -403,17 +403,17 @@ static void do_example_shuffle1()
 
     if (canvas.num_drawables() > 0) return;
 
-    TextStyle text_style_default{
+    MVGTextStyle text_style_default{
         12.0f,
         sans_norm,
         text_halign_center,
         text_valign_center,
         "en",
-        Brush{BrushSolid, { }, { color(0.0f,0.0f,0.0f,1.0f) }},
-        Brush{BrushNone, { }, { }}
+        MVGBrush{MVGBrushSolid, { }, { color(0.0f,0.0f,0.0f,1.0f) }},
+        MVGBrush{MVGBrushNone, { }, { }}
     };
-    canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0.85f,0.85f,0.85f,1.0f) }});
-    canvas.set_stroke_brush(Brush{BrushSolid, { }, { color(0.65f,0.65f,0.65f,1.0f) }});
+    canvas.set_fill_brush(MVGBrush{MVGBrushSolid, { }, { color(0.85f,0.85f,0.85f,1.0f) }});
+    canvas.set_stroke_brush(MVGBrush{MVGBrushSolid, { }, { color(0.65f,0.65f,0.65f,1.0f) }});
 
     int xlim = 3, ylim = 4;
     float x = -250.0f, y = -200.0f, w = 100.0f, h = 100.0, xs = 250.0f, ys = 150.0;
@@ -421,14 +421,14 @@ static void do_example_shuffle1()
     for (int xi = 0; xi < xlim; xi++) {
         for (int yi = 0; yi < ylim; yi++) {
             canvas.set_stroke_width(1.0f);
-            Rectangle *r1 = canvas.new_rounded_rectangle(vec2(0), vec2(w/2,h/2), 5.0f);
-            Text *h1 = canvas.new_text(text_style_default);
+            MVGRect *r1 = canvas.new_rounded_rectangle(vec2(0), vec2(w/2,h/2), 5.0f);
+            MVGText *h1 = canvas.new_text(text_style_default);
             vec2 pos = { x + xs*xi , y + ys*yi  };
             r1->pos = h1->pos = pos;
             h1->set_text(std::string("ABC").substr(xi,1) + std::to_string(yi+1));
         }
     }
-    canvas.set_fill_brush(Brush{BrushSolid, { }, { color(0.0f,0.0f,0.0f,1.0f) }});
+    canvas.set_fill_brush(MVGBrush{MVGBrushSolid, { }, { color(0.0f,0.0f,0.0f,1.0f) }});
     for (int xi = 0; xi < xlim; xi++) {
         for (int yi = 0; yi < ylim; yi++) {
             {   int tyi = (yi * 2 + 1) % ylim, ss = 1, ds = yi * 2 + 1 >= 4 ? 1 : -1;
@@ -444,8 +444,8 @@ static void do_example_shuffle1()
     for (int yi = 0; yi < ylim; yi++) {
         for (int yj = 0; yj < 2; yj++) {
             std::string t = to_binary((yi << 1) + yj, 3);
-            Text *tl = canvas.new_text(text_style_default);
-            Text *tr = canvas.new_text(text_style_default);
+            MVGText *tl = canvas.new_text(text_style_default);
+            MVGText *tr = canvas.new_text(text_style_default);
             tr->set_halign(text_halign_right);
             tl->set_halign(text_halign_left);
             tl->set_text(t);

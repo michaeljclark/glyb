@@ -613,10 +613,10 @@ struct Visible
     virtual vec3 get_assigned_size() { return assigned_size; }
 
     /* override to initialize */
-    virtual void init(Canvas *c) {};
+    virtual void init(MVGCanvas *c) {};
 
     /* override to implement custom layout */
-    virtual void layout(Canvas *c) { valid = true; };
+    virtual void layout(MVGCanvas *c) { valid = true; };
 
     /* override to intercept events */
     virtual bool dispatch(Event *e) { return false; };
@@ -631,14 +631,14 @@ struct Container : Visible
 
     virtual bool has_children() { return children.size() > 0; }
 
-    virtual void init(Canvas *c)
+    virtual void init(MVGCanvas *c)
     {
         for (auto &o : children) {
             o->init(c);
         }
     }
 
-    virtual void layout(Canvas *c)
+    virtual void layout(MVGCanvas *c)
     {
         for (auto &o : children) {
             o->layout(c);
@@ -708,7 +708,7 @@ struct Root : Container
         }
     }
 
-    virtual void layout(Canvas *c)
+    virtual void layout(MVGCanvas *c)
     {
         if (valid) {
             return;
@@ -726,8 +726,8 @@ struct Frame : Container
     std::string text;
     float click_radius;
 
-    Rectangle *rect;
-    Text *label;
+    MVGRect *rect;
+    MVGText *label;
     vec2 scale;
     vec3 delta;
     vec3 orig_size;
@@ -797,7 +797,7 @@ struct Frame : Container
         }
     }
 
-    virtual void init(Canvas *c)
+    virtual void init(MVGCanvas *c)
     {
         if (!rect) {
             rect = c->new_rounded_rectangle(vec2(0), vec2(0), 0.0f);
@@ -808,13 +808,13 @@ struct Frame : Container
         Container::init(c);
     }
 
-    virtual void layout(Canvas *c)
+    virtual void layout(MVGCanvas *c)
     {
         if (valid) return;
 
-        Brush fill_brush{BrushSolid, {}, { fill_color }};
-        Brush stroke_brush{BrushSolid, {}, { stroke_color }};
-        Brush text_brush{BrushSolid, {}, { text_color }};
+        MVGBrush fill_brush{MVGBrushSolid, {}, { fill_color }};
+        MVGBrush stroke_brush{MVGBrushSolid, {}, { stroke_color }};
+        MVGBrush text_brush{MVGBrushSolid, {}, { text_color }};
 
         vec3 size_remaining = assigned_size - m();
         vec3 half_size = size_remaining / 2.0f;
@@ -833,7 +833,7 @@ struct Frame : Container
         label->set_size(font_size);
         label->set_face(get_font_face());
         label->set_fill_brush(text_brush);
-        label->set_stroke_brush(Brush{BrushNone, {}, {}});
+        label->set_stroke_brush(MVGBrush{MVGBrushNone, {}, {}});
         label->set_stroke_width(0);
         label->set_halign(text_halign_center);
         label->set_valign(text_valign_center);
@@ -1268,12 +1268,12 @@ struct Grid : Container
         }
     }
 
-    virtual void init(Canvas *c)
+    virtual void init(MVGCanvas *c)
     {
         Container::init(c);
     }
 
-    virtual void layout(Canvas *c)
+    virtual void layout(MVGCanvas *c)
     {
         if (valid) return;
 
@@ -1322,8 +1322,8 @@ struct Label : Visible
 {
     std::string text;
 
-    Rectangle *rect;
-    Text *label;
+    MVGRect *rect;
+    MVGText *label;
     vec2 scale;
 
     Label() :
@@ -1361,7 +1361,7 @@ struct Label : Visible
         return (last_sizing = s);
     }
 
-    virtual void init(Canvas *c)
+    virtual void init(MVGCanvas *c)
     {
         if (!rect) {
             rect = c->new_rounded_rectangle(vec2(0), vec2(0), 0.0f);
@@ -1371,13 +1371,13 @@ struct Label : Visible
         }
     }
 
-    virtual void layout(Canvas *c)
+    virtual void layout(MVGCanvas *c)
     {
         if (valid) return;
 
-        Brush fill_brush{BrushSolid, {}, { fill_color }};
-        Brush stroke_brush{BrushSolid, {}, { stroke_color }};
-        Brush text_brush{BrushSolid, {}, { text_color }};
+        MVGBrush fill_brush{MVGBrushSolid, {}, { fill_color }};
+        MVGBrush stroke_brush{MVGBrushSolid, {}, { stroke_color }};
+        MVGBrush text_brush{MVGBrushSolid, {}, { text_color }};
 
         vec3 size_remaining = assigned_size - m();
         vec3 half_size = size_remaining / 2.0f;
@@ -1396,7 +1396,7 @@ struct Label : Visible
         label->set_size(font_size);
         label->set_face(get_font_face());
         label->set_fill_brush(text_brush);
-        label->set_stroke_brush(Brush{BrushNone, {}, {}});
+        label->set_stroke_brush(MVGBrush{MVGBrushNone, {}, {}});
         label->set_stroke_width(0);
         label->set_halign(text_halign_center);
         label->set_valign(text_valign_center);
@@ -1410,8 +1410,8 @@ struct Button : Visible
 {
     std::string text;
 
-    Rectangle *rect;
-    Text *label;
+    MVGRect *rect;
+    MVGText *label;
     vec2 scale;
 
     Button() :
@@ -1449,7 +1449,7 @@ struct Button : Visible
         return (last_sizing = s);
     }
 
-    virtual void init(Canvas *c)
+    virtual void init(MVGCanvas *c)
     {
         if (!rect) {
             rect = c->new_rounded_rectangle(vec2(0), vec2(0), 0.0f);
@@ -1459,13 +1459,13 @@ struct Button : Visible
         }
     }
 
-    virtual void layout(Canvas *c)
+    virtual void layout(MVGCanvas *c)
     {
         if (valid) return;
 
-        Brush fill_brush{BrushSolid, {}, { fill_color }};
-        Brush stroke_brush{BrushSolid, {}, { stroke_color }};
-        Brush text_brush{BrushSolid, {}, { text_color }};
+        MVGBrush fill_brush{MVGBrushSolid, {}, { fill_color }};
+        MVGBrush stroke_brush{MVGBrushSolid, {}, { stroke_color }};
+        MVGBrush text_brush{MVGBrushSolid, {}, { text_color }};
 
         vec3 size_remaining = assigned_size - m();
         vec3 half_size = size_remaining / 2.0f;
@@ -1484,7 +1484,7 @@ struct Button : Visible
         label->set_size(font_size);
         label->set_face(get_font_face());
         label->set_fill_brush(text_brush);
-        label->set_stroke_brush(Brush{BrushNone, {}, {}});
+        label->set_stroke_brush(MVGBrush{MVGBrushNone, {}, {}});
         label->set_stroke_width(0);
         label->set_halign(text_halign_center);
         label->set_valign(text_valign_center);
@@ -1508,8 +1508,8 @@ struct Slider : Visible
     std::function<void(float)> callback;
     bool inside;
 
-    Rectangle *rect;
-    Circle *circle;
+    MVGRect *rect;
+    MVGCircle *circle;
 
     Slider() :
         Visible("Slider"),
@@ -1569,7 +1569,7 @@ struct Slider : Visible
         return (last_sizing = s);
     }
 
-    virtual void init(Canvas *c)
+    virtual void init(MVGCanvas *c)
     {
         if (!rect) {
             rect = c->new_rounded_rectangle(vec2(0), vec2(0), 0.0f);
@@ -1579,13 +1579,13 @@ struct Slider : Visible
         }
     }
 
-    virtual void layout(Canvas *c)
+    virtual void layout(MVGCanvas *c)
     {
         if (valid) return;
 
-        Brush fill_brush{BrushSolid, {}, { fill_color }};
-        Brush stroke_brush{BrushSolid, {}, { stroke_color }};
-        Brush text_brush{BrushSolid, {}, { text_color }};
+        MVGBrush fill_brush{MVGBrushSolid, {}, { fill_color }};
+        MVGBrush stroke_brush{MVGBrushSolid, {}, { stroke_color }};
+        MVGBrush text_brush{MVGBrushSolid, {}, { text_color }};
 
         vec3 size_remaining = assigned_size - m() - b() - p();
         vec3 half_size = size_remaining / 2.0f;
@@ -1677,8 +1677,8 @@ struct Switch : Visible
     std::function<void(bool)> callback;
     bool inside;
 
-    Rectangle *rect;
-    Circle *circle;
+    MVGRect *rect;
+    MVGCircle *circle;
 
     Switch() :
         Visible("Switch"),
@@ -1741,7 +1741,7 @@ struct Switch : Visible
         return (last_sizing = s);
     }
 
-    virtual void init(Canvas *c)
+    virtual void init(MVGCanvas *c)
     {
         if (!rect) {
             rect = c->new_rounded_rectangle(vec2(0), vec2(0), 0.0f);
@@ -1751,15 +1751,15 @@ struct Switch : Visible
         }
     }
 
-    virtual void layout(Canvas *c)
+    virtual void layout(MVGCanvas *c)
     {
         if (valid) return;
 
-        Brush fill_brush{BrushSolid, {}, { fill_color }};
-        Brush active_brush{BrushSolid, {}, { active_color }};
-        Brush inactive_brush{BrushSolid, {}, { inactive_color }};
-        Brush stroke_brush{BrushSolid, {}, { stroke_color }};
-        Brush text_brush{BrushSolid, {}, { text_color }};
+        MVGBrush fill_brush{MVGBrushSolid, {}, { fill_color }};
+        MVGBrush active_brush{MVGBrushSolid, {}, { active_color }};
+        MVGBrush inactive_brush{MVGBrushSolid, {}, { inactive_color }};
+        MVGBrush stroke_brush{MVGBrushSolid, {}, { stroke_color }};
+        MVGBrush text_brush{MVGBrushSolid, {}, { text_color }};
 
         vec3 size_remaining = assigned_size - m() - b() - p();
         vec3 half_size = size_remaining / 2.0f;

@@ -12,29 +12,29 @@ using mat4 = glm::mat4;
  * Edge Type
  */
 
-enum EdgeType {
-    EdgeNone = 0,
+enum MVGEdgeType {
+    MVGEdgeNone = 0,
 
-    EdgeLinear = 2,
-    EdgeQuadratic = 3,
-    EdgeCubic = 4,
+    MVGEdgeLinear = 2,
+    MVGEdgeQuadratic = 3,
+    MVGEdgeCubic = 4,
 
-    PrimitiveRectangle = 5,
-    PrimitiveCircle = 6,
-    PrimitiveEllipse = 7,
-    PrimitiveRoundedRectangle = 8,
+    MVGPrimitiveRectangle = 5,
+    MVGPrimitiveCircle = 6,
+    MVGPrimitiveEllipse = 7,
+    MVGPrimitiveRoundedRectangle = 8,
 };
 
 /*
  * Brush type
  */
 
-enum BrushType {
-    BrushNone = 0,
+enum MVGBrushType {
+    MVGBrushNone = 0,
 
-    BrushSolid = 1,
-    BrushAxial = 2,
-    BrushRadial = 3,
+    MVGBrushSolid = 1,
+    MVGBrushAxial = 2,
+    MVGBrushRadial = 3,
 };
 
 
@@ -147,23 +147,23 @@ inline text_renderer_canvas::text_renderer_canvas(AContext &ctx,
  * accelerator API. It manages incremental changes to drawables.
  */
 
-struct Canvas;           /* Canvas contains collection of drawables */
-struct Drawable;         /* Base class for high-level obejcts */
-struct Patch;            /* Solid contour composed of Bézier curves */
-struct Path;             /* Open contour composed of Bézier curves */
-struct Text;             /* Position, size, face and text string */
-struct Primitve;         /* Base class for shapes composed of one edge */
-struct Circle;           /* Circle: position, radius */
-struct Ellipse;          /* Ellipse: position, halfsize */
-struct Rectangle;        /* Rectangle: position, halfsize, (optional radius) */
+struct MVGCanvas;           /* Canvas contains collection of drawables */
+struct MVGDrawable;         /* Base class for high-level obejcts */
+struct MVGPatch;            /* Solid contour composed of Bézier curves */
+struct MVGPath;             /* Open contour composed of Bézier curves */
+struct MVGText;             /* Position, size, face and text string */
+struct MVGPrimitve;         /* Base class for shapes composed of one edge */
+struct MVGCircle;           /* Circle: position, radius */
+struct MVGEllipse;          /* Ellipse: position, halfsize */
+struct MVGRect;             /* Rectangle: position, halfsize, (optional radius) */
 
 /*
  * Brush contains attributes for solid and gradient fills
  */
 
-struct Brush
+struct MVGBrush
 {
-    BrushType brush_type;
+    MVGBrushType brush_type;
     vec2 points[4];
     color colors[4];
 };
@@ -172,37 +172,37 @@ struct Brush
  * Drawable is the base class for all canvas objects
  */
 
-struct Drawable
+struct MVGDrawable
 {
-    typedef std::unique_ptr<Drawable> Ptr;
+    typedef std::unique_ptr<MVGDrawable> Ptr;
 
-    Canvas *canvas;
+    MVGCanvas *canvas;
     bool visible;
     int drawable_type;
     int drawable_num;
     int ll_shape_num;
     vec2 pos;
     float z;
-    Brush fill_brush;
-    Brush stroke_brush;
+    MVGBrush fill_brush;
+    MVGBrush stroke_brush;
     float stroke_width;
 
     bool is_visible();
     vec2 get_position();
     float get_z();
-    Brush get_fill_brush();
-    Brush get_stroke_brush();
+    MVGBrush get_fill_brush();
+    MVGBrush get_stroke_brush();
     float get_stroke_width();
 
     void set_visible(bool visible);
     void set_position(vec2 pos);
     void set_z(float z);
-    void set_fill_brush(Brush brush);
-    void set_stroke_brush(Brush brush);
+    void set_fill_brush(MVGBrush brush);
+    void set_stroke_brush(MVGBrush brush);
     void set_stroke_width(float width);
 };
 
-struct Edges : Drawable
+struct MVGEdges : MVGDrawable
 {
     vec2 offset;
     vec2 size;
@@ -225,22 +225,22 @@ struct Edges : Drawable
  * Patch encompasses solid contours containing Bézier curves
  */
 
-struct Patch : Edges
+struct MVGPatch : MVGEdges
 {
-    Patch* new_contour();
-    Patch* new_line(vec2 p1, vec2 p2);
-    Patch* new_quadratic_curve(vec2 p1, vec2 c1, vec2 p2);
+    MVGPatch* new_contour();
+    MVGPatch* new_line(vec2 p1, vec2 p2);
+    MVGPatch* new_quadratic_curve(vec2 p1, vec2 c1, vec2 p2);
 };
 
 /*
  * Path encompasses open contours containing Bézier curves
  */
 
-struct Path : Edges
+struct MVGPath : MVGEdges
 {
-    Path* new_contour();
-    Path* new_line(vec2 p1, vec2 p2);
-    Path* new_quadratic_curve(vec2 p1, vec2 c1, vec2 p2);
+    MVGPath* new_contour();
+    MVGPath* new_line(vec2 p1, vec2 p2);
+    MVGPath* new_quadratic_curve(vec2 p1, vec2 c1, vec2 p2);
 };
 
 /*
@@ -259,15 +259,15 @@ enum text_valign {
     text_valign_bottom,
 };
 
-struct TextStyle
+struct MVGTextStyle
 {
     float size;
     font_face* face;
     text_halign halign;
     text_valign valign;
     std::string lang;
-    Brush fill_brush;
-    Brush stroke_brush;
+    MVGBrush fill_brush;
+    MVGBrush stroke_brush;
     float stroke_width;
 
     float get_size();
@@ -276,8 +276,8 @@ struct TextStyle
     text_valign get_valign();
     std::string get_text();
     std::string get_lang();
-    Brush get_fill_brush();
-    Brush get_stroke_brush();
+    MVGBrush get_fill_brush();
+    MVGBrush get_stroke_brush();
     float get_stroke_width();
 
     void set_size(float size);
@@ -286,12 +286,12 @@ struct TextStyle
     void set_valign(text_valign valign);
     void set_text(std::string text);
     void set_lang(std::string lang);
-    void set_fill_brush(Brush brush);
-    void set_stroke_brush(Brush brush);
+    void set_fill_brush(MVGBrush brush);
+    void set_stroke_brush(MVGBrush brush);
     void set_stroke_width(float width);
 };
 
-struct Text : Drawable
+struct MVGText : MVGDrawable
 {
     enum render_as {
         render_as_text,
@@ -309,7 +309,7 @@ struct Text : Drawable
     text_segment segment;
     std::vector<glyph_shape> shapes;
 
-    TextStyle get_text_style();
+    MVGTextStyle get_text_style();
     float get_size();
     font_face* get_face();
     text_halign get_halign();
@@ -318,7 +318,7 @@ struct Text : Drawable
     std::string get_lang();
     render_as get_render_mode();
 
-    void set_text_style(TextStyle style);
+    void set_text_style(MVGTextStyle style);
     void set_size(float size);
     void set_face(font_face* face);
     void set_halign(text_halign halign);
@@ -337,11 +337,11 @@ struct Text : Drawable
  * Primitive Shape subclasses are single edge shapes with no contours
  */
 
-struct Primitive : Drawable
+struct MVGPrimitive : MVGDrawable
 {
 };
 
-struct Circle : Primitive
+struct MVGCircle : MVGPrimitive
 {
     vec2 origin;
     float radius;
@@ -352,7 +352,7 @@ struct Circle : Primitive
     void set_radius(float v);
 };
 
-struct Ellipse : Primitive
+struct MVGEllipse : MVGPrimitive
 {
     vec2 origin;
     vec2 half_size;
@@ -363,7 +363,7 @@ struct Ellipse : Primitive
     void set_halfsize(vec2 v);
 };
 
-struct Rectangle : Primitive
+struct MVGRect : MVGPrimitive
 {
     vec2 origin;
     vec2 half_size;
@@ -378,42 +378,42 @@ struct Rectangle : Primitive
 };
 
 /*
- * Canvas API proper
+ * MVGCanvas API proper
  */
 
-struct Canvas
+struct MVGCanvas
 {
-    std::vector<Drawable::Ptr> objects;
+    std::vector<MVGDrawable::Ptr> objects;
     std::map<int,int> glyph_map;
     std::unique_ptr<AContext> ctx;
     text_shaper_hb text_shaper;
     text_renderer_canvas text_renderer_c;
     text_renderer_ft text_renderer_r;
     font_manager *manager;
-    Brush fill_brush;
-    Brush stroke_brush;
+    MVGBrush fill_brush;
+    MVGBrush stroke_brush;
     float stroke_width;
     mat3 transform;
     mat3 transform_inv;
     float scale;
-    Text::render_as text_mode;
+    MVGText::render_as text_mode;
 
-    Canvas(font_manager* manager);
+    MVGCanvas(font_manager* manager);
 
     /* coordinate transform matrix */
     void set_transform(mat3 m);
     mat3 get_transform();
     mat3 get_inverse_transform();
-    void set_render_mode(Text::render_as mode);
-    Text::render_as get_render_mode();
+    void set_render_mode(MVGText::render_as mode);
+    MVGText::render_as get_render_mode();
 
     /* high dpi screen scale to apply to strokes */
     void set_scale(float scale);
     float get_scale();
 
     /* interface to low-level objects shared with the gpu */
-    Brush get_brush(int brush_num);
-    int get_brush_num(Brush p);
+    MVGBrush get_brush(int brush_num);
+    int get_brush_num(MVGBrush p);
 
     /* types used by canvas drawables */
     enum drawable_type {
@@ -427,26 +427,26 @@ struct Canvas
 
     /* drawables are the high-level canvas objects */
     size_t num_drawables();
-    Drawable* get_drawable(size_t offset);
+    MVGDrawable* get_drawable(size_t offset);
     void clear();
 
     /* brushes are associated with new canvas objects on creation */
-    Brush get_fill_brush();
-    void set_fill_brush(Brush brush);
-    Brush get_stroke_brush();
-    void set_stroke_brush(Brush brush);
+    MVGBrush get_fill_brush();
+    void set_fill_brush(MVGBrush brush);
+    MVGBrush get_stroke_brush();
+    void set_stroke_brush(MVGBrush brush);
     float get_stroke_width();
     void set_stroke_width(float width);
 
     /* interface to create new canvas objects */
-    Patch* new_patch(vec2 offset, vec2 size);
-    Path* new_path(vec2 offset, vec2 size);
-    Text* new_text();
-    Text* new_text(TextStyle text_style);
-    Circle* new_circle(vec2 pos, float radius);
-    Ellipse* new_ellipse(vec2 pos, vec2 half_size);
-    Rectangle* new_rectangle(vec2 pos, vec2 half_size);
-    Rectangle* new_rounded_rectangle(vec2 pos, vec2 half_size, float radius);
+    MVGPatch* new_patch(vec2 offset, vec2 size);
+    MVGPath* new_path(vec2 offset, vec2 size);
+    MVGText* new_text();
+    MVGText* new_text(MVGTextStyle text_style);
+    MVGCircle* new_circle(vec2 pos, float radius);
+    MVGEllipse* new_ellipse(vec2 pos, vec2 half_size);
+    MVGRect* new_rectangle(vec2 pos, vec2 half_size);
+    MVGRect* new_rounded_rectangle(vec2 pos, vec2 half_size, float radius);
 
     /* emit canvas to draw list */
     void emit(draw_list &batch);

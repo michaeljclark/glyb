@@ -71,7 +71,7 @@ static program prog_simple, prog_msdf, prog_canvas;
 static GLuint vao, vbo, ibo;
 static std::map<int,GLuint> tex_map;
 static font_manager_ft manager;
-static Canvas canvas(&manager);
+static MVGCanvas canvas(&manager);
 
 static mat4 mvp;
 static GLFWwindow* window;
@@ -128,26 +128,26 @@ static std::vector<std::string> get_stats(double td)
     return stats;
 }
 
-static void line(Canvas &canvas, vec2 p1, vec2 p2)
+static void line(MVGCanvas &canvas, vec2 p1, vec2 p2)
 {
     vec2 size = p2 - p1, halfSize = size * 0.5f;
     vec2 pad(1,1);
-    Path *p = canvas.new_path(halfSize + pad, size + pad*2.0f);
+    MVGPath *p = canvas.new_path(halfSize + pad, size + pad*2.0f);
     p->pos = p1;
     p->new_line({0,0}, size);
 }
 
-static void rect(Canvas &canvas, vec2 p1, vec2 p2)
+static void rect(MVGCanvas &canvas, vec2 p1, vec2 p2)
 {
     vec2 size = p2 - p1, halfSize = size * 0.5f;
-    Rectangle *r = canvas.new_rectangle(vec2(0), halfSize);
+    MVGRect *r = canvas.new_rectangle(vec2(0), halfSize);
     r->pos = p2 - halfSize;
 }
 
-static void rrect(Canvas &canvas, vec2 p1, vec2 p2)
+static void rrect(MVGCanvas &canvas, vec2 p1, vec2 p2)
 {
     vec2 size = p2 - p1, halfSize = size * 0.5f;
-    Rectangle *r = canvas.new_rounded_rectangle(vec2(0), halfSize, 20.0f);
+    MVGRect *r = canvas.new_rounded_rectangle(vec2(0), halfSize, 20.0f);
     r->pos = p2 - halfSize;
 }
 
@@ -259,11 +259,11 @@ static void populate_canvas()
         calc_animation();
     }
 
-    canvas.set_render_mode(Text::render_as_text);
-    //canvas.set_render_mode(Text::render_as_contour);
+    canvas.set_render_mode(MVGText::render_as_text);
+    //canvas.set_render_mode(MVGText::render_as_contour);
 
-    canvas.set_fill_brush(Brush{BrushSolid, { }, { text_color }});
-    Text *t = canvas.new_text();
+    canvas.set_fill_brush(MVGBrush{MVGBrushSolid, { }, { text_color }});
+    MVGText *t = canvas.new_text();
     t->set_face(display_face);
     t->set_halign(text_halign_center);
     t->set_valign(text_valign_center);
@@ -339,8 +339,8 @@ static void populate_canvas()
 
     /* draw rounded rectangle */
     if (draw_rect) {
-        canvas.set_fill_brush(Brush{BrushSolid, { }, { background_color }});
-        canvas.set_stroke_brush(Brush{BrushSolid, { }, { frame_color }});
+        canvas.set_fill_brush(MVGBrush{MVGBrushSolid, { }, { background_color }});
+        canvas.set_stroke_brush(MVGBrush{MVGBrushSolid, { }, { frame_color }});
         canvas.set_stroke_width(5.0f);
         float xs = grid_size.x, ys = grid_size.y;
         vec2 tl = grid_pos + vec2(-xs,-ys);
@@ -350,7 +350,7 @@ static void populate_canvas()
 
     /* draw grid frame */
     if (draw_grid) {
-        canvas.set_stroke_brush(Brush{BrushSolid, { }, { frame_color }});
+        canvas.set_stroke_brush(MVGBrush{MVGBrushSolid, { }, { frame_color }});
         canvas.set_stroke_width(1.0f);
         float xs = grid_size.x, ys = grid_size.y;
         vec2 p1 = grid_pos + vec2(-xs,-ys), p2 = grid_pos + vec2(xs,-ys);
@@ -362,14 +362,14 @@ static void populate_canvas()
     /* draw selection rect */
     if (text_selection.first >= 0 && text_selection.second >= 0) {
         canvas.set_stroke_width(5.0f);
-        canvas.set_stroke_brush(Brush{BrushSolid, { }, { selectbox_color }});
-        canvas.set_fill_brush(Brush{BrushSolid, { }, { select_color }});
+        canvas.set_stroke_brush(MVGBrush{MVGBrushSolid, { }, { selectbox_color }});
+        canvas.set_fill_brush(MVGBrush{MVGBrushSolid, { }, { select_color }});
         rect(canvas, tl_ss, br_se);
     }
 
     /* draw grid lines */
     if (draw_grid) {
-        canvas.set_stroke_brush(Brush{BrushSolid, { }, { grid_color }});
+        canvas.set_stroke_brush(MVGBrush{MVGBrushSolid, { }, { grid_color }});
         canvas.set_stroke_width(0.5f);
         float v = 20;
         int xlines = floorf(grid_size.x/v)*2+1; /* odd */
@@ -393,21 +393,21 @@ static void populate_canvas()
         vec2 bl_ss(tl_ss.x,br_se.y);
         vec2 tr_se(br_se.x,tl_ss.y);
         canvas.set_stroke_width(10.0f);
-        canvas.set_stroke_brush(Brush{BrushSolid, { }, { selectpin_color }});
+        canvas.set_stroke_brush(MVGBrush{MVGBrushSolid, { }, { selectpin_color }});
         line(canvas, tl_ss, bl_ss);
         line(canvas, tr_se, br_se);
-        canvas.set_fill_brush(Brush{BrushSolid, { }, { selectpin_color }});
-        canvas.set_stroke_brush(Brush{BrushSolid, { }, { selectpin_color }});
-        Rectangle *r1 = canvas.new_rectangle(tl_ss,vec2(25.0f,5.0f));
-        Rectangle *r2 = canvas.new_rectangle(br_se,vec2(25.0f,5.0f));
+        canvas.set_fill_brush(MVGBrush{MVGBrushSolid, { }, { selectpin_color }});
+        canvas.set_stroke_brush(MVGBrush{MVGBrushSolid, { }, { selectpin_color }});
+        MVGRect *r1 = canvas.new_rectangle(tl_ss,vec2(25.0f,5.0f));
+        MVGRect *r2 = canvas.new_rectangle(br_se,vec2(25.0f,5.0f));
     }
 
     /* draw insertion point */
     if (insertion_point >= 0 && insertion_visible) {
-        canvas.set_stroke_brush(Brush{BrushSolid, { }, { insertionbg_color }});
+        canvas.set_stroke_brush(MVGBrush{MVGBrushSolid, { }, { insertionbg_color }});
         canvas.set_stroke_width(16.0f);
         line(canvas, insertion_p1, insertion_p2);
-        canvas.set_stroke_brush(Brush{BrushSolid, { }, { insertionfg_color }});
+        canvas.set_stroke_brush(MVGBrush{MVGBrushSolid, { }, { insertionfg_color }});
         canvas.set_stroke_width(8.0f);
         line(canvas, insertion_p1, insertion_p2);
     }
@@ -445,8 +445,8 @@ static void populate_canvas()
                 s += snprintf(hexbuf+s, sizeof(hexbuf)-s, "0x%02x", (int)u.code);
                 idx += u.len;
             }
-            canvas.set_fill_brush(Brush{BrushSolid, { }, { meta_color }});
-            Text *t = canvas.new_text();
+            canvas.set_fill_brush(MVGBrush{MVGBrushSolid, { }, { meta_color }});
+            MVGText *t = canvas.new_text();
             t->set_face(stats_face);
             t->set_halign(text_halign_left);
             t->set_valign(text_valign_top);
@@ -474,13 +474,13 @@ static void populate_canvas()
             vec2 q5(qx, qy+adv_size.y),     q6(qx+x_advance, qy+adv_size.y);
 
             /* draw glyph box lines */
-            canvas.set_stroke_brush(Brush{BrushSolid, { }, { glyphbox_color }});
+            canvas.set_stroke_brush(MVGBrush{MVGBrushSolid, { }, { glyphbox_color }});
             canvas.set_stroke_width(0.75f);
             line(canvas, p2, p1);           line(canvas, p2, p4);
             line(canvas, p4, p3);           line(canvas, p1, p3);
 
             /* draw advance box lines */
-            canvas.set_stroke_brush(Brush{BrushSolid, { }, { advancebox_color }});
+            canvas.set_stroke_brush(MVGBrush{MVGBrushSolid, { }, { advancebox_color }});
             canvas.set_stroke_width(0.75f);
             line(canvas, q2, q1);           line(canvas, q2, q4);
             line(canvas, q4, q3);           line(canvas, q1, q3);
@@ -494,7 +494,7 @@ static void populate_canvas()
     }
 
     /* trick to move the rounded rectangle behind the text */
-    Drawable::Ptr text = std::move(canvas.objects[0]);
+    MVGDrawable::Ptr text = std::move(canvas.objects[0]);
     canvas.objects.erase(canvas.objects.begin());
     canvas.objects.push_back(std::move(text));
 }

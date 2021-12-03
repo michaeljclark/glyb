@@ -67,7 +67,7 @@ static program prog_simple, prog_msdf, prog_canvas;
 static GLuint vao, vbo, ibo;
 static std::map<int,GLuint> tex_map;
 static font_manager_ft manager;
-static Canvas canvas(&manager);
+static MVGCanvas canvas(&manager);
 
 static mat4 mvp;
 static GLFWwindow* window;
