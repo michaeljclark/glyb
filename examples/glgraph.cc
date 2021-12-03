@@ -31,15 +31,6 @@
 #include <numeric>
 #include <initializer_list>
 
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
-
-#define CTX_OPENGL_MAJOR 3
-#define CTX_OPENGL_MINOR 3
-
-#include "glm/glm.hpp"
-#include "glm/ext/matrix_clip_space.hpp"
-
 #include "binpack.h"
 #include "image.h"
 #include "color.h"
@@ -52,7 +43,7 @@
 #include "logger.h"
 #include "file.h"
 #include "format.h"
-#include "glcommon.h"
+#include "app.h"
 
 #include "ui9.h"
 
@@ -561,8 +552,6 @@ void parse_options(int argc, char **argv)
 }
 
 /* entry point */
-
-#include "app.h"
 
 static int app_main(int argc, char** argv)
 {

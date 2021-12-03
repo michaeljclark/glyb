@@ -31,19 +31,6 @@
 #include <numeric>
 #include <initializer_list>
 
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
-
-#define CTX_OPENGL_MAJOR 3
-#define CTX_OPENGL_MINOR 3
-
-#include "glm/glm.hpp"
-#include "glm/ext/matrix_clip_space.hpp"
-
-#include "imgui.h"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_opengl3.h"
-
 #include "binpack.h"
 #include "image.h"
 #include "color.h"
@@ -55,7 +42,11 @@
 #include "color.h"
 #include "logger.h"
 #include "format.h"
-#include "glcommon.h"
+#include "app.h"
+
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
 
 using namespace std::chrono;
 
@@ -844,8 +835,6 @@ void parse_options(int argc, char **argv)
 }
 
 /* entry point */
-
-#include "app.h"
 
 static int app_main(int argc, char **argv)
 {

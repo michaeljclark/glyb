@@ -19,22 +19,12 @@
 #include <string>
 #include <algorithm>
 
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
-
-#define CTX_OPENGL_MAJOR 3
-#define CTX_OPENGL_MINOR 3
-
-#include "glm/glm.hpp"
-#include "glm/ext/matrix_clip_space.hpp"
-#include "glm/ext/matrix_transform.hpp"
-
 #include "binpack.h"
 #include "image.h"
 #include "draw.h"
 #include "logger.h"
 #include "format.h"
-#include "glcommon.h"
+#include "app.h"
 
 using mat4 = glm::mat4;
 using vec3 = glm::vec3;
@@ -582,8 +572,6 @@ void parse_options(int argc, char **argv)
 }
 
 /* entry point */
-
-#include "app.h"
 
 static int app_main(int argc, char **argv)
 {

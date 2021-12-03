@@ -37,15 +37,6 @@
 #include FT_GLYPH_H
 #include FT_OUTLINE_H
 
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
-
-#define CTX_OPENGL_MAJOR 3
-#define CTX_OPENGL_MINOR 3
-
-#include "glm/glm.hpp"
-#include "glm/ext/matrix_clip_space.hpp"
-
 #include "binpack.h"
 #include "image.h"
 #include "color.h"
@@ -58,7 +49,7 @@
 #include "logger.h"
 #include "format.h"
 #include "geometry.h"
-#include "glcommon.h"
+#include "app.h"
 
 using namespace std::chrono;
 
@@ -1146,8 +1137,6 @@ void parse_options(int argc, char **argv)
 }
 
 /* entry point */
-
-#include "app.h"
 
 static int app_main(int argc, char **argv)
 {

@@ -22,15 +22,6 @@
 #include <mutex>
 #include <condition_variable>
 
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
-
-#define CTX_OPENGL_MAJOR 3
-#define CTX_OPENGL_MINOR 3
-
-#include "glm/glm.hpp"
-#include "glm/ext/matrix_clip_space.hpp"
-
 #include "binpack.h"
 #include "image.h"
 #include "draw.h"
@@ -39,7 +30,7 @@
 #include "msdf.h"
 #include "multi.h"
 #include "logger.h"
-#include "glcommon.h"
+#include "app.h"
 
 using mat4 = glm::mat4;
 
@@ -403,8 +394,6 @@ static void parse_options(int argc, char **argv)
 }
 
 /* entry point */
-
-#include "app.h"
 
 static int app_main(int argc, char **argv)
 {
