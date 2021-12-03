@@ -2,54 +2,54 @@ cmake_minimum_required(VERSION 3.10)
 
 project(glyb)
 
+#
+# project settings
+#
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/modules)
 
+#
+# compiler flags
+#
+
 include(CheckCXXCompilerFlag)
 
-macro(add_compiler_flags)
-   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ARGN}")
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARGN}")
-endmacro(add_compiler_flags)
+if(MSVC)
+  add_definitions(/MP)
+  add_definitions(/D_SECURE_SCL=0 /D_WINDOWS /D_CRT_SECURE_NO_WARNINGS)
+endif()
 
 check_cxx_compiler_flag("-pg" has_gprof "int main() { return 0; }")
 if (CMAKE_PROFILE AND has_gprof)
-  add_compiler_flags(-pg)
+  add_compile_options(-pg)
 endif()
 
 check_cxx_compiler_flag("-fno-omit-frame-pointer" has_no_omit_fp "int main() { return 0; }")
 if (has_no_omit_fp)
-  add_compiler_flags(-fno-omit-frame-pointer)
+  add_compile_options(-fno-omit-frame-pointer)
 endif()
 
-## linux opengl
-if(UNIX AND NOT APPLE)
-  find_package(PkgConfig)
-  find_library(OPENGL_LIBRARY GL)
-  list(APPEND GLYB_LIBS ${OPENGL_LIBRARY})
-endif()
+#
+# user options
+#
 
-## macos opengl
-if(APPLE)
-  find_library(COREFOUNDATION_LIBRARY CoreFoundation)
-  find_library(COCOA_LIBRARY Cocoa)
-  find_library(OPENGL_LIBRARY OpenGL)
-  list(APPEND GLYB_LIBS ${COREFOUNDATION_LIBRARY} ${COCOA_LIBRARY} ${OPENGL_LIBRARY})
-endif()
+option(GLYB_BUILD_TOOLS "Build glyb tools" ON)
+option(GLYB_BUILD_EXAMPLES "Build glyb examples" ON)
+option(GLYB_BUILD_TESTS "Build glyb tests" ON)
 
-## windows opengl
-if(WIN32)
-  add_definitions("/MP")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_INIT} /D _SECURE_SCL=0 /D _WINDOWS /D _CRT_SECURE_NO_WARNINGS")
-  find_library(OPENGL_LIBRARY OpenGL32)
-  list(APPEND GLYB_LIBS ${OPENGL_LIBRARY})
-endif()
+#
+# system libraries
+#
 
-## threads
 find_package(Threads REQUIRED)
 list(APPEND GLYB_LIBS Threads::Threads)
+
+#
+# bundled libraries
+#
 
 ## glad
 add_subdirectory(third_party/glad)
@@ -121,7 +121,10 @@ include_directories(third_party/msdfgen)
 ## glm
 include_directories(third_party/glm)
 
-## glyb
+#
+# libglyb
+#
+
 include_directories(src)
 include_directories(examples)
 file(GLOB GLYB_SOURCES src/*.cc src/*.h)
@@ -138,32 +141,48 @@ list(APPEND GLYB_LIBS
   glyb
   lib_msdfgen)
 
-## CLI examples
-foreach(prog IN ITEMS bitcode ftkitty ftrender fontdb fontscan genatlas uniscan)
-  add_executable(${prog} examples/${prog}.cc)
-  target_link_libraries(${prog} ${GLYB_LIBS} ${CMAKE_DL_LIBS})
-endforeach(prog)
+#
+# CLI programs
+#
 
-## OpenGL examples
-foreach(prog IN ITEMS glbinpack glemoji glgraph glglyph glfont gllayout glsimple gldemo)
-  add_executable(${prog} examples/${prog}.cc)
-  target_link_libraries(${prog} ${GLYB_LIBS} ${CMAKE_DL_LIBS} glad glfw)
-  if(WIN32)
-    set_property(TARGET ${prog} PROPERTY WIN32_EXECUTABLE TRUE)
-  endif()
-endforeach(prog)
-
-# ImGUI examples
-add_executable(glcanvas examples/glcanvas.cc)
-target_link_libraries(glcanvas ${GLYB_LIBS} ${CMAKE_DL_LIBS} glad glfw imgui)
-if(WIN32)
-  set_property(TARGET glcanvas PROPERTY WIN32_EXECUTABLE TRUE)
+if(GLYB_BUILD_TOOLS)
+  foreach(prog IN ITEMS bitcode ftkitty ftrender fontdb fontscan genatlas uniscan)
+    add_executable(${prog} examples/${prog}.cc)
+    target_link_libraries(${prog} ${GLYB_LIBS} ${CMAKE_DL_LIBS})
+  endforeach(prog)
 endif()
 
+#
+# OpenGL examples
+#
+
+if(GLYB_BUILD_EXAMPLES)
+  foreach(prog IN ITEMS glbinpack glemoji glgraph glglyph glfont gllayout glsimple gldemo)
+    add_executable(${prog} examples/${prog}.cc)
+    target_link_libraries(${prog} ${GLYB_LIBS} ${CMAKE_DL_LIBS} ${GLAD_LIBRARIES} glfw)
+    target_compile_definitions(${prog} PRIVATE -DHAVE_GLAD)
+    if(WIN32)
+      set_property(TARGET ${prog} PROPERTY WIN32_EXECUTABLE TRUE)
+    endif()
+  endforeach(prog)
+
+  add_executable(glcanvas examples/glcanvas.cc)
+  target_link_libraries(glcanvas ${GLYB_LIBS} ${CMAKE_DL_LIBS} ${GLAD_LIBRARIES} glfw imgui)
+  target_compile_definitions(glcanvas PRIVATE -DHAVE_GLAD)
+  if(WIN32)
+    set_property(TARGET glcanvas PROPERTY WIN32_EXECUTABLE TRUE)
+  endif()
+endif()
+
+#
 # glyb tests
-file(GLOB BINPACK_TESTS tests/*.cc)
-foreach(src ${BINPACK_TESTS})
-  get_filename_component(name ${src} NAME_WE)
-  add_executable(${name} ${src})
-  target_link_libraries(${name} ${GLYB_LIBS})
-endforeach(src)
+#
+
+if(GLYB_BUILD_TESTS)
+  file(GLOB BINPACK_TESTS tests/*.cc)
+  foreach(src ${BINPACK_TESTS})
+    get_filename_component(name ${src} NAME_WE)
+    add_executable(${name} ${src})
+    target_link_libraries(${name} ${GLYB_LIBS})
+  endforeach(src)
+endif()
