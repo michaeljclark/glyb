@@ -6,6 +6,23 @@
  * Copyright © 2013 Inigo Quilez
  * Copyright © 2016 Viktor Chlumsky
  * Copyright © 2019 Michael Clark
+ *
+ * shape shader support:
+ *
+ * - fill and stroke for contours with linear and quadratic segments
+ * - fill and stroke for circles, ellipses, rectangles and rounded rectangles
+ * - solid color fill, radial and axial gradient fill
+ *
+ * shape shader limitations:
+ *
+ * - simplistic n^2 contour search per fragment in complex contours
+ * - stroke endcaps and joins degrade to distance to nearest contour
+ * - join render bugs e.g. stroke joins on rounded rectangle corners
+ *
+ * shape shader todo:
+ *
+ * - tesselation, binning and root caching pre-pass in compute shader
+ * - cubic contours, shape masks, stroke endcaps and stroke joins
  */
 
 #version 140
@@ -26,6 +43,7 @@ uniform samplerBuffer tb_brush;
 
 #define Linear 2
 #define Quadratic 3
+#define Cubic 4
 #define Rectangle 5
 #define Circle 6
 #define Ellipse 7
@@ -123,6 +141,8 @@ float sdEllipse( vec2 p, in vec2 ab )
  * https://github.com/Chlumsky/msdfgen
  */
 
+/* begin msdfgen port */
+
 int solveQuadratic(out vec3 x, float a, float b, float c)
 {
     if (abs(a) < 1e-14) {
@@ -189,21 +209,21 @@ int solveCubic(out vec3 x, float a, float b, float c, float d)
     }
 }
 
-vec2 directionQuadratic(vec2 p[4], float param)
+vec2 directionQuadratic(vec2 p[4], float cos_theta)
 {
-    vec2 tangent = mix(p[1]-p[0], p[2]-p[1], param);
+    vec2 tangent = mix(p[1]-p[0], p[2]-p[1], cos_theta);
     if (tangent.x == 0 && tangent.y == 0) {
         return p[2]-p[0];
     }
     return tangent;
 }
 
-vec2 directionCubic(vec2 p[4], float param)
+vec2 directionCubic(vec2 p[4], float cos_theta)
 {
-    vec2 tangent = mix(mix(p[1]-p[0], p[2]-p[1], param), mix(p[2]-p[1], p[3]-p[2], param), param);
+    vec2 tangent = mix(mix(p[1]-p[0], p[2]-p[1], cos_theta), mix(p[2]-p[1], p[3]-p[2], cos_theta), cos_theta);
     if (tangent.x == 0 && tangent.y == 0) {
-        if (param == 0) return p[2]-p[0];
-        if (param == 1) return p[3]-p[1];
+        if (cos_theta == 0) return p[2]-p[0];
+        if (cos_theta == 1) return p[3]-p[1];
     }
     return tangent;
 }
@@ -226,14 +246,14 @@ vec2 getOrthonormal(vec2 p, bool polarity, bool allowZero)
     }
 }
 
-float sdLinear(vec2 p[4], out float dir, vec2 origin, out float param)
+float sdLinear(vec2 origin, vec2 p[4], out float dir, out float cos_theta)
 {
     vec2 aq = origin-p[0];
     vec2 ab = p[1]-p[0];
-    param = dot(aq, ab)/dot(ab, ab);
-    vec2 eq = p[param > .5 ? 1 : 0]-origin;
+    cos_theta = dot(aq, ab)/dot(ab, ab);
+    vec2 eq = p[cos_theta > .5 ? 1 : 0]-origin;
     float endpointDistance = length(eq);
-    if (param > 0 && param < 1) {
+    if (cos_theta > 0 && cos_theta < 1) {
         float orthoDistance = dot(getOrthonormal(ab, false, false), aq);
         if (abs(orthoDistance) < endpointDistance) {
             dir = 0;
@@ -244,7 +264,7 @@ float sdLinear(vec2 p[4], out float dir, vec2 origin, out float param)
     return nonZeroSign(cross(aq, ab))*endpointDistance;
 }
 
-float sdQuadratic(vec2 p[4], out float dir, vec2 origin, out float param)
+float sdQuadratic(vec2 origin, vec2 p[4], out float dir, out float cos_theta)
 {
     vec2 qa = p[0]-origin;
     vec2 ab = p[1]-p[0];
@@ -258,13 +278,13 @@ float sdQuadratic(vec2 p[4], out float dir, vec2 origin, out float param)
 
     vec2 epDir = directionQuadratic(p, 0);
     float minDistance = nonZeroSign(cross(epDir, qa))*length(qa); // distance from A
-    param = -dot(qa, epDir)/dot(epDir, epDir);
+    cos_theta = -dot(qa, epDir)/dot(epDir, epDir);
     {
         epDir = directionQuadratic(p, 1);
         float distance = nonZeroSign(cross(epDir, p[2]-origin))*length(p[2]-origin); // distance from B
         if (abs(distance) < abs(minDistance)) {
             minDistance = distance;
-            param = dot(origin-p[1], epDir)/dot(epDir, epDir);
+            cos_theta = dot(origin-p[1], epDir)/dot(epDir, epDir);
         }
     }
     for (int i = 0; i < solutions; ++i) {
@@ -273,16 +293,16 @@ float sdQuadratic(vec2 p[4], out float dir, vec2 origin, out float param)
             float distance = nonZeroSign(cross(p[2]-p[0], qe))*length(qe);
             if (abs(distance) <= abs(minDistance)) {
                 minDistance = distance;
-                param = t[i];
+                cos_theta = t[i];
             }
         }
     }
 
-    if (param >= 0 && param <= 1) {
+    if (cos_theta >= 0 && cos_theta <= 1) {
         dir = 0;
         return minDistance;
     }
-    if (param < .5) {
+    if (cos_theta < .5) {
         dir = abs(dot(normalize(directionQuadratic(p, 0)), normalize(qa)));
         return minDistance;
     }
@@ -290,6 +310,16 @@ float sdQuadratic(vec2 p[4], out float dir, vec2 origin, out float param)
         dir = abs(dot(normalize(directionQuadratic(p, 1)), normalize(p[2]-origin)));
         return minDistance;
     }
+}
+
+/* end msdfgen port */
+
+float sdCubic(vec2 origin, vec2 p[4], out float dir, out float cos_theta)
+{
+    /* cubic contours have not been implemented */
+    dir = 0.;
+    cos_theta = 0.;
+    return 0.;
 }
 
 float sdRect(vec2 center, vec2 halfSize, vec2 origin)
@@ -300,26 +330,26 @@ float sdRect(vec2 center, vec2 halfSize, vec2 origin)
     return -outsideDist - insideDist;
 }
 
-float sdRectangle(vec2 p[4], out float dir, vec2 origin, out float param)
+float sdRectangle(vec2 origin, vec2 p[4], out float dir, out float cos_theta)
 {
     vec2 center = p[0], halfSize = p[1];
     return sdRect(center, halfSize, origin);
 }
 
-float sdCircle(vec2 p[4], out float dir, vec2 origin, out float param)
+float sdCircle(vec2 origin, vec2 p[4], out float dir, out float cos_theta)
 {
     vec2 center = p[0];
     float radius = p[1][0];
     return radius - length(origin - center);
 }
 
-float sdEllipse(vec2 p[4], out float dir, vec2 origin, out float param)
+float sdEllipse(vec2 origin, vec2 p[4], out float dir, out float cos_theta)
 {
     vec2 center = p[0], radius = p[1];
     return sdEllipse(origin-center, radius);
 }
 
-float sdRoundedRectangle(vec2 p[4], out float dir, vec2 origin, out float param)
+float sdRoundedRectangle(vec2 origin, vec2 p[4], out float dir, out float cos_theta)
 {
     vec2 center = p[0], halfSize = p[1];
     float radius = p[2].x;
@@ -333,6 +363,9 @@ float sdRoundedRectangle(vec2 p[4], out float dir, vec2 origin, out float param)
 
 /*
  * Shape, Edge and Brush structure serialization from texture buffers.
+ *
+ * shader depends on OpenGL 3.2 baseline features to support macOS which
+ * necessitates use of texelFetch to load structures due to lack of SSBOs.
  */
 
 void getShape(out Shape shape, int shape_num)
@@ -388,26 +421,27 @@ void getBrush(out Brush brush, int brush_num)
                       texelFetch(tb_brush, o + 24).r);
 }
 
-float getDistanceEdge(Edge edge, vec2 origin, out float dir, out float param)
+float getDistanceEdge(Edge edge, vec2 origin, out float dir, out float cos_theta)
 {
     switch(edge.edge_type) {
-    case Linear:    return sdLinear   (edge.p, dir, origin, param);
-    case Quadratic: return sdQuadratic(edge.p, dir, origin, param);
-    case Rectangle: return sdRectangle(edge.p, dir, origin, param);
-    case Circle:    return sdCircle   (edge.p, dir, origin, param);
-    case Ellipse:   return sdEllipse  (edge.p, dir, origin, param);
-    case RoundedRectangle: return sdRoundedRectangle(edge.p, dir, origin, param);
+    case Linear:    return sdLinear   (origin, edge.p, dir, cos_theta);
+    case Quadratic: return sdQuadratic(origin, edge.p, dir, cos_theta);
+    case Cubic:     return sdCubic    (origin, edge.p, dir, cos_theta);
+    case Rectangle: return sdRectangle(origin, edge.p, dir, cos_theta);
+    case Circle:    return sdCircle   (origin, edge.p, dir, cos_theta);
+    case Ellipse:   return sdEllipse  (origin, edge.p, dir, cos_theta);
+    case RoundedRectangle: return sdRoundedRectangle(origin, edge.p, dir, cos_theta);
     }
     return FLT_MAX; /* not reached */
 }
 
-float getDistanceShape(Shape shape, vec2 origin, out float dir, out float param)
+float getDistanceShape(Shape shape, vec2 origin, out float dir, out float cos_theta)
 {
     Edge edge;
     float distance, minDistance = FLT_MAX, minDir = FLT_MAX;
     for (int i = 0; i < shape.edge_count; i++) {
         getEdge(edge, shape.edge_offset + i);
-        distance = getDistanceEdge(edge, origin, dir, param);
+        distance = getDistanceEdge(edge, origin, dir, cos_theta);
         if (abs(distance) < abs(minDistance) ||
             abs(distance) == abs(minDistance) && dir < minDir)
         {
@@ -468,8 +502,8 @@ void main()
     vec4 fill_color = getColorBrush(shape.fill_brush, v_uv0.xy, v_color);
     vec4 stroke_color = getColorBrush(shape.stroke_brush, v_uv0.xy, v_color);
 
-    float dir, param;
-    float distance = getDistanceShape(shape, v_uv0.xy, dir, param);
+    float dir, cos_theta;
+    float distance = getDistanceShape(shape, v_uv0.xy, dir, cos_theta);
 
     if (shape.stroke_mode > 0) {
         distance = -abs(distance);
