@@ -88,11 +88,13 @@ static GLuint compile_shader(GLenum type, const char *filename)
         buf.resize(length + 1);
         glGetShaderInfoLog(shader, (GLsizei)buf.size() - 1, &length, buf.data());
         Debug("shader compile log: %s\n", buf.data());
+    } else {
+        buf.resize(0);
     }
 
     glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
     if (status == GL_FALSE) {
-        Error("failed to compile shader: %s\n", filename);
+        Error("failed to compile shader: %s:\n%s\n", filename, buf.data());
         exit(1);
     }
 
