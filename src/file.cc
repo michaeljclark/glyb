@@ -693,7 +693,7 @@ std::string file::getPath(std::string rsrcpath)
     // Create path to file
     std::string filepath;
     mainBundle = CFBundleGetMainBundle();
-    fsURL = CFBundleCopyfileURL(mainBundle, nameStringRef, typeStringRef,
+    fsURL = CFBundleCopyResourceURL(mainBundle, nameStringRef, typeStringRef,
         NULL);
     if (fsURL) {
         fsPathStringRef = CFURLCopyFileSystemPath(fsURL, kCFURLPOSIXPathStyle);
