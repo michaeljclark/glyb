@@ -153,16 +153,16 @@ The following code snippet shows glyb's high level text layout interface:
 Simple GLSL vertex shader:
 
 ```
-attribute vec3 a_pos;
-attribute vec2 a_uv0;
-attribute vec4 a_color;
-attribute float a_gamma;
+in vec3 a_pos;
+in vec2 a_uv0;
+in vec4 a_color;
+in float a_gamma;
 
 uniform mat4 u_mvp;
 
-varying vec4 v_color;
-varying vec2 v_uv0;
-varying float v_gamma;
+out vec4 v_color;
+out vec2 v_uv0;
+out float v_gamma;
 
 void main() {
     v_color = a_color;
@@ -175,15 +175,17 @@ void main() {
 Simple GLSL fragment shader:
 
 ```
-varying vec4 v_color;
-varying vec2 v_uv0;
-varying float v_gamma;
+in vec4 v_color;
+in vec2 v_uv0;
+int float v_gamma;
 
 uniform sampler2D u_tex0;
 
+out vec4 outFragColor;
+
 void main() {
-    vec4 t_color = texture2D(u_tex0, v_uv0);
-    gl_FragColor = v_color * vec4(pow(t_color.rgb, vec3(1.0/v_gamma)), t_color.a);
+    vec4 t_color = texture(u_tex0, v_uv0);
+    outFragColor = v_color * vec4(pow(t_color.rgb, vec3(1.0/v_gamma)), t_color.a);
 }
 ```
 

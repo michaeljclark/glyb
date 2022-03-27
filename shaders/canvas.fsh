@@ -25,18 +25,20 @@
  * - cubic contours, shape masks, stroke endcaps and stroke joins
  */
 
-#version 140
+#version 150
 
-#extension GL_EXT_gpu_shader4 : enable
+//#extension GL_EXT_gpu_shader4 : enable
 
-varying vec4 v_color;
-varying vec2 v_uv0;
-varying float v_gamma;
-varying float v_shape;
+in vec4 v_color;
+in vec2 v_uv0;
+in float v_gamma;
+in float v_shape;
 
 uniform samplerBuffer tb_shape;
 uniform samplerBuffer tb_edge;
 uniform samplerBuffer tb_brush;
+
+out vec4 outFragColor;
 
 #define FLT_MAX 3.4028235e38
 #define M_PI 3.1415926535897932384626433832795
@@ -517,5 +519,5 @@ void main()
     vec4 color = shape.stroke_width == 0 ? fill_color :
         mix(stroke_color, fill_color, smoothstep(w-ps, w+ps, distance));
 
-    gl_FragColor = vec4(pow(color.rgb, vec3(1.0/v_gamma)), alpha * color.a);
+    outFragColor = vec4(pow(color.rgb, vec3(1.0/v_gamma)), alpha * color.a);
 }
