@@ -61,6 +61,7 @@ typedef struct {
 
 inline void draw_list_clear(draw_list &batch)
 {
+    batch.images.clear();
     batch.cmds.clear();
     batch.vertices.clear();
     batch.indices.clear();
@@ -110,12 +111,13 @@ inline void draw_list_indices(draw_list &batch, uint iid, uint mode, uint shader
         last.mode != mode ||
         last.shader != shader)
     {
-        batch.cmds.push_back({{
-            !empty ? last.viewport[0] : 0,
-            !empty ? last.viewport[1] : 0,
-            !empty ? last.viewport[2] : 0,
-            !empty ? last.viewport[3] : 0
-        }, iid, mode, shader, start, end - start });
+        uint vp[4];
+        if (empty) {
+            memset(vp, 0, sizeof(vp));
+        } else {
+            memcpy(vp, last.viewport, sizeof(vp));
+        }
+        batch.cmds.push_back({{ vp[0], vp[1], vp[2], vp[3] }, iid, mode, shader, start, end - start });
     } else {
         last.count += (end - start);
     }
