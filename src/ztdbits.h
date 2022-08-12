@@ -47,8 +47,8 @@ static inline unsigned clz_u32(__bits_u32 val) { return val == 0 ? 32 : __builti
 static inline unsigned clz_u64(__bits_u64 val) { return val == 0 ? 64 : __builtin_clzll(val); }
 static inline unsigned ctz_u32(__bits_u32 val) { return val == 0 ? 32 : __builtin_ctz(val); }
 static inline unsigned ctz_u64(__bits_u64 val) { return val == 0 ? 64 : __builtin_ctzll(val); }
-static inline unsigned popcnt_u32(__bits_u32 val) { return val == 0 ? 32 : __builtin_popcount(val); }
-static inline unsigned popcnt_u64(__bits_u64 val) { return val == 0 ? 64 : __builtin_popcountll(val); }
+static inline unsigned popcnt_u32(__bits_u32 val) { return __builtin_popcount(val); }
+static inline unsigned popcnt_u64(__bits_u64 val) { return __builtin_popcountll(val); }
 #define _bits_defined (_clz_defined | _ctz_defined | _popcnt_defined)
 #elif defined (_MSC_VER) && defined (_M_X64)
 static inline unsigned clz_u32(__bits_u32 val) { return (int)_lzcnt_u32(val); }
